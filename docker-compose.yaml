@@ -1,0 +1,14 @@
+services:
+  frontend:
+    tty: true
+    image: next-frontend
+    container_name: next-frontend
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "10000:3000"
+    volumes:
+      - ./:/app
+    env_file:
+      - .env.local
