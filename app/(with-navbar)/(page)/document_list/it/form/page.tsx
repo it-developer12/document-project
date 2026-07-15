@@ -28,6 +28,7 @@ import { startOfDay, parseISO } from "date-fns";
 import { th } from "date-fns/locale";
 import Link from "next/link";
 import Signature from "@/public/example_sign.png"
+import { toast } from "react-toastify";
 
 type FormSubmission = {
     form_id: string;
@@ -281,7 +282,10 @@ function FormPageContent() {
                         <div className="flex gap-4 justify-end">
                             <button className="text-white bg-black px-4 py-2 rounded-md hover:cursor-pointer" onClick={() => changePage("/reject")}>{"ตีกลับ"}</button>
                             <button className="text-white bg-red-500 px-4 py-2 rounded-md hover:cursor-pointer" onClick={() => changePage("/reject")}>{"ยกเลิก"}</button>
-                            <button className="text-white bg-[#4A4DF1] px-4 py-2 rounded-md hover:cursor-pointer" onClick={() => changePage("/dashboard")}>{"อนุญาติ"}</button>
+                            <button className="text-white bg-[#4A4DF1] px-4 py-2 rounded-md hover:cursor-pointer" onClick={() => {
+                                toast.success("อนุมัติเอกสารสำเร็จ")
+                                changePage("/dashboard")
+                            }}>{"อนุญาติ"}</button>
                         </div>
                     </div>) :
                     (<div></div>)

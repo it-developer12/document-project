@@ -16,7 +16,7 @@ export default function Page() {
         document_list: {
             id: string;
             title: string;
-            type: string;
+            priority: Status;
             owner: string;
             department: string;
             company: string;
@@ -37,11 +37,12 @@ export default function Page() {
         { label: "Finance", value: "finance" },
         { label: "B2C", value: "b2c" },
     ]
+    type Status = "low" | "medium" | "high";
     type DocStatus = "Draft" | "Approved" | "Processing" | "Completed" | "Cancelled" | "Pending" | "Rejected";
     const documents: {
         id: string;
         title: string;
-        type: string;
+        priority: Status;
         owner: string;
         department: string;
         company: string;
@@ -50,8 +51,8 @@ export default function Page() {
         updated: string;
         end_date: string;
     }[] = [
-            { id: "DOC-IT-002", title: "Q4 Budget Approval Request", type: "Financial", owner: "Sarah Chen", company: "cff", department: "Finance", status: "Pending", created: "2024-11-01", updated: "2024-11-08", end_date: "2025-12-30" },
-            { id: "DOC-IT-003", title: "Vendor Contract — Acme Corp", type: "Legal", owner: "James Liu", company: "cff", department: "Legal", status: "Pending", created: "2024-10-30", updated: "2024-11-07", end_date: "2025-12-30" },
+            { id: "DOC-IT-002", title: "แบบฟอร์มการขอเข้าใช้งานระบบคอมพิวเตอร์", priority: "low", owner: "Jame", company: "cff", department: "IT", status: "Completed", created: "2024-10-30", updated: "2024-11-07", end_date: "2024-10-30" },
+            { id: "DOC-IT-003", title: "แบบฟอร์มร้องขอดำเนินการด้าน IT", priority: "high", owner: "Brian", company: "cff", department: "IT", status: "Pending", created: "2024-10-30", updated: "2024-11-07", end_date: "2024-10-30" },
         ];
 
     const [DocumentTable, setDocumentTable] = useState<TableState>({

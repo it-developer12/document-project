@@ -13,6 +13,7 @@ export type DocumentColumn = {
   id: string
   title: string
   priority: "low" | "medium" | "high"
+  company: string
   owner: string
   department: string
   status: "Draft" | "Approved" | "Processing" | "Completed" | "Cancelled" | "Pending" | "Rejected"
@@ -43,6 +44,30 @@ export const columns: ColumnDef<DocumentColumn>[] = [
     accessorKey: "priority",
     header: "Priority",
     cell: ({ row }) => <PriorityBadge status={row.original.priority as Priority} />
+  },
+  {
+    accessorKey: "company",
+    header: "Company",
+    cell: ({ row }) => {
+      var company_name = "";
+      switch (row.original.company) {
+        case "ctx":
+          company_name = "Ctx holding"
+          break;
+        case "cff":
+          company_name = "Cityfresh Fruits"
+          break;
+        case "nbm":
+          company_name = "Noble marketing"
+          break;
+        default:
+          company_name = ""
+          break;
+      }
+      return (
+        <span>{company_name}</span>
+      )
+    }
   },
   {
     accessorKey: "owner",

@@ -2,6 +2,7 @@
 import { Icon } from '@iconify/react';
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { toast } from 'react-toastify';
 
 export default function Page() {
     const router = useRouter();
@@ -29,7 +30,10 @@ export default function Page() {
                 <div className="mt-4">
                     <div className="flex gap-4 justify-end">
                         <button className="text-white bg-red-500 px-4 py-2 rounded-md hover:cursor-pointer" onClick={() => changePage("/view/it/form_2?doc_id=DOC-IT-0002")}>{"ยกเลิก"}</button>
-                        <button className="text-white bg-[#4A4DF1] px-4 py-2 rounded-md hover:cursor-pointer" onClick={() => changePage("/dashboard")}>{"บันทึก"}</button>
+                        <button className="text-white bg-[#4A4DF1] px-4 py-2 rounded-md hover:cursor-pointer" onClick={() => {
+                            toast.warning("เพิ่มเหตุผลสำหรับโต้กลับหรือยกเลิกเอกสารเรียบร้อย")
+                            changePage("/dashboard")
+                        }}>{"บันทึก"}</button>
                     </div>
                 </div>
             </div>

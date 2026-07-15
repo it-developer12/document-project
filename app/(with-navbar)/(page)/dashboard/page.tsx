@@ -77,21 +77,21 @@ export default function Home() {
     const todo_documents: TableDoc[] = [
         { id: "DOC-IT-001", title: "แบบฟอร์มเบิกทรัพย์สิน", priority: "high", owner: "Brian", company: "cff", department: "IT", status: "Processing", created: "2024-11-01", updated: "2024-11-08", end_date: "2024-11-08" },
         { id: "DOC-IT-002", title: "แบบฟอร์มการขอเข้าใช้งานระบบคอมพิวเตอร์", priority: "low", owner: "Jame", company: "cff", department: "IT", status: "Completed", created: "2024-10-30", updated: "2024-11-07", end_date: "2024-10-30" },
-        { id: "DOC-IT-003", title: "แบบฟอร์มร้องขอดำเนินการด้าน IT", priority: "high", owner: "Brian", company: "cff", department: "IT", status: "Cancelled", created: "2024-10-30", updated: "2024-11-07", end_date: "2024-10-30" },
-        { id: "DOC-IT-004", title: "แบบฟอร์มร้องขอดำเนินการด้าน IT", priority: "high", owner: "Marry", company: "cff", department: "Finance", status: "Rejected", created: "2024-10-30", updated: "2024-11-07", end_date: "2024-10-30" },
+        { id: "DOC-IT-003", title: "แบบฟอร์มร้องขอดำเนินการด้าน IT", priority: "high", owner: "Brian", company: "cff", department: "IT", status: "Pending", created: "2024-10-30", updated: "2024-11-07", end_date: "2024-10-30" },
+        { id: "DOC-IT-004", title: "แบบฟอร์มร้องขอดำเนินการด้าน IT", priority: "high", owner: "Marry", company: "cff", department: "Finance", status: "Processing", created: "2024-10-30", updated: "2024-11-07", end_date: "2024-10-30" },
     ]
 
     const my_documents: TableDoc[] = [
         { id: "DOC-IT-001", title: "แบบฟอร์มเบิกทรัพย์สิน", priority: "high", owner: "Brian", company: "cff", department: "IT", status: "Processing", created: "2024-11-01", updated: "2024-11-08", end_date: "2024-11-08" },
         { id: "DOC-IT-002", title: "แบบฟอร์มการขอเข้าใช้งานระบบคอมพิวเตอร์", priority: "low", owner: "Jame", company: "cff", department: "IT", status: "Completed", created: "2024-10-30", updated: "2024-11-07", end_date: "2024-10-30" },
-        { id: "DOC-IT-003", title: "แบบฟอร์มร้องขอดำเนินการด้าน IT", priority: "high", owner: "Brian", company: "cff", department: "IT", status: "Cancelled", created: "2024-10-30", updated: "2024-11-07", end_date: "2024-10-30" },
+        { id: "DOC-IT-003", title: "แบบฟอร์มร้องขอดำเนินการด้าน IT", priority: "high", owner: "Brian", company: "cff", department: "IT", status: "Pending", created: "2024-10-30", updated: "2024-11-07", end_date: "2024-10-30" },
     ]
 
     const all_documents: TableDoc[] = [
         { id: "DOC-IT-001", title: "แบบฟอร์มเบิกทรัพย์สิน", priority: "high", owner: "Brian", company: "cff", department: "IT", status: "Processing", created: "2024-11-01", updated: "2024-11-08", end_date: "2024-11-08" },
         { id: "DOC-IT-002", title: "แบบฟอร์มการขอเข้าใช้งานระบบคอมพิวเตอร์", priority: "low", owner: "Jame", company: "cff", department: "IT", status: "Completed", created: "2024-10-30", updated: "2024-11-07", end_date: "2024-10-30" },
-        { id: "DOC-IT-003", title: "แบบฟอร์มร้องขอดำเนินการด้าน IT", priority: "high", owner: "Brian", company: "cff", department: "IT", status: "Cancelled", created: "2024-10-30", updated: "2024-11-07", end_date: "2024-10-30" },
-        { id: "DOC-IT-004", title: "แบบฟอร์มร้องขอดำเนินการด้าน IT", priority: "high", owner: "Marry", company: "cff", department: "IT", status: "Draft", created: "2024-10-30", updated: "2024-11-07", end_date: "2024-10-30" },
+        { id: "DOC-IT-003", title: "แบบฟอร์มร้องขอดำเนินการด้าน IT", priority: "high", owner: "Brian", company: "cff", department: "IT", status: "Pending", created: "2024-10-30", updated: "2024-11-07", end_date: "2024-10-30" },
+        { id: "DOC-IT-004", title: "แบบฟอร์มร้องขอดำเนินการด้าน IT", priority: "high", owner: "Marry", company: "cff", department: "IT", status: "Processing", created: "2024-10-30", updated: "2024-11-07", end_date: "2024-10-30" },
         { id: "DOC-IT-005", title: "แบบฟอร์มการขอเข้าใช้งานระบบคอมพิวเตอร์", priority: "low", owner: "Sarah Chen", company: "cff", department: "IT", status: "Pending", created: "2024-11-01", updated: "2024-11-08", end_date: "2024-11-20" },
         { id: "DOC-IT-006", title: "แบบฟอร์มเบิกทรัพย์สิน", priority: "medium", owner: "Sarah Chen", company: "ctx", department: "IT", status: "Processing", created: "2024-11-01", updated: "2024-11-08", end_date: "2024-11-20" },
         { id: "DOC-IT-007", title: "แบบฟอร์มร้องขอดำเนินการด้าน IT", priority: "high", owner: "Ken", company: "cff", department: "IT", status: "Draft", created: "2024-10-30", updated: "2024-11-07", end_date: "2024-10-30" },

@@ -809,17 +809,16 @@ export default function Page() {
         label: string;
     }
 
+    interface ProcessorOptionType extends Options {
+        department: string;
+    }
+
     interface EmployeeStatus {
         approve: "current" | "in_doc";
         process: "current" | "in_doc" | "zero";
         finish: "current" | "in_doc";
     }
 
-    const [employeeListStatus, setEmployeeListStatus] = useState<EmployeeStatus>({
-        approve: "current",
-        process: "current",
-        finish: "current"
-    });
     const [modalStatus, setModalStatus] = useState({
         approve: false,
         process: false,
@@ -842,11 +841,13 @@ export default function Page() {
         { value: "0000004", label: "Approver 4" },
     ];
 
-    const ProcessorList: Options[] = [
-        { value: "1000001", label: "Processor 1" },
-        { value: "1000002", label: "Processor 2" },
-        { value: "1000003", label: "Processor 3" },
-        { value: "1000004", label: "Processor 4" },
+    const ProcessorList: ProcessorOptionType[] = [
+        { value: "1000001", label: "Processor 1", department: "it" },
+        { value: "1000002", label: "Processor 2", department: "it" },
+        { value: "1000003", label: "Processor 3", department: "fn" },
+        { value: "1000004", label: "Processor 4", department: "fn" },
+        { value: "1000005", label: "Processor 5", department: "mg" },
+        { value: "1000006", label: "Processor 6", department: "mg" },
     ]
 
     const FinisherList: Options[] = [
@@ -855,6 +856,15 @@ export default function Page() {
         { value: "1100003", label: "Finisher 3" },
         { value: "1100004", label: "Finisher 4" },
     ]
+
+    const [formDetail, setFormDetail] = useState({
+        name: "",
+        department: "",
+        company: "",
+        approver_type: "current",
+        processor_type: "current",
+        finisher_type: "current"
+    })
 
     const [fields, setFields] = useState<FormField[]>([
         {
@@ -983,19 +993,30 @@ export default function Page() {
             ...prev,
             {
                 employee_id: "",
-                label: ""
+                label: "",
+                department: ""
             },
         ]);
     };
 
-    const getAvailableOptions = (currentIndex: number, Lists: any, EmployeeList: Options[]) => {
-        const selectedValues = Lists
-            .filter((_: any, i: number) => i == currentIndex)
-            .flatMap((item: any) => item.employee_id);
+    const getAvailableOptions = (currentIndex: number, Lists: any, EmployeeList: any, type: string) => {
+        if (type === "approve") {
+            // const DepartmentList = Lists.filter((em: any) => em.department === formDetail.department)
+            const selectedValues = Lists
+                .map((item: any) => item.employee_id);
+            console.log("This is", Lists)
+            return EmployeeList.filter(
+                (option: any) => !selectedValues.includes(option.value)
+            );
+        } else if (type === "process") {
+            const DepartmentList = EmployeeList.filter((em: any) => em.department === formDetail.department)
+            const selectedValues = DepartmentList
+                .map((item: any) => item.employee_id);
 
-        return EmployeeList.filter(
-            (option) => !selectedValues.includes(option.value)
-        );
+            return DepartmentList.filter(
+                (option: any) => !selectedValues.includes(option.value)
+            );
+        }
     };
 
     function EmployeeModal({ onClose, type, List }: { onClose: () => void, type: string, List: any }) {
@@ -1031,7 +1052,7 @@ export default function Page() {
                                     defaultInputValue=""
                                     placeholder="โปรดเลือกผู้อนุญาติเอกสาร"
                                     className="md:w-1/2 rounded-lg basic-multi-select"
-                                    options={getAvailableOptions(index, approver, ApproverList)}
+                                    options={getAvailableOptions(index, approver, ApproverList, "approve")}
                                     value={ApproverList.filter(
                                         (option) => approver
                                             .filter((_, i) => i == index)
@@ -1089,7 +1110,7 @@ export default function Page() {
                                     defaultInputValue=""
                                     placeholder="โปรดเลือกผู้อนุญาติเอกสาร"
                                     className="md:w-1/2 rounded-lg basic-multi-select"
-                                    options={getAvailableOptions(index, processor, ProcessorList)}
+                                    options={getAvailableOptions(index, processor, ProcessorList, "process")}
                                     value={ProcessorList.filter(
                                         (option) => processor
                                             .filter((_, i) => i == index)
@@ -1175,17 +1196,29 @@ export default function Page() {
                             </div>
                             <div className="flex flex-col gap-2 min-w-0 md:flex-row md:items-center md:gap-2 w-full">
                                 <span className="text-nowrap">{"เอกสารของแผนก"}</span>
-                                <Select options={DEPARTMENT_OPTIONS} className="w-full md:w-52 rounded-lg" />
+                                <Select 
+                                    options={DEPARTMENT_OPTIONS} 
+                                    onChange={(seleted) =>{
+                                        if(!seleted) return;
+                                        setFormDetail(prev => ({...prev, department: seleted.value }));
+                                    }} 
+                                    className="w-full md:w-52 rounded-lg" />
                             </div>
                             <div className="flex flex-col gap-2 min-w-0 md:flex-row md:items-center md:gap-2 w-full">
                                 <span className="text-nowrap">{"เอกสารของบริษัท"}</span>
-                                <Select options={COMPANY_OPTIONS} className="w-full md:w-52 rounded-lg" />
+                                <Select 
+                                    options={COMPANY_OPTIONS} 
+                                    onChange={(seleted) =>{
+                                        if(!seleted) return;
+                                        setFormDetail(prev => ({...prev, company: seleted.value }));
+                                    }} 
+                                    className="w-full md:w-52 rounded-lg" />
                             </div>
                         </div>
                         <div className="text-nowrap">
                             <div className="flex flex-col gap-3 md:flex-row md:items-center">
                                 <span className="text-nowrap">{"ผู้อนุมัติเอกสาร"}</span>
-                                <RadioGroup defaultValue="current" value={employeeListStatus.approve} onValueChange={value => setEmployeeListStatus(prev => ({ ...prev, approve: value }))} className="w-fit flex flex-col gap-2 md:flex-row md:items-center">
+                                <RadioGroup defaultValue="current" value={formDetail.approver_type} onValueChange={value => setFormDetail(prev => ({ ...prev, approver_type: value }))} className="w-fit flex flex-col gap-2 md:flex-row md:items-center">
                                     <div className="flex items-center gap-3">
                                         <RadioGroupItem value="current" id="r1" />
                                         <Label htmlFor="r1">{"แก้ไขในหน้าปัจจุบัน"}</Label>
@@ -1196,7 +1229,7 @@ export default function Page() {
                                     </div>
                                 </RadioGroup>
                             </div>
-                            <div className={`flex flex-col gap-3 pl-0 mt-2 w-full md:flex-row md:pl-4 ${employeeListStatus.approve === "current" ? "" : "hidden"}`}>
+                            <div className={`flex flex-col gap-3 pl-0 mt-2 w-full md:flex-row md:pl-4 ${formDetail.approver_type === "current" ? "" : "hidden"}`}>
                                 <button
                                     type="button"
                                     className="bg-[#4A4DF1] text-white w-36 px-2 py-0.5 min-w-36 rounded hover:cursor-pointer"
@@ -1217,7 +1250,7 @@ export default function Page() {
                         <div className="">
                             <div className="flex flex-col gap-3 md:flex-row md:items-center">
                                 <span className="text-nowrap">{"ผู้ดำเนินการตามคำร้องขอเอกสาร"}</span>
-                                <RadioGroup defaultValue="current" value={employeeListStatus.process} onValueChange={value => setEmployeeListStatus(prev => ({ ...prev, process: value }))} className="w-fit flex flex-col gap-2 md:flex-row md:items-center">
+                                <RadioGroup defaultValue="current" value={formDetail.processor_type} onValueChange={value => setFormDetail(prev => ({ ...prev, processor_type: value }))} className="w-fit flex flex-col gap-2 md:flex-row md:items-center">
                                     <div className="flex items-center gap-3">
                                         <RadioGroupItem value="current" id="r3" />
                                         <Label htmlFor="r3">{"แก้ไขในหน้าปัจจุบัน"}</Label>
@@ -1228,7 +1261,7 @@ export default function Page() {
                                     </div>
                                 </RadioGroup>
                             </div>
-                            <div className={`flex flex-col gap-3 pl-0 mt-2 w-full md:flex-row md:pl-4 ${employeeListStatus.process === "current" ? "" : "hidden"}`}>
+                            <div className={`flex flex-col gap-3 pl-0 mt-2 w-full md:flex-row md:pl-4 ${formDetail.processor_type === "current" ? "" : "hidden"}`}>
                                 <button
                                     type="button"
                                     className="bg-[#4A4DF1] text-white w-36 px-2 py-0.5 min-w-36 rounded hover:cursor-pointer"
@@ -1249,7 +1282,7 @@ export default function Page() {
                         <div className="">
                             <div className="flex flex-col gap-3 md:flex-row md:items-center">
                                 <span className="text-nowrap">{"ผู้สิ้นสุดเอกสาร"}</span>
-                                <RadioGroup defaultValue="current" value={employeeListStatus.finish} onValueChange={value => setEmployeeListStatus(prev => ({ ...prev, finish: value }))} className="w-fit flex flex-col gap-2 md:flex-row md:items-center">
+                                <RadioGroup defaultValue="current" value={formDetail.finisher_type} onValueChange={value => setFormDetail(prev => ({ ...prev, finisher_type: value }))} className="w-fit flex flex-col gap-2 md:flex-row md:items-center">
                                     <div className="flex items-center gap-3">
                                         <RadioGroupItem value="current" id="r5" />
                                         <Label htmlFor="r5">{"แก้ไขในหน้าปัจจุบัน"}</Label>
@@ -1260,7 +1293,7 @@ export default function Page() {
                                     </div>
                                 </RadioGroup>
                             </div>
-                            <div className={`pl-0 mt-2 ${employeeListStatus.finish === "current" ? "" : "hidden"}`}>
+                            <div className={`pl-0 mt-2 ${formDetail.finisher_type === "current" ? "" : "hidden"}`}>
                                 <div
                                     className={`flex flex-col gap-2 mt-2 sm:flex-row sm:items-center`}
                                 >
@@ -1410,19 +1443,34 @@ export default function Page() {
 
             {preview && <PreviewModal fields={fields} onClose={() => setPreview(false)} />}
             {modalStatus.approve && <EmployeeModal onClose={() => {
-                const cleanedApprover: ApproverListType[] = approver
-                    .filter(item => item.employee_id !== "")
-                    .map((item, index) => ({
+                setApprover(prev => {
+                    const validApprovers: ApproverListType[] = prev.filter(item => item.employee_id !== "");
+
+                    // Don't remove if only one valid approver remains
+                    if (validApprovers.length <= 1) {
+                        return prev;
+                    }
+
+                    return validApprovers.map((item, index) => ({
                         ...item,
                         level: index + 1,
                     }));
-                setApprover(cleanedApprover)
+                });
                 setModalStatus(prev => ({ ...prev, approve: false }))
             }} type="ผู้อนุมัติ" List={approver} />}
             {modalStatus.process && <EmployeeModal onClose={() => {
-                const cleanedProcessor: EmployeeList[] = processor
-                    .filter(item => item.employee_id !== "")
-                setProcessor(cleanedProcessor)
+                setProcessor(prev => {
+                    const validProcessor: EmployeeList[] = prev.filter(item => item.employee_id !== "");
+
+                    // Don't remove if only one valid approver remains
+                    if (validProcessor.length <= 1) {
+                        return prev;
+                    }
+
+                    return validProcessor.map((item, index) => ({
+                        ...item,
+                    }));
+                })
                 setModalStatus(prev => ({ ...prev, process: false }))
             }} type="ผู้ดำเนินการ" List={processor} />}
         </DndContext>

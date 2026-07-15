@@ -21,7 +21,7 @@ export default function Page() {
         document_list: {
             id: string;
             title: string;
-            type: string;
+            priority: Status;
             owner: string;
             department: string;
             company: string;
@@ -31,21 +31,22 @@ export default function Page() {
             end_date: string;
         }[];
     }
+    type Status = "low" | "medium" | "high";
     type DocStatus = "Draft" | "Approved" | "Processing" | "Completed" | "Cancelled" | "Pending" | "Rejected";
     const documents: {
         id: string;
-            title: string;
-            type: string;
-            owner: string;
-            department: string;
-            company: string;
-            status: DocStatus;
-            created: string;
-            updated: string;
-            end_date: string;
+        title: string;
+        priority: Status;
+        owner: string;
+        department: string;
+        company: string;
+        status: DocStatus;
+        created: string;
+        updated: string;
+        end_date: string;
     }[] = [
-            { id: "DOC-IT-001", title: "Q4 Budget Approval Request", type: "Financial", owner: "Sarah Chen", company: "cff", department: "Finance", status: "Pending", created: "2024-11-01", updated: "2024-11-08", end_date: "2025-12-30" },
-            { id: "DOC-IT-003", title: "Vendor Contract — Acme Corp", type: "Legal", owner: "James Liu", company: "cff", department: "Legal", status: "Pending", created: "2024-10-30", updated: "2024-11-07", end_date: "2025-12-30" },
+            { id: "DOC-IT-001", title: "แบบฟอร์มเบิกทรัพย์สิน", priority: "high", owner: "Brian", company: "cff", department: "IT", status: "Processing", created: "2024-11-01", updated: "2024-11-08", end_date: "2024-11-08" },
+            { id: "DOC-IT-004", title: "แบบฟอร์มร้องขอดำเนินการด้าน IT", priority: "high", owner: "Marry", company: "cff", department: "Finance", status: "Processing", created: "2024-10-30", updated: "2024-11-07", end_date: "2024-10-30" },
         ];
 
     const company = [
@@ -148,9 +149,9 @@ export default function Page() {
                                     <span>{"การดำเนินการ"}</span>
                                 </div>
                                 <div className="space-y-2">
-                                    <input type="text" className="w-full p-1.5 pl-2 py-2 border rounded bg-[#F3F4F8] text-sm" placeholder="การดำเนินการ"/>
-                                    <button className="bg-black text-white rounded py-2 w-full hover:cursor-pointer" onClick={() => setDetail({open: false, document_id: ""})}>{"เพิ่ม"}</button>
-                                    <button className="bg-[#4A4DF1] text-white rounded py-2 w-full hover:cursor-pointer" onClick={() => setDetail({open: false, document_id: ""})}>{"ดำเนินการสำเร็จ"}</button>
+                                    <input type="text" className="w-full p-1.5 pl-2 py-2 border rounded bg-[#F3F4F8] text-sm" placeholder="การดำเนินการ" />
+                                    <button className="bg-black text-white rounded py-2 w-full hover:cursor-pointer" onClick={() => setDetail({ open: false, document_id: "" })}>{"เพิ่ม"}</button>
+                                    <button className="bg-[#4A4DF1] text-white rounded py-2 w-full hover:cursor-pointer" onClick={() => setDetail({ open: false, document_id: "" })}>{"ดำเนินการสำเร็จ"}</button>
                                 </div>
                             </div>
                         </div>

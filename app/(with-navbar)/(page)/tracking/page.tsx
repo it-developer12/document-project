@@ -34,16 +34,16 @@ export default function Page() {
         { title: "Complete", description: "ตรวจสอบและจัดเก็บ", value: "complete" },
     ]
     const last = [
-        { document_id: "DOC-IT-001", title: "แบบฟอร์มเบิกทรัพย์สิน", owner: "Jame", updated_at: "2024-12-30" },
-        { document_id: "DOC-IT-002", title: "แบบฟอร์มการขอเข้าใช้งานระบบคอมพิวเตอร์", owner: "Marcus", updated_at: "2024-12-30" },
-        { document_id: "DOC-IT-003", title: "แบบฟอร์มเบิกทรัพย์สิน", owner: "Susan", updated_at: "2024-12-30" },
-        { document_id: "DOC-IT-004", title: "แบบฟอร์มร้องขอดำเนินการด้าน IT", owner: "Finn", updated_at: "2024-12-30" },
-        { document_id: "DOC-IT-005", title: "แบบฟอร์มการขอเข้าใช้งานระบบคอมพิวเตอร์", owner: "Marry", updated_at: "2024-12-30" },
-        { document_id: "DOC-IT-006", title: "แบบฟอร์มเบิกทรัพย์สิน", owner: "Diana", updated_at: "2024-12-30" },
-        { document_id: "DOC-IT-007", title: "แบบฟอร์มการขอเข้าใช้งานระบบคอมพิวเตอร์", owner: "Annie", updated_at: "2024-12-30" },
-        { document_id: "DOC-IT-008", title: "แบบฟอร์มร้องขอดำเนินการด้าน IT", owner: "Brian", updated_at: "2024-12-30" },
-        { document_id: "DOC-IT-009", title: "แบบฟอร์มร้องขอดำเนินการด้าน IT", owner: "Frank", updated_at: "2024-12-30" },
-        { document_id: "DOC-IT-010", title: "แบบฟอร์มเบิกทรัพย์สิน", owner: "Gorge", updated_at: "2024-12-30" },
+        { document_id: "DOC-IT-001", title: "DOC_A", owner: "Jame", updated_at: "2024-12-30" },
+        { document_id: "DOC-IT-002", title: "DOC_B", owner: "Marcus", updated_at: "2024-12-30" },
+        { document_id: "DOC-IT-003", title: "DOC_A", owner: "Susan", updated_at: "2024-12-30" },
+        { document_id: "DOC-IT-004", title: "DOC_C", owner: "Finn", updated_at: "2024-12-30" },
+        { document_id: "DOC-IT-005", title: "DOC_B", owner: "Marry", updated_at: "2024-12-30" },
+        { document_id: "DOC-IT-006", title: "DOC_A", owner: "Diana", updated_at: "2024-12-30" },
+        { document_id: "DOC-IT-007", title: "DOC_B", owner: "Annie", updated_at: "2024-12-30" },
+        { document_id: "DOC-IT-008", title: "DOC_C", owner: "Brian", updated_at: "2024-12-30" },
+        { document_id: "DOC-IT-009", title: "DOC_C", owner: "Frank", updated_at: "2024-12-30" },
+        { document_id: "DOC-IT-010", title: "DOC_A", owner: "Gorge", updated_at: "2024-12-30" },
     ]
 
     const [searchState, SetSearchState] = useState("");
@@ -58,6 +58,7 @@ export default function Page() {
     const [mainStage, setMainStage] = useState<any>({});
     const [subStage, setSubStage] = useState<any>([]);
     const [docDetail, setDocDetail] = useState<any>([]);
+    const [searchDoc, setSearchDoc] = useState<any>([]);
     const [TrackingDataState, setTrackingDataState] = useState<DocumentTracking>({
         document_id: "",
         schema_id: "",
@@ -151,6 +152,13 @@ export default function Page() {
             };
         });
     };
+
+    function search(keyword: string) {
+        const filtered = last.filter(doc =>
+            doc.document_id.toLowerCase().includes(keyword.toLowerCase())
+        );
+        setSearchDoc(filtered)
+    }
 
     function findDoc(documentId: string = searchState) {
         const targetDocumentId = documentId.trim();
@@ -413,7 +421,7 @@ export default function Page() {
     //                 },
     //                 {} as Record<string, any>
     //             ) ?? {};
-        
+
     //     form.reset(values);
     // }, [searchState, form]);
 
@@ -445,7 +453,7 @@ export default function Page() {
                         onClick={() => {
                             const targetDocumentId = searchState.trim();
                             SetSearchState(targetDocumentId);
-                            findDoc(targetDocumentId);
+                            search(targetDocumentId)
                         }}
                     >
                         {'ค้นหา'}
@@ -453,39 +461,73 @@ export default function Page() {
                 </div>
             </div>
 
+            {searchDoc.length > 0 && (
+                <div className='mt-5 bg-white border rounded-xl px-5 py-6 shadow w-full'>
+                    <div className="grid grid-cols-3 gap-4">
+                    {searchDoc.map((item:any, index:number) => (
+                        <button
+                            key={index}
+                            className="flex justify-between min-w-1/4 p-2 px-4 text-sm bg-[#ebebeb] rounded-xl shadow border hover:cursor-pointer hover:bg-[#f0f0f0]"
+                            onClick={() => {
+                                SetSearchState(item.document_id)
+                                findDoc(item.document_id)
+                            }}
+                        >
+                            <div className="flex flex-col items-start w-[60%]">
+                                <div>
+                                    <span>{item.document_id}</span>
+                                </div>
+                                <div className="text-nowrap overflow-x-hidden scrollbar-none">
+                                    <span>{item.title}</span>
+                                </div>
+                            </div>
+                            <div className="flex flex-col items-end w-[40%]">
+                                <div>
+                                    <span>{"ผู้สร้าง "}{item.owner}</span>
+                                </div>
+                                <div>
+                                    <span>{"แก้ไขล่าสุด "}{item.updated_at}</span>
+                                </div>
+                            </div>
+                        </button>
+                    ))}
+                    </div>
+                </div>
+            )}
+
             <div className='mt-5 bg-white border rounded-xl px-5 py-4 shadow w-full'>
                 <div className="text-2xl font-bold">
                     <span>{"เอกสารที่แก้ไขล่าสุด"}</span>
                 </div>
-            <div className="grid grid-cols-3 gap-4">
-                {last.map((item, index) => (
-                    <button
-                        key={index}
-                        className="flex justify-between min-w-1/4 p-2 px-4 text-sm bg-[#ebebeb] rounded-xl shadow border hover:cursor-pointer hover:bg-[#f0f0f0]"
-                        onClick={() => {
-                            SetSearchState(item.document_id)
-                            findDoc(item.document_id)
-                        }}
-                    >
-                        <div className="flex flex-col items-start w-[60%]">
-                            <div>
-                                <span>{item.document_id}</span>
+                <div className="mt-2 grid grid-cols-3 gap-4">
+                    {last.map((item, index) => (
+                        <button
+                            key={index}
+                            className="flex justify-between min-w-1/4 p-2 px-4 text-sm bg-[#ebebeb] rounded-xl shadow border hover:cursor-pointer hover:bg-[#f0f0f0]"
+                            onClick={() => {
+                                SetSearchState(item.document_id)
+                                findDoc(item.document_id)
+                            }}
+                        >
+                            <div className="flex flex-col items-start w-[60%]">
+                                <div>
+                                    <span>{item.document_id}</span>
+                                </div>
+                                <div className="text-nowrap overflow-x-hidden scrollbar-none">
+                                    <span>{item.title}</span>
+                                </div>
                             </div>
-                            <div className="text-nowrap overflow-x-hidden scrollbar-none">
-                                <span>{item.title}</span>
+                            <div className="flex flex-col items-end w-[40%]">
+                                <div>
+                                    <span>{"ผู้สร้าง "}{item.owner}</span>
+                                </div>
+                                <div>
+                                    <span>{"แก้ไขล่าสุด "}{item.updated_at}</span>
+                                </div>
                             </div>
-                        </div>
-                        <div className="flex flex-col items-end w-[40%]">
-                            <div>
-                                <span>{"ผู้สร้าง "}{item.owner}</span>
-                            </div>
-                            <div>
-                                <span>{"แก้ไขล่าสุด "}{item.updated_at}</span>
-                            </div>
-                        </div>
-                    </button>
-                ))}
-            </div>
+                        </button>
+                    ))}
+                </div>
             </div>
             {doc ? (
                 <div>
