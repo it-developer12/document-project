@@ -30,7 +30,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import Select, { MultiValue } from 'react-select'
 import { FieldPreview } from "./PreviewRender";
 import { useRouter } from "next/navigation";
-
+import { toast } from "react-toastify";
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface PaletteItem {
     type: FieldType;
@@ -1123,7 +1123,8 @@ export default function Page() {
                                                     ? {
                                                         ...item,
                                                         employee_id: selected?.value ?? "",
-                                                        label: selected?.label ?? ""
+                                                        label: selected?.label ?? "",
+                                                        department: selected?.department ?? ""
                                                     }
                                                     : item
                                             )
@@ -1159,10 +1160,61 @@ export default function Page() {
         )
     }
 
-    function saveForm() {
-        console.log(fields)
-        console.log(approver)
-        router.push('/dashboard')
+    function getRandomInt(min: number, max: number) {
+        return Math.floor(Math.random() * (max - min + 1)) + min;
+    }
+
+    async function saveForm() {
+        // console.log(fields)
+        // console.log(approver)
+        // console.log(formDetail)
+        // console.log(processor)
+        // console.log(finisher)
+        // router.push('/dashboard')
+        const number = getRandomInt(100000, 999999)
+        const approval = {
+            type: "workflow",
+            current_level: 1,
+            steps: approver.map((item) => ({
+                level: item.level,
+                status: "waiting",
+                approvers: [
+                    {
+                        employee_id: item.employee_id,
+                        name: item.label, // Replace with actual employee name if available
+                        status: "waiting",
+                        approved_at: null,
+                        comment: null,
+                    },
+                ],
+            })),
+        };
+        const newForm = {
+            schema_id: formDetail.department + "_" + number.toString(),
+            name: formDetail.name,
+            department: formDetail.department,
+            company: formDetail.company,
+            version: "1",
+            approval: approval,
+            form_detail: fields
+        };
+
+        const response = await fetch("/api/form", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ newForm }),
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error("Failed to save form:", errorText);
+            return;
+        }
+
+        toast.success("สร้างฟอร์มเอกสารสำเร็จ")
+        router.push("/dashboard")
     }
 
     return (
@@ -1192,26 +1244,28 @@ export default function Page() {
                         <div className="flex flex-col gap-3 md:flex-row md:items-center">
                             <div className="flex flex-col gap-2 min-w-0 md:flex-row md:items-center md:gap-2 w-full">
                                 <span className="text-nowrap">{"ชื่อเอกสาร"}</span>
-                                <input type="text" className="pl-2 border py-1 rounded bg-[#F3F4F8] text-sm w-full md:w-40" />
+                                <input type="text" className="pl-2 border py-1 rounded bg-[#F3F4F8] text-sm w-full md:w-40"
+                                    value={formDetail.name} onChange={e => setFormDetail(prev => ({ ...prev, name: e.target.value }))}
+                                />
                             </div>
                             <div className="flex flex-col gap-2 min-w-0 md:flex-row md:items-center md:gap-2 w-full">
                                 <span className="text-nowrap">{"เอกสารของแผนก"}</span>
-                                <Select 
-                                    options={DEPARTMENT_OPTIONS} 
-                                    onChange={(seleted) =>{
-                                        if(!seleted) return;
-                                        setFormDetail(prev => ({...prev, department: seleted.value }));
-                                    }} 
+                                <Select
+                                    options={DEPARTMENT_OPTIONS}
+                                    onChange={(seleted) => {
+                                        if (!seleted) return;
+                                        setFormDetail(prev => ({ ...prev, department: seleted.value }));
+                                    }}
                                     className="w-full md:w-52 rounded-lg" />
                             </div>
                             <div className="flex flex-col gap-2 min-w-0 md:flex-row md:items-center md:gap-2 w-full">
                                 <span className="text-nowrap">{"เอกสารของบริษัท"}</span>
-                                <Select 
-                                    options={COMPANY_OPTIONS} 
-                                    onChange={(seleted) =>{
-                                        if(!seleted) return;
-                                        setFormDetail(prev => ({...prev, company: seleted.value }));
-                                    }} 
+                                <Select
+                                    options={COMPANY_OPTIONS}
+                                    onChange={(seleted) => {
+                                        if (!seleted) return;
+                                        setFormDetail(prev => ({ ...prev, company: seleted.value }));
+                                    }}
                                     className="w-full md:w-52 rounded-lg" />
                             </div>
                         </div>

@@ -11,6 +11,7 @@ import { DataTable } from "@/app/component/DocumentTable";
 import { ProcessColumns } from "@/app/component/ProcessColumns";
 import { Workflow, WorkflowActivity } from "./process";
 import dayjs from "dayjs";
+import { toast } from "react-toastify";
 
 export default function Page() {
     interface TableState {
@@ -150,8 +151,14 @@ export default function Page() {
                                 </div>
                                 <div className="space-y-2">
                                     <input type="text" className="w-full p-1.5 pl-2 py-2 border rounded bg-[#F3F4F8] text-sm" placeholder="การดำเนินการ" />
-                                    <button className="bg-black text-white rounded py-2 w-full hover:cursor-pointer" onClick={() => setDetail({ open: false, document_id: "" })}>{"เพิ่ม"}</button>
-                                    <button className="bg-[#4A4DF1] text-white rounded py-2 w-full hover:cursor-pointer" onClick={() => setDetail({ open: false, document_id: "" })}>{"ดำเนินการสำเร็จ"}</button>
+                                    <button className="bg-black text-white rounded py-2 w-full hover:cursor-pointer" onClick={() => {
+                                        toast.success("อัพเดทสถานะสำเร็จ")
+                                        setDetail({ open: false, document_id: "" })
+                                    }}>{"เพิ่ม"}</button>
+                                    <button className="bg-[#4A4DF1] text-white rounded py-2 w-full hover:cursor-pointer" onClick={() => {
+                                        toast.success("อัพเดทสถานะสำเร็จ")
+                                        setDetail({ open: false, document_id: "" })
+                                    }}>{"ดำเนินการสำเร็จ"}</button>
                                 </div>
                             </div>
                         </div>

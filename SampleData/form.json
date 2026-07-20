@@ -1,360 +1,418 @@
 {
-    "form": [
+  "form": [
+    {
+      "schema_id": "it_001",
+      "name": "แบบฟอร์มร้องขอดำเนินการด้าน IT",
+      "department": "it",
+      "version": "1",
+      "company": "cff",
+      "approval": {
+        "type": "workflow",
+        "current_level": 1,
+        "steps": [
+          {
+            "level": 1,
+            "status": "waiting",
+            "approvers": [
+              {
+                "employee_id": "2168160",
+                "name": "Jame",
+                "status": "waiting",
+                "approved_at": null,
+                "comment": null
+              }
+            ]
+          },
+          {
+            "level": 2,
+            "status": "waiting",
+            "approvers": [
+              {
+                "employee_id": "2159001",
+                "name": "Leon",
+                "status": "waiting",
+                "approved_at": null,
+                "comment": null
+              }
+            ]
+          }
+        ]
+      },
+      "form_detail": [
         {
-            "schema_id": "it_001",
-            "name": "แบบฟอร์มร้องขอดำเนินการด้าน IT",
-            "department": "it",
-            "version": "1",
-            "company": "cff",
-            "approval": {
-                "type": "workflow",
-                "current_level": 1,
-                "steps": [
-                {
-                    "level": 1,
-                    "status": "waiting",
-                    "approvers": [
-                        {
-                            "employee_id": "2168160",
-                            "name": "Jame",
-                            "status": "waiting",
-                            "approved_at": null,
-                            "comment": null
-                        }
-                    ]
-                },
-                {
-                    "level": 2,
-                    "status": "waiting",
-                    "approvers": [
-                        {
-                            "employee_id": "2159001",
-                            "name": "Leon",
-                            "status": "waiting",
-                            "approved_at": null,
-                            "comment": null
-                        }
-                    ]
-                }
-            ]
-            },
-            "form_detail": [
-                {
-                    "id": "employee_detail",
-                    "type": "employee_detail",
-                    "label": "ข้อมูลพนักงาน",
-                    "required": true,
-                    "helpText": "",
-                    "width": "full"
-                },
-                {
-                    "id": "field-118",
-                    "type": "radio",
-                    "label": "วัตถุประสงค์",
-                    "required": true,
-                    "helpText": "",
-                    "width": "full",
-                    "options": [
-                        "ขอซื้ออุปกรณ์",
-                        "ขอติดตั้งโปรแกรม",
-                        "ขอ E-Mail Address",
-                        "ขอโยกย้ายเครื่อง",
-                        "ขอติดตั้งอุปกรณ์เสริม",
-                        "ขอให้ตรวจเช็ค",
-                        "ขอให้ซ่อมแซมแก้ไข",
-                        "ขอใช้ Internet",
-                        "ติดตั้ง Office 365",
-                        "ขอใช้ Wi-Fi",
-                        "ขอแก้ไขโปรแกรม",
-                        "ขอเพิ่มโปรแกรม",
-                        "ขอรายงานด้านโปรแกรม",
-                        "ขอแก้ไข Password"
-                    ]
-                },
-                {
-                    "id": "field-119",
-                    "type": "textarea",
-                    "label": "รายละเอียดการร้องขอ",
-                    "placeholder": "รายละเอียดการร้องขอ",
-                    "required": true,
-                    "helpText": "",
-                    "width": "full"
-                },
-                {
-                    "id": "field-120",
-                    "type": "textarea",
-                    "label": "เหตุผล วัตถุประวสงค์ หรือ ความจำเป็น",
-                    "placeholder": "เหตุผล วัตถุประวสงค์ หรือ ความจำเป็น",
-                    "required": true,
-                    "helpText": "",
-                    "width": "full"
-                },
-                {
-                    "id": "field-121",
-                    "type": "textarea",
-                    "label": "มาตรฐาน หรือ Spec ที่ต้องการ",
-                    "placeholder": "มาตรฐาน หรือ Spec ที่ต้องการ",
-                    "required": true,
-                    "helpText": "",
-                    "width": "full"
-                }
-            ]
+          "id": "employee_detail",
+          "type": "employee_detail",
+          "label": "ข้อมูลพนักงาน",
+          "required": true,
+          "helpText": "",
+          "width": "full"
         },
         {
-            "schema_id": "it_002",
-            "name": "แบบฟอร์มการขอเข้าใช้งานระบบคอมพิวเตอร์",
-            "department": "it",
-            "version": "1",
-            "company": "cff",
-            "approval": {
-                "type": "workflow",
-                "current_level": 1,
-                "steps": [
-                {
-                    "level": 1,
-                    "status": "waiting",
-                    "approvers": [
-                        {
-                            "employee_id": "2168160",
-                            "name": "Jame",
-                            "status": "waiting",
-                            "approved_at": null,
-                            "comment": null
-                        }
-                    ]
-                },
-                {
-                    "level": 2,
-                    "status": "waiting",
-                    "approvers": [
-                        {
-                            "employee_id": "2159001",
-                            "name": "Leon",
-                            "status": "waiting",
-                            "approved_at": null,
-                            "comment": null
-                        }
-                    ]
-                }
-            ]
-            },
-            "form_detail": [
-                {
-                    "id": "employee_detail",
-                    "type": "employee_detail",
-                    "label": "ข้อมูลพนักงาน",
-                    "required": true,
-                    "helpText": "",
-                    "width": "full"
-                },
-                {
-                    "id": "field-102",
-                    "type": "checkbox",
-                    "label": "ระบบและโปรแกรมที่พนักงานต้องใช้งาน",
-                    "required": true,
-                    "helpText": "",
-                    "width": "full",
-                    "options": [
-                        "เครื่องถ่ายเอกสาร",
-                        "E-mail",
-                        "Odoo",
-                        "Tigersoft",
-                        "Snipe",
-                        "Microsoft Team",
-                        "Oracle Board",
-                        "BOSS"
-                    ]
-                },
-                {
-                    "id": "field-103",
-                    "type": "checkbox",
-                    "label": "การแนะนำการเข้าใช้งานระบบคอมพิวเตอร์",
-                    "required": true,
-                    "helpText": "",
-                    "width": "full",
-                    "options": [
-                        "การเข้าใช้งานระบบคอมพิวเตอร์",
-                        "การใช้งานระบบแจ้งงาน Help Desk",
-                        "การเข้าใช้งานระบบ Email"
-                    ]
-                }
-            ]
+          "id": "field-118",
+          "type": "radio",
+          "label": "วัตถุประสงค์",
+          "required": true,
+          "helpText": "",
+          "width": "full",
+          "options": [
+            "ขอซื้ออุปกรณ์",
+            "ขอติดตั้งโปรแกรม",
+            "ขอ E-Mail Address",
+            "ขอโยกย้ายเครื่อง",
+            "ขอติดตั้งอุปกรณ์เสริม",
+            "ขอให้ตรวจเช็ค",
+            "ขอให้ซ่อมแซมแก้ไข",
+            "ขอใช้ Internet",
+            "ติดตั้ง Office 365",
+            "ขอใช้ Wi-Fi",
+            "ขอแก้ไขโปรแกรม",
+            "ขอเพิ่มโปรแกรม",
+            "ขอรายงานด้านโปรแกรม",
+            "ขอแก้ไข Password"
+          ]
         },
         {
-            "schema_id": "it_003",
-            "name": "แบบฟอร์มเบิกทรัพย์สิน",
-            "department": "it",
-            "version": "1",
-            "company": "cff",
-            "approval": {
-                "type": "workflow",
-                "current_level": 1,
-                "steps": [
-                    {
-                        "level": 1,
-                        "status": "waiting",
-                        "approvers": [
-                            {
-                                "employee_code": "2168160",
-                                "name": "Jame",
-                                "status": "waiting",
-                                "approved_at": null,
-                                "comment": null
-                            }
-                        ]
-                    },
-                    {
-                        "level": 2,
-                        "status": "waiting",
-                        "approvers": [
-                            {
-                                "employee_code": "2168160",
-                                "name": "Brian",
-                                "status": "waiting",
-                                "approved_at": null,
-                                "comment": null
-                            }
-                        ]
-                    },
-                    {
-                        "level": 3,
-                        "status": "waiting",
-                        "approvers": [
-                            {
-                                "employee_code": "2159001",
-                                "name": "Leon",
-                                "status": "waiting",
-                                "approved_at": null,
-                                "comment": null
-                            }
-                        ]
-                    }
-                ]
-            },
-            "form_detail": [
-                {
-                    "id": "field-201",
-                    "type": "employee_detail",
-                    "label": "ข้อมูลพนักงาน",
-                    "required": true,
-                    "helpText": "",
-                    "width": "full"
-                },
-                {
-                    "id": "field-101",
-                    "type": "text",
-                    "label": "สาเหตุ",
-                    "placeholder": "สาเหตุ",
-                    "required": true,
-                    "helpText": "",
-                    "width": "full"
-                },
-                {
-                    "id": "field-102",
-                    "type": "table",
-                    "label": "Table",
-                    "required": false,
-                    "helpText": "",
-                    "width": "full",
-                    "minRows": 1,
-                    "maxRows": 20,
-                    "columns": [
-                        {
-                            "id": "col-1",
-                            "label": "รหัสทรัพย์สิน",
-                            "type": "text",
-                            "width": 1
-                        },
-                        {
-                            "id": "col-2",
-                            "label": "รายการ",
-                            "type": "text",
-                            "width": 2
-                        },
-                        {
-                            "id": "col-3",
-                            "label": "จำนวน",
-                            "type": "number",
-                            "width": 1
-                        },
-                        {
-                            "id": "col-4",
-                            "label": "หน่วย",
-                            "type": "text",
-                            "width": 1
-                        },
-                        {
-                            "id": "col-11",
-                            "label": "สถานที่จัดเก็บทรัพย์สิน",
-                            "type": "text",
-                            "width": 2
-                        }
-                    ]
-                }
-            ]
+          "id": "field-119",
+          "type": "textarea",
+          "label": "รายละเอียดการร้องขอ",
+          "placeholder": "รายละเอียดการร้องขอ",
+          "required": true,
+          "helpText": "",
+          "width": "full"
         },
         {
-            "schema_id": "it_004",
-            "name": "แบบฟอร์มฝากไฟล์",
-            "department": "it",
-            "company": "cff",
-            "approval": {
-                "type": "workflow",
-                "current_level": 1,
-                "steps": [
-                    {
-                        "level": 1,
-                        "status": "waiting",
-                        "approvers": [
-                            {
-                                "employee_code": "2168160",
-                                "name": "Jame",
-                                "status": "waiting",
-                                "approved_at": null,
-                                "comment": null
-                            }
-                        ]
-                    },
-                    {
-                        "level": 2,
-                        "status": "waiting",
-                        "approvers": [
-                            {
-                                "employee_code": "2159001",
-                                "name": "Leon",
-                                "status": "waiting",
-                                "approved_at": null,
-                                "comment": null
-                            }
-                        ]
-                    }
-                ]
-            },
-            "form_detail": [
-                {
-                    "id": "employee_detail-field-10001",
-                    "type": "employee_detail",
-                    "label": "ข้อมูลพนักงาน",
-                    "required": true,
-                    "helpText": "",
-                    "width": "full"
-                },
-                {
-                    "id": "file-field-101",
-                    "type": "file",
-                    "label": "File Upload",
-                    "required": false,
-                    "helpText": "",
-                    "width": "full",
-                    "acceptedTypes": [
-                        "PDF",
-                        "DOCX",
-                        "PNG"
-                    ],
-                    "maxSizeMb": 10,
-                    "multiple": false
-                }
-            ]
+          "id": "field-120",
+          "type": "textarea",
+          "label": "เหตุผล วัตถุประวสงค์ หรือ ความจำเป็น",
+          "placeholder": "เหตุผล วัตถุประวสงค์ หรือ ความจำเป็น",
+          "required": true,
+          "helpText": "",
+          "width": "full"
+        },
+        {
+          "id": "field-121",
+          "type": "textarea",
+          "label": "มาตรฐาน หรือ Spec ที่ต้องการ",
+          "placeholder": "มาตรฐาน หรือ Spec ที่ต้องการ",
+          "required": true,
+          "helpText": "",
+          "width": "full"
         }
-    ]
+      ]
+    },
+    {
+      "schema_id": "it_002",
+      "name": "แบบฟอร์มการขอเข้าใช้งานระบบคอมพิวเตอร์",
+      "department": "it",
+      "version": "1",
+      "company": "cff",
+      "approval": {
+        "type": "workflow",
+        "current_level": 1,
+        "steps": [
+          {
+            "level": 1,
+            "status": "waiting",
+            "approvers": [
+              {
+                "employee_id": "2168160",
+                "name": "Jame",
+                "status": "waiting",
+                "approved_at": null,
+                "comment": null
+              }
+            ]
+          },
+          {
+            "level": 2,
+            "status": "waiting",
+            "approvers": [
+              {
+                "employee_id": "2159001",
+                "name": "Leon",
+                "status": "waiting",
+                "approved_at": null,
+                "comment": null
+              }
+            ]
+          }
+        ]
+      },
+      "form_detail": [
+        {
+          "id": "employee_detail",
+          "type": "employee_detail",
+          "label": "ข้อมูลพนักงาน",
+          "required": true,
+          "helpText": "",
+          "width": "full"
+        },
+        {
+          "id": "field-102",
+          "type": "checkbox",
+          "label": "ระบบและโปรแกรมที่พนักงานต้องใช้งาน",
+          "required": true,
+          "helpText": "",
+          "width": "full",
+          "options": [
+            "เครื่องถ่ายเอกสาร",
+            "E-mail",
+            "Odoo",
+            "Tigersoft",
+            "Snipe",
+            "Microsoft Team",
+            "Oracle Board",
+            "BOSS"
+          ]
+        },
+        {
+          "id": "field-103",
+          "type": "checkbox",
+          "label": "การแนะนำการเข้าใช้งานระบบคอมพิวเตอร์",
+          "required": true,
+          "helpText": "",
+          "width": "full",
+          "options": [
+            "การเข้าใช้งานระบบคอมพิวเตอร์",
+            "การใช้งานระบบแจ้งงาน Help Desk",
+            "การเข้าใช้งานระบบ Email"
+          ]
+        }
+      ]
+    },
+    {
+      "schema_id": "it_003",
+      "name": "แบบฟอร์มเบิกทรัพย์สิน",
+      "department": "it",
+      "version": "1",
+      "company": "cff",
+      "approval": {
+        "type": "workflow",
+        "current_level": 1,
+        "steps": [
+          {
+            "level": 1,
+            "status": "waiting",
+            "approvers": [
+              {
+                "employee_code": "2168160",
+                "name": "Jame",
+                "status": "waiting",
+                "approved_at": null,
+                "comment": null
+              }
+            ]
+          },
+          {
+            "level": 2,
+            "status": "waiting",
+            "approvers": [
+              {
+                "employee_code": "2168160",
+                "name": "Brian",
+                "status": "waiting",
+                "approved_at": null,
+                "comment": null
+              }
+            ]
+          },
+          {
+            "level": 3,
+            "status": "waiting",
+            "approvers": [
+              {
+                "employee_code": "2159001",
+                "name": "Leon",
+                "status": "waiting",
+                "approved_at": null,
+                "comment": null
+              }
+            ]
+          }
+        ]
+      },
+      "form_detail": [
+        {
+          "id": "field-201",
+          "type": "employee_detail",
+          "label": "ข้อมูลพนักงาน",
+          "required": true,
+          "helpText": "",
+          "width": "full"
+        },
+        {
+          "id": "field-101",
+          "type": "text",
+          "label": "สาเหตุ",
+          "placeholder": "สาเหตุ",
+          "required": true,
+          "helpText": "",
+          "width": "full"
+        },
+        {
+          "id": "field-102",
+          "type": "table",
+          "label": "Table",
+          "required": false,
+          "helpText": "",
+          "width": "full",
+          "minRows": 1,
+          "maxRows": 20,
+          "columns": [
+            {
+              "id": "col-1",
+              "label": "รหัสทรัพย์สิน",
+              "type": "text",
+              "width": 1
+            },
+            {
+              "id": "col-2",
+              "label": "รายการ",
+              "type": "text",
+              "width": 2
+            },
+            {
+              "id": "col-3",
+              "label": "จำนวน",
+              "type": "number",
+              "width": 1
+            },
+            {
+              "id": "col-4",
+              "label": "หน่วย",
+              "type": "text",
+              "width": 1
+            },
+            {
+              "id": "col-11",
+              "label": "สถานที่จัดเก็บทรัพย์สิน",
+              "type": "text",
+              "width": 2
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "schema_id": "it_004",
+      "name": "แบบฟอร์มฝากไฟล์",
+      "department": "it",
+      "company": "cff",
+      "approval": {
+        "type": "workflow",
+        "current_level": 1,
+        "steps": [
+          {
+            "level": 1,
+            "status": "waiting",
+            "approvers": [
+              {
+                "employee_code": "2168160",
+                "name": "Jame",
+                "status": "waiting",
+                "approved_at": null,
+                "comment": null
+              }
+            ]
+          },
+          {
+            "level": 2,
+            "status": "waiting",
+            "approvers": [
+              {
+                "employee_code": "2159001",
+                "name": "Leon",
+                "status": "waiting",
+                "approved_at": null,
+                "comment": null
+              }
+            ]
+          }
+        ]
+      },
+      "form_detail": [
+        {
+          "id": "employee_detail-field-10001",
+          "type": "employee_detail",
+          "label": "ข้อมูลพนักงาน",
+          "required": true,
+          "helpText": "",
+          "width": "full"
+        },
+        {
+          "id": "file-field-101",
+          "type": "file",
+          "label": "File Upload",
+          "required": false,
+          "helpText": "",
+          "width": "full",
+          "acceptedTypes": [
+            "PDF",
+            "DOCX",
+            "PNG"
+          ],
+          "maxSizeMb": 10,
+          "multiple": false
+        }
+      ]
+    },
+    {
+      "schema_id": "it_746716",
+      "name": "เบิกสินค้า",
+      "department": "it",
+      "company": "cff",
+      "version": "1",
+      "approval": {
+        "type": "workflow",
+        "current_level": 1,
+        "steps": [
+          {
+            "level": 1,
+            "status": "waiting",
+            "approvers": [
+              {
+                "employee_id": "0000001",
+                "name": "Approver 1",
+                "status": "waiting",
+                "approved_at": null,
+                "comment": null
+              }
+            ]
+          },
+          {
+            "level": 2,
+            "status": "waiting",
+            "approvers": [
+              {
+                "employee_id": "0000004",
+                "name": "Approver 4",
+                "status": "waiting",
+                "approved_at": null,
+                "comment": null
+              }
+            ]
+          }
+        ]
+      },
+      "form_detail": [
+        {
+          "id": "employee_detail-field-10001",
+          "type": "employee_detail",
+          "label": "ข้อมูลพนักงาน",
+          "required": true,
+          "helpText": "",
+          "width": "full"
+        },
+        {
+          "id": "text-field-101",
+          "type": "text",
+          "label": "สินค้า",
+          "placeholder": "Enter value…",
+          "required": false,
+          "helpText": "",
+          "width": "full"
+        }
+      ]
+    }
+  ]
 }
