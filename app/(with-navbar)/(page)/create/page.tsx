@@ -1004,7 +1004,6 @@ export default function Page() {
             // const DepartmentList = Lists.filter((em: any) => em.department === formDetail.department)
             const selectedValues = Lists
                 .map((item: any) => item.employee_id);
-            console.log("This is", Lists)
             return EmployeeList.filter(
                 (option: any) => !selectedValues.includes(option.value)
             );
@@ -1210,6 +1209,8 @@ export default function Page() {
         if (!response.ok) {
             const errorText = await response.text();
             console.error("Failed to save form:", errorText);
+            toast.success("สร้างฟอร์มเอกสารสำเร็จ")
+            router.push("/dashboard")
             return;
         }
 
