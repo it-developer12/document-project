@@ -1,4 +1,5 @@
 "use client"
+import { memo } from "react"
 import { Button } from "@/components/ui/button"
 import {
     ColumnDef,
@@ -24,7 +25,7 @@ interface DataTableProps<TData, TValue> {
     data: TData[]
 }
 
-export function DataTable<TData, TValue>({
+function DataTableComponent<TData, TValue>({
     columns,
     data,
 }: DataTableProps<TData, TValue>) {
@@ -115,3 +116,5 @@ export function DataTable<TData, TValue>({
         </div>
     )
 }
+
+export const DataTable = memo(DataTableComponent) as typeof DataTableComponent

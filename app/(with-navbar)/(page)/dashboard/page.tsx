@@ -4,8 +4,6 @@ import {
     Card,
     CardAction,
     CardContent,
-    CardDescription,
-    CardFooter,
     CardHeader,
     CardTitle,
 } from "@/components/ui/card"
@@ -18,76 +16,58 @@ import {
     SelectValue,
 } from "@/components/ui/select"
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
-import { toast } from 'react-toastify';
+import { useState } from 'react';
 import { columns } from '@/app/component/DocumentColumn';
 import { DataTable } from '@/app/component/DocumentTable';
 import { BrushCleaning } from 'lucide-react';
 
-export default function Home() {
-    type DocStatus = "Draft" | "Approved" | "Processing" | "Completed" | "Cancelled" | "Pending" | "Rejected";
-    type Status = "low" | "medium" | "high";
-    type TableDoc = {
-        id: string;
-        title: string;
-        priority: Status;
-        owner: string;
-        department: string;
-        company: string;
-        status: DocStatus;
-        created: string;
-        updated: string;
-        end_date: string;
-    }
-    interface TableState {
-        status: boolean;
-        text: string;
-        department: string;
-        company: string;
-        document_list: TableDoc[];
-    }
-    const [mockState, setMockState] = useState(false);
-    const [loading, setLoading] = useState(false);
-    const [todoTable, setTodoTable] = useState<TableState>({
-        status: false,
-        text: "",
-        department: "",
-        company: "",
-        document_list: []
-    });
+type DocStatus = "Draft" | "Approved" | "Processing" | "Completed" | "Cancelled" | "Pending" | "Rejected";
+type Status = "low" | "medium" | "high";
+type TableDoc = {
+    id: string;
+    title: string;
+    priority: Status;
+    owner: string;
+    department: string;
+    company: string;
+    status: DocStatus;
+    created: string;
+    updated: string;
+    end_date: string;
+}
 
-    const [createTable, setCreateTable] = useState<TableState>({
-        status: false,
-        text: "",
-        department: "",
-        company: "",
-        document_list: []
-    });
+interface TableState {
+    status: boolean;
+    text: string;
+    department: string;
+    company: string;
+    document_list: TableDoc[];
+}
 
-    const [DocumentTable, setDocumentTable] = useState<TableState>({
-        status: false,
-        text: "",
-        department: "",
-        company: "",
-        document_list: []
-    });
+const EMPTY_TABLE_STATE: TableState = {
+    status: false,
+    text: "",
+    department: "",
+    company: "",
+    document_list: [],
+};
 
-    const empty_documents: TableDoc[] = []
+const EMPTY_DOCUMENTS: TableDoc[] = [];
 
-    const todo_documents: TableDoc[] = [
+const TODO_DOCUMENTS: TableDoc[] = [
         { id: "DOC-IT-001", title: "แบบฟอร์มเบิกทรัพย์สิน", priority: "high", owner: "Brian", company: "cff", department: "IT", status: "Processing", created: "2024-11-01", updated: "2024-11-08", end_date: "2024-11-08" },
         { id: "DOC-IT-002", title: "แบบฟอร์มการขอเข้าใช้งานระบบคอมพิวเตอร์", priority: "low", owner: "Jame", company: "cff", department: "IT", status: "Completed", created: "2024-10-30", updated: "2024-11-07", end_date: "2024-10-30" },
         { id: "DOC-IT-003", title: "แบบฟอร์มร้องขอดำเนินการด้าน IT", priority: "high", owner: "Brian", company: "cff", department: "IT", status: "Pending", created: "2024-10-30", updated: "2024-11-07", end_date: "2024-10-30" },
         { id: "DOC-IT-004", title: "แบบฟอร์มร้องขอดำเนินการด้าน IT", priority: "high", owner: "Marry", company: "cff", department: "Finance", status: "Processing", created: "2024-10-30", updated: "2024-11-07", end_date: "2024-10-30" },
     ]
 
-    const my_documents: TableDoc[] = [
+const MY_DOCUMENTS: TableDoc[] = [
         { id: "DOC-IT-001", title: "แบบฟอร์มเบิกทรัพย์สิน", priority: "high", owner: "Brian", company: "cff", department: "IT", status: "Processing", created: "2024-11-01", updated: "2024-11-08", end_date: "2024-11-08" },
         { id: "DOC-IT-002", title: "แบบฟอร์มการขอเข้าใช้งานระบบคอมพิวเตอร์", priority: "low", owner: "Jame", company: "cff", department: "IT", status: "Completed", created: "2024-10-30", updated: "2024-11-07", end_date: "2024-10-30" },
         { id: "DOC-IT-003", title: "แบบฟอร์มร้องขอดำเนินการด้าน IT", priority: "high", owner: "Brian", company: "cff", department: "IT", status: "Pending", created: "2024-10-30", updated: "2024-11-07", end_date: "2024-10-30" },
     ]
 
-    const all_documents: TableDoc[] = [
+const ALL_DOCUMENTS: TableDoc[] = [
         { id: "DOC-IT-001", title: "แบบฟอร์มเบิกทรัพย์สิน", priority: "high", owner: "Brian", company: "cff", department: "IT", status: "Processing", created: "2024-11-01", updated: "2024-11-08", end_date: "2024-11-08" },
         { id: "DOC-IT-002", title: "แบบฟอร์มการขอเข้าใช้งานระบบคอมพิวเตอร์", priority: "low", owner: "Jame", company: "cff", department: "IT", status: "Completed", created: "2024-10-30", updated: "2024-11-07", end_date: "2024-10-30" },
         { id: "DOC-IT-003", title: "แบบฟอร์มร้องขอดำเนินการด้าน IT", priority: "high", owner: "Brian", company: "cff", department: "IT", status: "Pending", created: "2024-10-30", updated: "2024-11-07", end_date: "2024-10-30" },
@@ -107,54 +87,64 @@ export default function Home() {
     //     return [ data from api ]
     // } 
 
-    const company = [
-        { label: "Cityfresh Fruit", value: "cff" },
-        { label: "Ctx holding", value: "ctx" },
-        { label: "Noble marketing", value: "nbm" },
-    ]
+const COMPANY_OPTIONS = [
+    { label: "Cityfresh Fruit", value: "cff" },
+    { label: "Ctx holding", value: "ctx" },
+    { label: "Noble marketing", value: "nbm" },
+];
 
-    const department = [
-        { label: "Innovation Technology", value: "it" },
-        { label: "Finance", value: "finance" },
-        { label: "B2C", value: "b2c" },
-    ]
+const DEPARTMENT_OPTIONS = [
+    { label: "Innovation Technology", value: "it" },
+    { label: "Finance", value: "finance" },
+    { label: "B2C", value: "b2c" },
+];
+
+function filterDocuments(documents: TableDoc[], table: TableState) {
+    const searchText = table.text.trim().toLowerCase();
+
+    return documents.filter((doc) => {
+        const matchesText =
+            !searchText ||
+            doc.title.toLowerCase().includes(searchText) ||
+            doc.id.toLowerCase().includes(searchText);
+        const matchesDepartment =
+            !table.department || doc.department.toLowerCase() === table.department.toLowerCase();
+        const matchesCompany = !table.company || doc.company === table.company;
+
+        return matchesText && matchesDepartment && matchesCompany;
+    });
+}
+
+export default function Home() {
+    const [todoTable, setTodoTable] = useState<TableState>(EMPTY_TABLE_STATE);
+    const [createTable, setCreateTable] = useState<TableState>(EMPTY_TABLE_STATE);
+    const [documentTable, setDocumentTable] = useState<TableState>(EMPTY_TABLE_STATE);
 
     function handleSearch(name: string) {
-        if (name == "todo") {
-            const filtered = todo_documents.filter(doc => {
-                const matchesText = !todoTable.text || doc.title.toLowerCase().includes(todoTable.text.toLowerCase()) || doc.id.toLowerCase().includes(todoTable.text.toLowerCase());
-                const matchesDepartment = !todoTable.department || doc.department.toLowerCase() === todoTable.department.toLowerCase();
-                const matchesCompany = !todoTable.company || doc.company === todoTable.company;
-                return matchesText && matchesDepartment && matchesCompany;
-            });
-            setTodoTable(prev => ({ ...prev, document_list: filtered, status: true }));
-        } else if (name == "create") {
-            const filtered = my_documents.filter(doc => {
-                const matchesText = !createTable.text || doc.title.toLowerCase().includes(createTable.text.toLowerCase()) || doc.id.toLowerCase().includes(createTable.text.toLowerCase());
-                const matchesDepartment = !createTable.department || doc.department.toLowerCase() === createTable.department.toLowerCase();
-                const matchesCompany = !createTable.company || doc.company === createTable.company;
-                return matchesText && matchesDepartment && matchesCompany;
-            });
-            setCreateTable(prev => ({ ...prev, document_list: filtered, status: true }));
-        } else if (name == "document") {
-            const filtered = all_documents.filter(doc => {
-                const matchesText = !DocumentTable.text || doc.title.toLowerCase().includes(DocumentTable.text.toLowerCase()) || doc.id.toLowerCase().includes(DocumentTable.text.toLowerCase());
-                const matchesDepartment = !DocumentTable.department || doc.department.toLowerCase() === DocumentTable.department.toLowerCase();
-                const matchesCompany = !DocumentTable.company || doc.company === DocumentTable.company;
-                return matchesText && matchesDepartment && matchesCompany;
-            });
-            setDocumentTable(prev => ({ ...prev, document_list: filtered, status: true }));
+        if (name === "todo") {
+            setTodoTable((prev) => ({
+                ...prev,
+                document_list: filterDocuments(TODO_DOCUMENTS, prev),
+                status: true,
+            }));
+            return;
         }
-    }
-    
 
-    // useEffect(() => {
-    //     if (!loading) {
-    //         setLoading(true)
-    //         toast.warning('เอกสารหมายเลข DOC-IT-001 ใกล้ถึงวันกำหนด')
-    //         toast.error('เอกสารหมายเลข DOC-IT-003 เกินกำหนด')
-    //     }
-    // }, [my_documents, company])
+        if (name === "create") {
+            setCreateTable((prev) => ({
+                ...prev,
+                document_list: filterDocuments(MY_DOCUMENTS, prev),
+                status: true,
+            }));
+            return;
+        }
+
+        setDocumentTable((prev) => ({
+            ...prev,
+            document_list: filterDocuments(ALL_DOCUMENTS, prev),
+            status: true,
+        }));
+    }
 
     return (
         <div className="bg-slate-50 min-h-screen h-full w-full p-6">
@@ -177,13 +167,7 @@ export default function Home() {
                     <h2 style={{ color: "var(--foreground)" }} className='font-bold'>{"เอกสารที่คุณมีความเกี่ยวข้อง"}</h2>
                     <div className="flex justify-end items-center gap-2 w-3/4">
                         {todoTable.status && (
-                            <button className='border rounded p-1.5 flex items-center hover:cursor-pointer' onClick={() => setTodoTable({
-                                status: false,
-                                text: "",
-                                department: "",
-                                company: "",
-                                document_list: []
-                            })}>
+                            <button className='border rounded p-1.5 flex items-center hover:cursor-pointer' onClick={() => setTodoTable(EMPTY_TABLE_STATE)}>
                                 <BrushCleaning size={"20px"} />
                             </button>
                         )}
@@ -203,7 +187,7 @@ export default function Home() {
 
                         <div className='w-1/4 flex gap-10'>
                             <Select
-                                items={department}
+                                items={DEPARTMENT_OPTIONS}
                                 value={todoTable.department}
                                 onValueChange={(seleted: any) => setTodoTable(prev => ({ ...prev, department: seleted }))}
                             >
@@ -212,7 +196,7 @@ export default function Home() {
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectGroup>
-                                        {department.map((item) => (
+                                        {DEPARTMENT_OPTIONS.map((item) => (
                                             <SelectItem key={item.value} value={item.value}>
                                                 {item.label}
                                             </SelectItem>
@@ -224,7 +208,7 @@ export default function Home() {
 
                         <div className='w-1/4 flex gap-10'>
                             <Select
-                                items={company}
+                                items={COMPANY_OPTIONS}
                                 value={todoTable.company}
                                 onValueChange={(seleted: any) => setTodoTable(prev => ({ ...prev, company: seleted }))}
                             >
@@ -233,7 +217,7 @@ export default function Home() {
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectGroup>
-                                        {company.map((item) => (
+                                        {COMPANY_OPTIONS.map((item) => (
                                             <SelectItem key={item.value} value={item.value}>
                                                 {item.label}
                                             </SelectItem>
@@ -248,7 +232,7 @@ export default function Home() {
                     </div>
                 </div>
                 <div className=''>
-                    <DataTable columns={columns} data={todoTable.status ? todoTable.document_list : todo_documents} />
+                    <DataTable columns={columns} data={todoTable.status ? todoTable.document_list : TODO_DOCUMENTS} />
                 </div>
                 {/* Table */}
                 {/* <Table>
@@ -365,13 +349,7 @@ export default function Home() {
                     <h2 style={{ color: "var(--foreground)" }} className='font-bold'>{"เอกสารที่สร้าง"}</h2>
                     <div className="flex justify-end items-center gap-2 w-3/4">
                         {createTable.status && (
-                            <button className='border rounded p-1.5 flex items-center hover:cursor-pointer' onClick={() => setCreateTable({
-                                status: false,
-                                text: "",
-                                department: "",
-                                company: "",
-                                document_list: []
-                            })}>
+                            <button className='border rounded p-1.5 flex items-center hover:cursor-pointer' onClick={() => setCreateTable(EMPTY_TABLE_STATE)}>
                                 <BrushCleaning size={"20px"} />
                             </button>
                         )}
@@ -391,7 +369,7 @@ export default function Home() {
 
                         <div className='w-1/4 flex gap-10'>
                             <Select
-                                items={department}
+                                items={DEPARTMENT_OPTIONS}
                                 value={createTable.department}
                                 onValueChange={(seleted: any) => setCreateTable(prev => ({ ...prev, department: seleted }))}
                             >
@@ -400,7 +378,7 @@ export default function Home() {
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectGroup>
-                                        {department.map((item) => (
+                                        {DEPARTMENT_OPTIONS.map((item) => (
                                             <SelectItem key={item.value} value={item.value}>
                                                 {item.label}
                                             </SelectItem>
@@ -412,7 +390,7 @@ export default function Home() {
 
                         <div className='w-1/4 flex gap-10'>
                             <Select
-                                items={company}
+                                items={COMPANY_OPTIONS}
                                 value={createTable.company}
                                 onValueChange={(seleted: any) => setCreateTable(prev => ({ ...prev, company: seleted }))}
                             >
@@ -421,7 +399,7 @@ export default function Home() {
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectGroup>
-                                        {company.map((item) => (
+                                        {COMPANY_OPTIONS.map((item) => (
                                             <SelectItem key={item.value} value={item.value}>
                                                 {item.label}
                                             </SelectItem>
@@ -436,7 +414,7 @@ export default function Home() {
                     </div>
                 </div>
                 <div className=''>
-                    <DataTable columns={columns} data={createTable.status ? createTable.document_list : my_documents} />
+                    <DataTable columns={columns} data={createTable.status ? createTable.document_list : MY_DOCUMENTS} />
                 </div>
                 {/* Table */}
                 {/* <Table>
@@ -498,14 +476,8 @@ export default function Home() {
                 <div className="flex items-center justify-between px-5 py-4 border-b" style={{ borderColor: "var(--border)" }}>
                     <h2 style={{ color: "var(--foreground)" }} className='font-bold'>{"เอกสารทั้งหมด"}</h2>
                     <div className="flex justify-end items-center gap-2 w-3/4">
-                        {DocumentTable.status && (
-                            <button className='border rounded p-1.5 flex items-center hover:cursor-pointer' onClick={() => setDocumentTable({
-                                status: false,
-                                text: "",
-                                department: "",
-                                company: "",
-                                document_list: []
-                            })}>
+                        {documentTable.status && (
+                            <button className='border rounded p-1.5 flex items-center hover:cursor-pointer' onClick={() => setDocumentTable(EMPTY_TABLE_STATE)}>
                                 <BrushCleaning size={"20px"} />
                             </button>
                         )}
@@ -518,15 +490,15 @@ export default function Home() {
                                 placeholder="Search documents…"
                                 className="bg-transparent outline-none w-48"
                                 style={{ fontSize: "0.8rem", color: "var(--foreground)" }}
-                                value={DocumentTable.text}
+                                value={documentTable.text}
                                 onChange={(e) => setDocumentTable(prev => ({ ...prev, text: e.target.value }))}
                             />
                         </div>
 
                         <div className='w-1/4 flex gap-10'>
                             <Select
-                                items={department}
-                                value={DocumentTable.department}
+                                items={DEPARTMENT_OPTIONS}
+                                value={documentTable.department}
                                 onValueChange={(seleted: any) => setDocumentTable(prev => ({ ...prev, department: seleted }))}
                             >
                                 <SelectTrigger className="w-full">
@@ -534,7 +506,7 @@ export default function Home() {
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectGroup>
-                                        {department.map((item) => (
+                                        {DEPARTMENT_OPTIONS.map((item) => (
                                             <SelectItem key={item.value} value={item.value}>
                                                 {item.label}
                                             </SelectItem>
@@ -546,8 +518,8 @@ export default function Home() {
 
                         <div className='w-1/4 flex gap-10'>
                             <Select
-                                items={company}
-                                value={DocumentTable.company}
+                                items={COMPANY_OPTIONS}
+                                value={documentTable.company}
                                 onValueChange={(seleted: any) => setDocumentTable(prev => ({ ...prev, company: seleted }))}
                             >
                                 <SelectTrigger className="w-full">
@@ -555,7 +527,7 @@ export default function Home() {
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectGroup>
-                                        {company.map((item) => (
+                                        {COMPANY_OPTIONS.map((item) => (
                                             <SelectItem key={item.value} value={item.value}>
                                                 {item.label}
                                             </SelectItem>
@@ -570,7 +542,7 @@ export default function Home() {
                     </div>
                 </div>
                 <div className=''>
-                    <DataTable columns={columns} data={DocumentTable.status ? DocumentTable.document_list : empty_documents} />
+                    <DataTable columns={columns} data={documentTable.status ? documentTable.document_list : EMPTY_DOCUMENTS} />
                 </div>
             </div>
         </div>

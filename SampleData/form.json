@@ -413,6 +413,168 @@
           "width": "full"
         }
       ]
+    },
+    {
+      "schema_id": "it_612661",
+      "name": "เบิกเอกสาร",
+      "department": "it",
+      "company": "cff",
+      "version": "1",
+      "approval": {
+        "type": "workflow",
+        "current_level": 1,
+        "steps": [
+          {
+            "level": 1,
+            "status": "waiting",
+            "approvers": [
+              {
+                "employee_id": "0000002",
+                "name": "Approver 2",
+                "status": "waiting",
+                "approved_at": null,
+                "comment": null
+              }
+            ]
+          },
+          {
+            "level": 2,
+            "status": "waiting",
+            "approvers": [
+              {
+                "employee_id": "0000003",
+                "name": "Approver 3",
+                "status": "waiting",
+                "approved_at": null,
+                "comment": null
+              }
+            ]
+          },
+          {
+            "level": 3,
+            "status": "waiting",
+            "approvers": [
+              {
+                "employee_id": "0000004",
+                "name": "Approver 4",
+                "status": "waiting",
+                "approved_at": null,
+                "comment": null
+              }
+            ]
+          }
+        ]
+      },
+      "form_detail": [
+        {
+          "id": "employee_detail-field-10001",
+          "type": "employee_detail",
+          "label": "ข้อมูลพนักงาน",
+          "required": true,
+          "helpText": "",
+          "width": "full"
+        },
+        {
+          "id": "text-field-101",
+          "type": "text",
+          "label": "เลขที่เอกสาร",
+          "placeholder": "ex. doc-001",
+          "required": true,
+          "helpText": "ใส่หมายเลขเอกสาร",
+          "width": "half"
+        },
+        {
+          "id": "text-field-102",
+          "type": "text",
+          "label": "ชื่อเอกสาร",
+          "placeholder": "ชื่อเอกสาร",
+          "required": false,
+          "helpText": "",
+          "width": "half"
+        },
+        {
+          "id": "file-field-103",
+          "type": "file",
+          "label": "เอกสารอ้างอิง",
+          "required": false,
+          "helpText": "",
+          "width": "full",
+          "acceptedTypes": [
+            "PDF",
+            "DOCX",
+            "PNG"
+          ],
+          "maxSizeMb": 10,
+          "multiple": false
+        }
+      ]
+    },
+    {
+      "schema_id": "_743251",
+      "name": "",
+      "department": "",
+      "company": "",
+      "version": "1",
+      "approval": {
+        "type": "workflow",
+        "current_level": 1,
+        "steps": [
+          {
+            "level": 1,
+            "status": "waiting",
+            "approvers": [
+              {
+                "employee_id": "",
+                "name": "",
+                "status": "waiting",
+                "approved_at": null,
+                "comment": null
+              }
+            ]
+          }
+        ]
+      },
+      "form_detail": [
+        {
+          "id": "employee_detail-field-10001",
+          "type": "employee_detail",
+          "label": "ข้อมูลพนักงาน",
+          "required": true,
+          "helpText": "",
+          "width": "full"
+        },
+        {
+          "id": "text-field-101",
+          "type": "text",
+          "label": "Short Text",
+          "placeholder": "Enter value…",
+          "required": true,
+          "helpText": "asdfasf",
+          "width": "full"
+        },
+        {
+          "id": "textarea-field-102",
+          "type": "textarea",
+          "label": "Long Text",
+          "placeholder": "Enter value…",
+          "required": false,
+          "helpText": "",
+          "width": "full"
+        },
+        {
+          "id": "select-field-103",
+          "type": "select",
+          "label": "Dropdown",
+          "required": false,
+          "helpText": "dsafdasf",
+          "width": "full",
+          "options": [
+            "Option 1",
+            "Option 2",
+            "Option 3"
+          ]
+        }
+      ]
     }
   ]
 }

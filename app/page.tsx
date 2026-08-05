@@ -1,40 +1,76 @@
-'use client'
+"use client";
+import { useLogin } from "@/hooks/user-login";
+import LoginButton from "./component/LoginButton";
+import { useForm } from "react-hook-form";
+import { register } from "module";
+import { useState, FormEvent } from "react";
 
-import { useRouter } from "next/navigation"
-import { toast } from "react-toastify"
 
 export default function Home() {
 
-    const router = useRouter()
+    const loginMutation = useLogin();
 
-    function changePage(link: string) {
-        router.push(link)
-        toast.success("เข้าสู่ระบบสำเร็จ")
+    const [userName, setUsername] = useState("");
+    const [passWord, setPassword] = useState("");
+
+    function handleSubmit(event: FormEvent<HTMLFormElement>) {
+        event.preventDefault();
+
+        console.log("Form submitted", {
+            userName,
+            hasPassword: passWord.length > 0,
+        });
+
+        loginMutation.mutate({
+            userName,
+            passWord,
+        });
     }
+
+
     return (
         <div className="w-full min-h-screen h-full flex justify-center bg-[#dddddd] items-center">
-            <div className="max-w-1/3 w-full h-full bg- p-10 bg-white rounded-2xl shadow border">
+            <form onSubmit={handleSubmit} className="max-w-1/3 w-full h-full bg- p-10 bg-white rounded-2xl shadow border">
                 <div className="font-bold text-2xl flex flex-col justify-center items-center">
                     <span>{"Document & workflow management"}</span>
                 </div>
                 <div className="space-y-4 mt-4">
                     <div className="space-y-2">
                         <span>{"รหัสพนักงาน "}</span><span className="text-red-500">{"*"}</span>
-                        <input type="text" className="w-full border rounded px-2 py-1" />
+                        <input
+                            id="username"
+                            type="text"
+                            className="w-full border rounded px-2 py-1"
+                            value={userName}
+                            onChange={(event) => setUsername(event.target.value)}
+                            autoComplete="username"
+                            required
+                        />
                     </div>
                     <div>
                         <span>{"รหัสผ่าน "}</span><span className="text-red-500">{"*"}</span>
-                        <input type="password" className="w-full border rounded px-2 py-1" />
+                        <input className="w-full border rounded px-2 py-1"
+                            id="password"
+                            name="password"
+                            type="password"
+                            value={passWord}
+                            onChange={(event) => setPassword(event.target.value)}
+                            autoComplete="current-password"
+                            required
+                        />
                     </div>
                     <div className="space-y-2">
-                        <button className="w-full bg-[#4A4DF1] text-white p-2 rounded hover:cursor-pointer" onClick={() => changePage("/dashboard")}>
-                            Login with Keycloak
+                        <button type="submit" className="w-full bg-[#4A4DF1] text-white p-2 rounded hover:cursor-pointer" >
+                            {loginMutation.isPending ? "Signing in..." : "Login with Keycloak"}
                         </button>
                         {/* <button className="w-full bg-[#4A4DF1] text-white p-2 rounded hover:cursor-pointer" onClick={() => changePage('/dashboard')}>{"เข้าสู่ระบบ"}</button> */}
                         <button className="w-full bg-black text-white p-2 rounded hover:cursor-pointer">{"ลืมรหัสผ่าน"}</button>
                     </div>
+                    {loginMutation.isError && (
+                        <p className="text-red-500">{"รหัสพนักงานหรือรหัสผ่านไม่ถูกต้อง"}</p>
+                    )}
                 </div>
-            </div>
+            </form>
         </div>
     )
 }

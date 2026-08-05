@@ -122,7 +122,7 @@ export function EmployeeDetailPreview({ field, control, setValue, getValues, mod
                     <Controller
                         name="employee_field.position"
                         control={control}
-                        defaultValue=""
+                        defaultValue={""}
                         render={({ field }) => (
                             <input
                                 {...field}

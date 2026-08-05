@@ -784,23 +784,23 @@ export default function Page() {
     // { ...makeField("text"), id: "f1", label: "Full Name", required: true, placeholder: "e.g. Sarah Chen" },
     // { ...makeField("email"), id: "f2", label: "Email Address", required: true, placeholder: "you@company.com" },
     const COMPANY_OPTIONS = [
-        { label: "บริษัท ซิตี้เฟรชฟรุ๊ต จำกัด (CFF)", value: "cff" },
-        { label: "บริษัท ซีทีเอ็กซ์ โฮลดิ้ง จำกัด (CTX)", value: "ctx" },
-        { label: "บริษัท โนเบิ้ลมาร์เก็ตติ้ง จำกัด (NBM)", value: "nbm" },
+        { label: "บริษัท ซิตี้เฟรชฟรุ๊ต จำกัด (CFF)", value: "ad3104d0-1a15-4a1c-9300-b42d79fc7994" },
+        { label: "บริษัท ซีทีเอ็กซ์ โฮลดิ้ง จำกัด (CTX)", value: "66024676-fa76-49c2-83f6-91922536f0d4" },
+        { label: "บริษัท โนเบิ้ลมาร์เก็ตติ้ง จำกัด (NBM)", value: "df7468c0-83f5-450a-92e9-c6945829f43a" },
     ];
 
     const DEPARTMENT_OPTIONS = [
-        { label: "เทคโนโลยีสารสนเทศ", value: "it" },
-        { label: "บัญชีและการเงิน", value: "fn" },
-        { label: "บริหาร", value: "mg" }
+        { label: "เทคโนโลยีสารสนเทศ", value: "9a34d702-6f51-4fbe-b887-6c89779e6fe9" },
     ]
 
     interface EmployeeList {
-        employee_id: string;
-        label: string;
+        employee_code: string;
+        name: string;
     }
 
-    interface ApproverListType extends EmployeeList {
+    interface ApproverListType {
+        employee_code: string;
+        name: string;
         level: number;
     }
 
@@ -825,40 +825,32 @@ export default function Page() {
         finish: false
     });
     const [approver, setApprover] = useState<ApproverListType[]>([
-        { level: 1, employee_id: "", label: "" }
+        { level: 1, employee_code: "", name: "" }
     ]);
     const [processor, setProcessor] = useState<EmployeeList[]>([
-        { employee_id: "", label: "" }
+        { employee_code: "", name: "" }
     ]);
     const [finisher, setFinisher] = useState<EmployeeList>({
-        employee_id: "",
-        label: ""
+        employee_code: "",
+        name: ""
     })
     const ApproverList: Options[] = [
-        { value: "0000001", label: "Approver 1" },
-        { value: "0000002", label: "Approver 2" },
-        { value: "0000003", label: "Approver 3" },
-        { value: "0000004", label: "Approver 4" },
+        { value: "1157013", label: "Approver 1" },
     ];
 
     const ProcessorList: ProcessorOptionType[] = [
-        { value: "1000001", label: "Processor 1", department: "it" },
-        { value: "1000002", label: "Processor 2", department: "it" },
-        { value: "1000003", label: "Processor 3", department: "fn" },
-        { value: "1000004", label: "Processor 4", department: "fn" },
-        { value: "1000005", label: "Processor 5", department: "mg" },
-        { value: "1000006", label: "Processor 6", department: "mg" },
+        { value: "2169088", label: "Processor 1", department: "9a34d702-6f51-4fbe-b887-6c89779e6fe9" },
+        { value: "1165055", label: "Processor 2", department: "9a34d702-6f51-4fbe-b887-6c89779e6fe9" },
     ]
 
     const FinisherList: Options[] = [
-        { value: "1100001", label: "Finisher 1" },
-        { value: "1100002", label: "Finisher 2" },
-        { value: "1100003", label: "Finisher 3" },
-        { value: "1100004", label: "Finisher 4" },
+        { value: "1165055", label: "Finisher 1" },
+        { value: "2169088", label: "Finisher 2" },
     ]
 
     const [formDetail, setFormDetail] = useState({
         name: "",
+        code: "",
         department: "",
         company: "",
         approver_type: "current",
@@ -876,6 +868,11 @@ export default function Page() {
             "width": "full"
         }
     ]);
+
+    const [workflow, setWorkflow] = useState({
+        code: "",
+        name: "",
+    })
     const [selectedId, setSelectedId] = useState<string | null>(null);
     const [preview, setPreview] = useState(false);
 
@@ -956,7 +953,6 @@ export default function Page() {
             }
         }
     };
-    const router = useRouter();
     // Overlay content shown while dragging
     const activePaletteItem = activeId?.startsWith(PALETTE_PREFIX)
         ? PALETTE.find((p) => p.type === activeId.replace(PALETTE_PREFIX, ""))
@@ -982,8 +978,8 @@ export default function Page() {
             ...prev,
             {
                 level: prev[prev.length - 1].level + 1,
-                employee_id: "",
-                label: ""
+                employee_code: "",
+                name: ""
             },
         ]);
     };
@@ -992,8 +988,8 @@ export default function Page() {
         setProcessor((prev) => [
             ...prev,
             {
-                employee_id: "",
-                label: "",
+                employee_code: "",
+                name: "",
                 department: ""
             },
         ]);
@@ -1019,7 +1015,6 @@ export default function Page() {
     };
 
     function EmployeeModal({ onClose, type, List }: { onClose: () => void, type: string, List: any }) {
-
         return (
             <div
                 className="fixed inset-0 z-50 flex items-center justify-center p-6"
@@ -1055,7 +1050,7 @@ export default function Page() {
                                     value={ApproverList.filter(
                                         (option) => approver
                                             .filter((_, i) => i == index)
-                                            .flatMap((item) => item.employee_id).includes(option.value))
+                                            .flatMap((item) => item.employee_code).includes(option.value))
                                     }
                                     onChange={(selected) => {
                                         setApprover(prev =>
@@ -1063,8 +1058,8 @@ export default function Page() {
                                                 i === index
                                                     ? {
                                                         ...item,
-                                                        employee_id: selected?.value ?? "",
-                                                        label: selected?.label ?? ""
+                                                        employee_code: selected?.value ?? "",
+                                                        name: selected?.label ?? ""
                                                     }
                                                     : item
                                             )
@@ -1113,7 +1108,7 @@ export default function Page() {
                                     value={ProcessorList.filter(
                                         (option) => processor
                                             .filter((_, i) => i == index)
-                                            .flatMap((item) => item.employee_id).includes(option.value))
+                                            .flatMap((item) => item.employee_code).includes(option.value))
                                     }
                                     onChange={(selected) => {
                                         setProcessor(prev =>
@@ -1121,8 +1116,8 @@ export default function Page() {
                                                 i === index
                                                     ? {
                                                         ...item,
-                                                        employee_id: selected?.value ?? "",
-                                                        label: selected?.label ?? "",
+                                                        employee_code: selected?.value ?? "",
+                                                        name: selected?.label ?? "",
                                                         department: selected?.department ?? ""
                                                     }
                                                     : item
@@ -1163,59 +1158,131 @@ export default function Page() {
         return Math.floor(Math.random() * (max - min + 1)) + min;
     }
 
+    interface BaseField {
+        id: string;
+        type: string;
+        label: string;
+        placeholder?: string;
+        required: boolean;
+        helpText: string;
+        width: string;
+        option?: string;
+    }
+
+    const MAIN_KEYS = [
+        "id",
+        "type",
+        "label",
+        "placeholder",
+        "required",
+        "helpText",
+        "width",
+    ] as const;
+    interface BaseField {
+        id: string;
+        type: string;
+        label: string;
+        placeholder?: string;
+        required: boolean;
+        helpText: string;
+        width: string;
+        option?: string | undefined;
+    }
+
+    function normalizeField(field: Record<string, any>): BaseField {
+        const main: Record<string, any> = {};
+        const extra: Record<string, any> = {};
+
+        for (const key of Object.keys(field)) {
+            if (MAIN_KEYS.includes(key as any)) {
+                main[key] = field[key];
+            } else {
+                extra[key] = field[key];
+            }
+        }
+
+        const result: BaseField = { ...main } as BaseField;
+
+        if (Object.keys(extra).length > 0) {
+            result.option = JSON.stringify(extra);
+        }
+
+        return result;
+    }
+
+    function normalizeFields(fields: Record<string, any>[]): BaseField[] {
+        return fields.map(normalizeField);
+    }
+
     async function saveForm() {
-        // console.log(fields)
-        // console.log(approver)
-        // console.log(formDetail)
+        const newFields = normalizeFields(fields);
+
+        const data = {
+            form: {
+                name: formDetail.name,
+                code: formDetail.code,
+                divisionId: formDetail.department,
+                companyId: formDetail.company,
+                fields: newFields,
+            },
+            workflow: {
+                code: workflow.code,
+                name: workflow.name,
+                approver: approver,
+                processor: processor,
+                finisher: finisher
+            }
+        }
+        console.log(data)
         // console.log(processor)
         // console.log(finisher)
         // router.push('/dashboard')
-        const number = getRandomInt(100000, 999999)
-        const approval = {
-            type: "workflow",
-            current_level: 1,
-            steps: approver.map((item) => ({
-                level: item.level,
-                status: "waiting",
-                approvers: [
-                    {
-                        employee_id: item.employee_id,
-                        name: item.label, // Replace with actual employee name if available
-                        status: "waiting",
-                        approved_at: null,
-                        comment: null,
-                    },
-                ],
-            })),
-        };
-        const newForm = {
-            schema_id: formDetail.department + "_" + number.toString(),
-            name: formDetail.name,
-            department: formDetail.department,
-            company: formDetail.company,
-            version: "1",
-            approval: approval,
-            form_detail: fields
-        };
+        // const number = getRandomInt(100000, 999999)
+        // const approval = {
+        //     type: "workflow",
+        //     current_level: 1,
+        //     steps: approver.map((item) => ({
+        //         level: item.level,
+        //         status: "waiting",
+        //         approvers: [
+        //             {
+        //                 employee_id: item.employee_id,
+        //                 name: item.label, // Replace with actual employee name if available
+        //                 status: "waiting",
+        //                 approved_at: null,
+        //                 comment: null,
+        //             },
+        //         ],
+        //     })),
+        // };
+        // const newForm = {
+        //     schema_id: formDetail.department + "_" + number.toString(),
+        //     name: formDetail.name,
+        //     department: formDetail.department,
+        //     company: formDetail.company,
+        //     version: "1",
+        //     approval: approval,
+        //     form_detail: fields
+        // };
 
-        const response = await fetch("/api/form", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ newForm }),
-        });
+        // const response = await fetch("/api/form", {
+        //     method: "POST",
+        //     headers: {
+        //         "Content-Type": "application/json",
+        //     },
+        //     body: JSON.stringify({ newForm }),
+        // });
 
-        if (!response.ok) {
-            const errorText = await response.text();
-            console.error("Failed to save form:", errorText);
-            toast.success("สร้างฟอร์มเอกสารสำเร็จ")
-            router.push("/dashboard")
-            return;
-        }
+        // if (!response.ok) {
+        //     const errorText = await response.text();
+        //     console.error("Failed to save form:", errorText);
+        //     toast.success("สร้างฟอร์มเอกสารสำเร็จ")
+        //     router.push("/dashboard")
+        //     return;
+        // }
 
-        toast.success("สร้างฟอร์มเอกสารสำเร็จ")
-        router.push("/dashboard")
+        // toast.success("สร้างฟอร์มเอกสารสำเร็จ")
+        // router.push("/dashboard")
     }
 
     return (
@@ -1293,9 +1360,9 @@ export default function Page() {
                                     {"เพิ่มผู้อนุมัติ"}
                                 </button>
                                 <div className="flex items-center w-full overflow-x-auto scrollbar-none">
-                                    {approver[0].employee_id != "" && approver.map((app, index) => (
+                                    {approver[0].employee_code != "" && approver.map((app, index) => (
                                         <div key={index} className="flex items-center">
-                                            <span>{app.label}</span>
+                                            <span>{app.name}</span>
                                             {index != approver.length - 1 && <ArrowRight size={14} />}
                                         </div>
                                     ))}
@@ -1325,9 +1392,9 @@ export default function Page() {
                                     {"เพิ่มผู้ดำเนินการ"}
                                 </button>
                                 <div className="flex items-center w-full overflow-x-auto scrollbar-none">
-                                    {processor[0].employee_id != "" && processor.map((app, index) => (
-                                        <div className="flex">
-                                            <span>{app.label}</span>
+                                    {processor[0].employee_code != "" && processor.map((app, index) => (
+                                        <div className="flex" key={index}>
+                                            <span>{app.name}</span>
                                             {index != processor.length - 1 && ", "}
                                         </div>
                                     ))}
@@ -1362,11 +1429,11 @@ export default function Page() {
                                         placeholder="โปรดเลือกผู้สำเร็จเอกสาร"
                                         className="w-full sm:w-2/5 rounded-lg basic-multi-select"
                                         defaultValue={{ label: "โปรดเลือกผู้สำเร็จเอกสาร", value: "1" }}
-                                        options={FinisherList.filter(em => em.value !== finisher.employee_id)}
-                                        value={FinisherList.find(option => option.value === finisher.employee_id) ?? null}
+                                        options={FinisherList.filter(em => em.value !== finisher.employee_code)}
+                                        value={FinisherList.find(option => option.value === finisher.employee_code) ?? null}
                                         onChange={(selected) => {
                                             if (!selected) return;
-                                            setFinisher({ employee_id: selected.value, label: selected.label });
+                                            setFinisher({ employee_code: selected.value, name: selected.label });
                                         }}
                                     />
                                 </div>
@@ -1499,7 +1566,7 @@ export default function Page() {
             {preview && <PreviewModal fields={fields} onClose={() => setPreview(false)} />}
             {modalStatus.approve && <EmployeeModal onClose={() => {
                 setApprover(prev => {
-                    const validApprovers: ApproverListType[] = prev.filter(item => item.employee_id !== "");
+                    const validApprovers: ApproverListType[] = prev.filter(item => item.employee_code !== "");
 
                     // Don't remove if only one valid approver remains
                     if (validApprovers.length <= 1) {
@@ -1508,14 +1575,14 @@ export default function Page() {
 
                     return validApprovers.map((item, index) => ({
                         ...item,
-                        level: index + 1,
+                        stepOrder: index + 1,
                     }));
                 });
                 setModalStatus(prev => ({ ...prev, approve: false }))
             }} type="ผู้อนุมัติ" List={approver} />}
             {modalStatus.process && <EmployeeModal onClose={() => {
                 setProcessor(prev => {
-                    const validProcessor: EmployeeList[] = prev.filter(item => item.employee_id !== "");
+                    const validProcessor: EmployeeList[] = prev.filter(item => item.employee_code !== "");
 
                     // Don't remove if only one valid approver remains
                     if (validProcessor.length <= 1) {

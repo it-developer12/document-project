@@ -4,8 +4,9 @@ import "./globals.css";
 import { cn } from "@/lib/utils";
 import localFont from "next/font/local";
 import 'react-toastify/dist/ReactToastify.css';
-import ClientShell from "./component/ClientShell";
 import ToastProvider from "./component/ToastProvider";
+import QueryProvider from "@/providers/query-provider";
+import AuthProvider from "@/providers/auth.provider";
 
 
 const geistSans = Geist({
@@ -52,12 +53,17 @@ export default function RootLayout({
   return (
     <html
       lang="en"
+      suppressHydrationWarning
       className={cn("h-full", "antialiased", geistSans.variable, geistMono.variable, IBMPlex.variable)}
     >
       <body className="">
-        <ToastProvider/>
+        <ToastProvider />
         {/* <ClientShell /> */}
-        {children}
+        <QueryProvider>
+          <AuthProvider>
+          {children}
+          </AuthProvider>
+        </QueryProvider>
       </body>
     </html>
   );

@@ -2,7 +2,7 @@
 
 import { ColumnDef } from "@tanstack/react-table"
 import { StatusBadge } from "./StatusBadge"
-import { Bold, Eye, SquarePen } from "lucide-react"
+import { SquarePen } from "lucide-react"
 import Link from "next/link"
 import FormDetail from "@/SampleData/form_detail.json"
 import { PriorityBadge } from "./PriorityBadge"
@@ -23,12 +23,22 @@ export type DocumentColumn = {
 type Priority = "low" | "medium" | "high"
 type Status = "Draft" | "Approved" | "Processing" | "Completed" | "Cancelled" | "Pending" | "Rejected";
 
+const SCHEMA_ID_BY_DOCUMENT_ID = new Map(
+  FormDetail.map((form: any) => [form.document_id, form.schema_id]),
+)
+
+const COMPANY_LABELS: Record<string, string> = {
+  ctx: "Ctx holding",
+  cff: "Cityfresh Fruits",
+  nbm: "Noble marketing",
+}
+
 export const columns: ColumnDef<DocumentColumn>[] = [
   {
     accessorKey: "id",
     header: "Document ID",
     cell: ({ row }) => {
-      const schema_id = FormDetail.find((form: any) => form.document_id === row.original.id)?.schema_id
+      const schema_id = SCHEMA_ID_BY_DOCUMENT_ID.get(row.original.id)
       return (
         <Link href={`/document_list/it/form?schema_id=${schema_id}&doc_id=${row.original.id}&mode=view`}>
           <span style={{ color: "#4A4DF1" }}>{row.original.id}</span>
@@ -48,26 +58,7 @@ export const columns: ColumnDef<DocumentColumn>[] = [
   {
     accessorKey: "company",
     header: "Company",
-    cell: ({ row }) => {
-      var company_name = "";
-      switch (row.original.company) {
-        case "ctx":
-          company_name = "Ctx holding"
-          break;
-        case "cff":
-          company_name = "Cityfresh Fruits"
-          break;
-        case "nbm":
-          company_name = "Noble marketing"
-          break;
-        default:
-          company_name = ""
-          break;
-      }
-      return (
-        <span>{company_name}</span>
-      )
-    }
+    cell: ({ row }) => <span>{COMPANY_LABELS[row.original.company] ?? ""}</span>
   },
   {
     accessorKey: "owner",
@@ -95,7 +86,7 @@ export const columns: ColumnDef<DocumentColumn>[] = [
     header: "",
     enableSorting: false,
     cell: ({ row }) => {
-      const schema_id = FormDetail.find((form: any) => form.document_id === row.original.id)?.schema_id
+      const schema_id = SCHEMA_ID_BY_DOCUMENT_ID.get(row.original.id)
       return (
         <div className="flex gap-2 items-center">
           {/* <Link href={`/document_list/it/form?schema_id=${schema_id}&doc_id=${row.original.id}&mode=view`}>
