@@ -21,7 +21,7 @@ import { columns } from '@/app/component/DocumentColumn';
 import { DataTable } from '@/app/component/DocumentTable';
 import { BrushCleaning } from 'lucide-react';
 
-type DocStatus = "Draft" | "Approved" | "Processing" | "Completed" | "Cancelled" | "Pending" | "Rejected";
+type DocStatus = "WAITING_APPROVAL" | "PROCESSING" | "REJECTED" | "CANCELLED" | "COMPLETED";
 type Status = "low" | "medium" | "high";
 type TableDoc = {
     id: string;
@@ -34,6 +34,7 @@ type TableDoc = {
     created: string;
     updated: string;
     end_date: string;
+    type: string;
 }
 
 interface TableState {
@@ -54,38 +55,73 @@ const EMPTY_TABLE_STATE: TableState = {
 
 const EMPTY_DOCUMENTS: TableDoc[] = [];
 
-const TODO_DOCUMENTS: TableDoc[] = [
-        { id: "DOC-IT-001", title: "แบบฟอร์มเบิกทรัพย์สิน", priority: "high", owner: "Brian", company: "cff", department: "IT", status: "Processing", created: "2024-11-01", updated: "2024-11-08", end_date: "2024-11-08" },
-        { id: "DOC-IT-002", title: "แบบฟอร์มการขอเข้าใช้งานระบบคอมพิวเตอร์", priority: "low", owner: "Jame", company: "cff", department: "IT", status: "Completed", created: "2024-10-30", updated: "2024-11-07", end_date: "2024-10-30" },
-        { id: "DOC-IT-003", title: "แบบฟอร์มร้องขอดำเนินการด้าน IT", priority: "high", owner: "Brian", company: "cff", department: "IT", status: "Pending", created: "2024-10-30", updated: "2024-11-07", end_date: "2024-10-30" },
-        { id: "DOC-IT-004", title: "แบบฟอร์มร้องขอดำเนินการด้าน IT", priority: "high", owner: "Marry", company: "cff", department: "Finance", status: "Processing", created: "2024-10-30", updated: "2024-11-07", end_date: "2024-10-30" },
+const user_document = [
+  {
+    documentNo: "DOC-IT-001",
+    status: "COMPLETED",
+    dueDate: "2026-08-11T09:32:45.446Z",
+    formSchema: {
+      name: "แบบฟอร์มเปิกทรัพย์สิน",
+      company: {
+        name: "cff"
+      },
+      division: {
+        name: "Innovation Technology"
+      }
+    },
+    workflowInstance: {
+      workflowDefinition: {
+        versions: [
+          {
+            workflowStep: [
+              {
+                type: "FINISHER"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    createdBy: {
+      firstName: "นครินทร์",
+      lastName: "โสดา"
+    },
+    createdAt: "2026-08-10T02:38:20.077Z",
+    activities: [
+      {
+        createdAt: "2026-08-10T09:54:44.429Z"
+      }
     ]
+  }
+]
 
-const MY_DOCUMENTS: TableDoc[] = [
-        { id: "DOC-IT-001", title: "แบบฟอร์มเบิกทรัพย์สิน", priority: "high", owner: "Brian", company: "cff", department: "IT", status: "Processing", created: "2024-11-01", updated: "2024-11-08", end_date: "2024-11-08" },
-        { id: "DOC-IT-002", title: "แบบฟอร์มการขอเข้าใช้งานระบบคอมพิวเตอร์", priority: "low", owner: "Jame", company: "cff", department: "IT", status: "Completed", created: "2024-10-30", updated: "2024-11-07", end_date: "2024-10-30" },
-        { id: "DOC-IT-003", title: "แบบฟอร์มร้องขอดำเนินการด้าน IT", priority: "high", owner: "Brian", company: "cff", department: "IT", status: "Pending", created: "2024-10-30", updated: "2024-11-07", end_date: "2024-10-30" },
-    ]
-
-const ALL_DOCUMENTS: TableDoc[] = [
-        { id: "DOC-IT-001", title: "แบบฟอร์มเบิกทรัพย์สิน", priority: "high", owner: "Brian", company: "cff", department: "IT", status: "Processing", created: "2024-11-01", updated: "2024-11-08", end_date: "2024-11-08" },
-        { id: "DOC-IT-002", title: "แบบฟอร์มการขอเข้าใช้งานระบบคอมพิวเตอร์", priority: "low", owner: "Jame", company: "cff", department: "IT", status: "Completed", created: "2024-10-30", updated: "2024-11-07", end_date: "2024-10-30" },
-        { id: "DOC-IT-003", title: "แบบฟอร์มร้องขอดำเนินการด้าน IT", priority: "high", owner: "Brian", company: "cff", department: "IT", status: "Pending", created: "2024-10-30", updated: "2024-11-07", end_date: "2024-10-30" },
-        { id: "DOC-IT-004", title: "แบบฟอร์มร้องขอดำเนินการด้าน IT", priority: "high", owner: "Marry", company: "cff", department: "IT", status: "Processing", created: "2024-10-30", updated: "2024-11-07", end_date: "2024-10-30" },
-        { id: "DOC-IT-005", title: "แบบฟอร์มการขอเข้าใช้งานระบบคอมพิวเตอร์", priority: "low", owner: "Sarah Chen", company: "cff", department: "IT", status: "Pending", created: "2024-11-01", updated: "2024-11-08", end_date: "2024-11-20" },
-        { id: "DOC-IT-006", title: "แบบฟอร์มเบิกทรัพย์สิน", priority: "medium", owner: "Sarah Chen", company: "ctx", department: "IT", status: "Processing", created: "2024-11-01", updated: "2024-11-08", end_date: "2024-11-20" },
-        { id: "DOC-IT-007", title: "แบบฟอร์มร้องขอดำเนินการด้าน IT", priority: "high", owner: "Ken", company: "cff", department: "IT", status: "Draft", created: "2024-10-30", updated: "2024-11-07", end_date: "2024-10-30" },
-        { id: "DOC-IT-010", title: "แบบฟอร์มการขอเข้าใช้งานระบบคอมพิวเตอร์", priority: "low", owner: "Sarah Chen", company: "cff", department: "IT", status: "Pending", created: "2024-11-01", updated: "2024-11-08", end_date: "2024-11-20" },
-        { id: "DOC-IT-020", title: "แบบฟอร์มเบิกทรัพย์สิน", priority: "medium", owner: "Sarah Chen", company: "ctx", department: "IT", status: "Processing", created: "2024-11-01", updated: "2024-11-08", end_date: "2024-11-20" },
-        { id: "DOC-IT-031", title: "แบบฟอร์มร้องขอดำเนินการด้าน IT", priority: "high", owner: "Garry", company: "cff", department: "IT", status: "Rejected", created: "2024-10-30", updated: "2024-11-07", end_date: "2024-10-30" },
-        { id: "DOC-IT-040", title: "แบบฟอร์มการขอเข้าใช้งานระบบคอมพิวเตอร์", priority: "low", owner: "Sarah Chen", company: "cff", department: "IT", status: "Pending", created: "2024-11-01", updated: "2024-11-08", end_date: "2024-11-20" },
-        { id: "DOC-IT-013", title: "แบบฟอร์มเบิกทรัพย์สิน", priority: "medium", owner: "Sarah Chen", company: "ctx", department: "IT", status: "Processing", created: "2024-11-01", updated: "2024-11-08", end_date: "2024-11-20" },
-    ]
-
+const DOCUMENT:TableDoc[] = user_document.map((doc) => ({
+    id: doc.documentNo,
+    title: doc.formSchema.name,
+    priority: "high",
+    owner: doc.createdBy.firstName,
+    company: doc.formSchema.company.name,
+    department: doc.formSchema.division.name,
+    status: doc.status as DocStatus,
+    created: doc.createdAt,
+    end_date: doc.dueDate,
+    updated: doc.activities[0].createdAt,
+    type: doc.workflowInstance.workflowDefinition.versions[0].workflowStep[0].type
+}))
     // async function getData(): Promise<DocumentColumn[]> {
     //      fetch data with api
     //     return [ data from api ]
     // } 
+const TODOTABLE: TableDoc[] = DOCUMENT.filter((doc) => {
+    if(doc.type.length > 0) {
+        return doc
+    }
+})
+const CREATETABLE: TableDoc[] = DOCUMENT.filter((doc) => {
+    if(doc.type.length < 0) {
+        return doc
+    }
+})
 
 const COMPANY_OPTIONS = [
     { label: "Cityfresh Fruit", value: "cff" },
@@ -124,7 +160,7 @@ export default function Home() {
         if (name === "todo") {
             setTodoTable((prev) => ({
                 ...prev,
-                document_list: filterDocuments(TODO_DOCUMENTS, prev),
+                document_list: filterDocuments(DOCUMENT, prev),
                 status: true,
             }));
             return;
@@ -133,7 +169,7 @@ export default function Home() {
         if (name === "create") {
             setCreateTable((prev) => ({
                 ...prev,
-                document_list: filterDocuments(MY_DOCUMENTS, prev),
+                document_list: filterDocuments(DOCUMENT, prev),
                 status: true,
             }));
             return;
@@ -141,7 +177,7 @@ export default function Home() {
 
         setDocumentTable((prev) => ({
             ...prev,
-            document_list: filterDocuments(ALL_DOCUMENTS, prev),
+            document_list: filterDocuments(DOCUMENT, prev),
             status: true,
         }));
     }
@@ -232,7 +268,7 @@ export default function Home() {
                     </div>
                 </div>
                 <div className=''>
-                    <DataTable columns={columns} data={todoTable.status ? todoTable.document_list : TODO_DOCUMENTS} />
+                    <DataTable columns={columns} data={todoTable.status ? todoTable.document_list : TODOTABLE} />
                 </div>
                 {/* Table */}
                 {/* <Table>
@@ -414,7 +450,7 @@ export default function Home() {
                     </div>
                 </div>
                 <div className=''>
-                    <DataTable columns={columns} data={createTable.status ? createTable.document_list : MY_DOCUMENTS} />
+                    <DataTable columns={columns} data={createTable.status ? createTable.document_list : CREATETABLE} />
                 </div>
                 {/* Table */}
                 {/* <Table>

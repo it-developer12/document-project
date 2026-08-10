@@ -6,6 +6,12 @@ import { SquarePen } from "lucide-react"
 import Link from "next/link"
 import FormDetail from "@/SampleData/form_detail.json"
 import { PriorityBadge } from "./PriorityBadge"
+import dayjs from 'dayjs';
+import utc from 'dayjs/plugin/utc';
+import timezone from 'dayjs/plugin/timezone'
+
+dayjs.extend(utc);
+dayjs.extend(timezone);
 
 // This type is used to define the shape of our data.
 // You can use a Zod schema here if you want.
@@ -16,12 +22,14 @@ export type DocumentColumn = {
   company: string
   owner: string
   department: string
-  status: "Draft" | "Approved" | "Processing" | "Completed" | "Cancelled" | "Pending" | "Rejected"
+  status: "WAITING_APPROVAL" | "PROCESSING" | "REJECTED" | "CANCELLED" | "COMPLETED"
   created: string
   updated: string
+  end_date: string
+  type: string;
 }
 type Priority = "low" | "medium" | "high"
-type Status = "Draft" | "Approved" | "Processing" | "Completed" | "Cancelled" | "Pending" | "Rejected";
+type Status = "WAITING_APPROVAL" | "PROCESSING" | "REJECTED" | "CANCELLED" | "COMPLETED";
 
 const SCHEMA_ID_BY_DOCUMENT_ID = new Map(
   FormDetail.map((form: any) => [form.document_id, form.schema_id]),
@@ -76,10 +84,22 @@ export const columns: ColumnDef<DocumentColumn>[] = [
   {
     accessorKey: "updated",
     header: "Last Updated",
+    cell: ({ row }) => {
+      const stringDate = dayjs.utc(row.original.updated).tz("Asia/Bangkok").format("DD-MM-YYYY")
+      return (
+        <span>{stringDate}</span>
+      )
+    }
   },
   {
     accessorKey: "end_date",
-    header: "วันที่สิ้นสุดเอกสาร"
+    header: "วันที่สิ้นสุดเอกสาร",
+    cell: ({ row }) => {
+      const stringDate = dayjs.utc(row.original.end_date).tz("Asia/Bangkok").format("DD-MM-YYYY")
+      return (
+        <span>{stringDate}</span>
+      )
+    }
   },
   {
     accessorKey: "view_or_edit",
@@ -92,7 +112,7 @@ export const columns: ColumnDef<DocumentColumn>[] = [
           {/* <Link href={`/document_list/it/form?schema_id=${schema_id}&doc_id=${row.original.id}&mode=view`}>
             <Eye />
           </Link> */}
-          {row.original.status === "Rejected" || row.original.status === "Draft" && (
+          {row.original.status === "REJECTED" && (
             <Link href={`/document_list/it/form?schema_id=${schema_id}&doc_id=${row.original.id}&mode=edit`}>
               <SquarePen />
             </Link>
