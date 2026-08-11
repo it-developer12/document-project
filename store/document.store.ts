@@ -1,59 +1,75 @@
 import { create } from "zustand";
 
 export interface DocumentItem {
-  documentNo: string;
-  status: string;
-  dueDate: string;
-  formSchema: {
-    name: string;
-    company: {
-      name: string;
+    documentNo: string;
+    status: string;
+    dueDate: string;
+    formSchema: {
+        name: string;
+        company: {
+            name: string;
+        };
+        division: {
+            name: string;
+        };
     };
-    division: {
-      name: string;
+    workflowInstance: {
+        workflowDefinition: {
+            versions: {
+                workflowStep: {
+                    type: string;
+                }[];
+            }[];
+        };
     };
-  };
-  workflowInstance: {
-    workflowDefinition: {
-      versions: {
-        workflowStep: {
-          type: string;
-        }[];
-      }[];
+    createdBy: {
+        firstName: string;
+        lastName: string;
     };
-  };
-  createdBy: {
-    firstName: string;
-    lastName: string;
-  };
-  createdAt: string;
-  activities: {
     createdAt: string;
-  }[];
+    activities: {
+        createdAt: string;
+    }[];
 }
 
 interface DocumentState {
-  documents: DocumentItem[];
-  setDocuments: (documents: DocumentItem[]) => void;
-  addDocument: (document: DocumentItem) => void;
-  clearDocuments: () => void;
+    documents: DocumentItem[];
+    approveDocuments: DocumentItem[];
+    processDocuments: DocumentItem[];
+    setDocuments: (documents: DocumentItem[]) => void;
+    setApproveDocuments: (documents: DocumentItem[]) => void;
+    setProcessDocuments: (documents: DocumentItem[]) => void;
+    clearDocuments: () => void;
 }
 
 export const useDocumentStore = create<DocumentState>((set) => ({
-  documents: [],
+    documents: [],
+    approveDocuments: [],
+    processDocuments: [],
 
-  setDocuments: (documents) =>
-    set({
-      documents,
-    }),
+    setDocuments: (documents) =>
+        set({
+            documents,
+        }),
 
-  addDocument: (document) =>
-    set((state) => ({
-      documents: [...state.documents, document],
-    })),
+    setApproveDocuments: (documents) =>
+        set({
+            approveDocuments: documents.filter(
+                (doc) => doc.workflowInstance.workflowDefinition.versions[0].workflowStep[0].type === "APPROVER",
+            ),
+        }),
 
-  clearDocuments: () =>
-    set({
-      documents: [],
-    }),
+    setProcessDocuments: (documents) =>
+        set({
+            processDocuments: documents.filter(
+                (doc) => doc.workflowInstance.workflowDefinition.versions[0].workflowStep[0].type === "PROCESSOR",
+            ),
+        }),
+
+    clearDocuments: () =>
+        set({
+            documents: [],
+            approveDocuments: [],
+            processDocuments: [],
+        }),
 }));

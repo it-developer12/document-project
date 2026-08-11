@@ -2,29 +2,35 @@
 import { columns } from "@/app/component/ApproveColumn";
 import { DataTable } from "@/app/component/DocumentTable";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useDocumentStore } from "@/store/document.store";
 import { Icon } from '@iconify/react';
 import { ArrowLeft, BrushCleaning } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 
 export default function Page() {
+
+    type DocStatus = "WAITING_APPROVAL" | "PROCESSING" | "REJECTED" | "CANCELLED" | "COMPLETED";
+    type Status = "low" | "medium" | "high";
+    type TableDoc = {
+        id: string;
+        title: string;
+        priority: Status;
+        owner: string;
+        department: string;
+        company: string;
+        status: DocStatus;
+        created: string;
+        updated: string;
+        end_date: string;
+        type: string;
+    }
     interface TableState {
         status: boolean;
         text: string;
         department: string;
         company: string;
-        document_list: {
-            id: string;
-            title: string;
-            priority: Status;
-            owner: string;
-            department: string;
-            company: string;
-            status: DocStatus;
-            created: string;
-            updated: string;
-            end_date: string;
-        }[];
+        document_list: TableDoc[];
     }
     const company = [
         { label: "Cityfresh Fruit", value: "cff" },
@@ -37,23 +43,22 @@ export default function Page() {
         { label: "Finance", value: "finance" },
         { label: "B2C", value: "b2c" },
     ]
-    type Status = "low" | "medium" | "high";
-    type DocStatus = "Draft" | "Approved" | "Processing" | "Completed" | "Cancelled" | "Pending" | "Rejected";
-    const documents: {
-        id: string;
-        title: string;
-        priority: Status;
-        owner: string;
-        department: string;
-        company: string;
-        status: DocStatus;
-        created: string;
-        updated: string;
-        end_date: string;
-    }[] = [
-            { id: "DOC-IT-002", title: "แบบฟอร์มการขอเข้าใช้งานระบบคอมพิวเตอร์", priority: "low", owner: "Jame", company: "cff", department: "IT", status: "Completed", created: "2024-10-30", updated: "2024-11-07", end_date: "2024-10-30" },
-            { id: "DOC-IT-003", title: "แบบฟอร์มร้องขอดำเนินการด้าน IT", priority: "high", owner: "Brian", company: "cff", department: "IT", status: "Pending", created: "2024-10-30", updated: "2024-11-07", end_date: "2024-10-30" },
-        ];
+
+    const docs = useDocumentStore((state) => state.approveDocuments);
+
+    const DOCUMENT: TableDoc[] = docs.map((doc) => ({
+        id: doc.documentNo,
+        title: doc.formSchema.name,
+        priority: "high",
+        owner: doc.createdBy.firstName,
+        company: doc.formSchema.company.name,
+        department: doc.formSchema.division.name,
+        status: doc.status as DocStatus,
+        created: doc.createdAt,
+        end_date: doc.dueDate,
+        updated: doc.activities[0].createdAt,
+        type: doc.workflowInstance.workflowDefinition.versions[0].workflowStep[0].type
+    }))
 
     const [DocumentTable, setDocumentTable] = useState<TableState>({
         status: false,
@@ -64,7 +69,7 @@ export default function Page() {
     });
 
     function handleSearch(name: string) {
-        const filtered = documents.filter(doc => {
+        const filtered = DOCUMENT.filter(doc => {
             const matchesText = !DocumentTable.text || doc.title.toLowerCase().includes(DocumentTable.text.toLowerCase()) || doc.id.toLowerCase().includes(DocumentTable.text.toLowerCase());
             const matchesDepartment = !DocumentTable.department || doc.department.toLowerCase() === DocumentTable.department.toLowerCase();
             const matchesCompany = !DocumentTable.company || doc.company === DocumentTable.company;
@@ -164,7 +169,7 @@ export default function Page() {
                     </div>
                 </div>
                 <div className=''>
-                    <DataTable columns={columns} data={DocumentTable.status ? DocumentTable.document_list : documents} />
+                    <DataTable columns={columns} data={DocumentTable.status ? DocumentTable.document_list : DOCUMENT} />
                 </div>
             </div>
         </div>

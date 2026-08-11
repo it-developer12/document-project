@@ -149,7 +149,7 @@ export default function Home() {
 
     useEffect(() => {
         docMutate.mutate();
-    }, []);
+    }, [docs]);
 
     return (
         <div className="bg-slate-50 min-h-screen h-full w-full p-6">

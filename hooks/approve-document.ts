@@ -11,6 +11,9 @@ export function approveMutation() {
             queryClient.invalidateQueries({
                 queryKey: ["nav"],
             });
+            queryClient.invalidateQueries({
+                queryKey: ["document"],
+            });
         },
 
         onError: (error) => {

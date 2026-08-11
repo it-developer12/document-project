@@ -1,33 +1,37 @@
 "use client";
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useRouter } from "next/navigation";
 import { AxiosError } from "axios";
 import { useDocumentStore } from "@/store/document.store";
 import { getDocumentList } from "@/api/document";
 
 
-type LoginErrorResponse = {
-  message?: string;
+type ErrorResponse = {
+    message?: string;
 };
 
 export function useGetDocuments() {
-  const queryClient = useQueryClient();
-  const setDocument = useDocumentStore((state) => state.setDocuments);
+    const queryClient = useQueryClient();
+    const setDocument = useDocumentStore((state) => state.setDocuments);
+    const setApproveDoc = useDocumentStore((state) => state.setApproveDocuments);
+    const setProcessDoc = useDocumentStore((state) => state.setProcessDocuments);
 
-  return useMutation({
-    mutationFn: () => getDocumentList(),
+    return useMutation({
+        mutationFn: () => getDocumentList(),
 
-    onSuccess: async () => {
-      setDocument(await getDocumentList());
-      queryClient.setQueryData(["document"], document);
-    },
+        onSuccess: async () => {
+            const document = await getDocumentList();
+            setDocument(document);
+            setApproveDoc(document);
+            setProcessDoc(document);
+            queryClient.setQueryData(["document"], document);
+        },
 
-    onError: (error: AxiosError<LoginErrorResponse>) => {
-      console.log(
-        "Login failed:",
-        error.response?.data?.message ?? error.message,
-      );
-    },
-  });
+        onError: (error: AxiosError<ErrorResponse>) => {
+            console.log(
+                "Failed to get documents:",
+                error.response?.data?.message ?? error.message,
+            );
+        },
+    });
 }

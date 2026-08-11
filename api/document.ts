@@ -16,12 +16,12 @@ export interface CreateDocumentPayload {
 }
 
 export async function getNavNumber() {
-    const response = await api.get('/nav_data');
+    const response = await api.get('/document/nav_data');
     return response.data;
 }
 
 export async function getDocumentList() {
-    const response = await api.get('/user_document');
+    const response = await api.get('/document/user_document');
     return response.data;
 }
 
@@ -32,5 +32,10 @@ export async function createDocument(data: CreateDocumentPayload) {
 
 export async function approveDocument(data: ApproveDocumentPayload) {
     const response = await api.patch('/document/approve', data);
+    return response.data;
+}
+
+export async function getDocumentDetail(document_code: string) {
+    const response = await api.get(`/document/document_data/${document_code}`);
     return response.data;
 }

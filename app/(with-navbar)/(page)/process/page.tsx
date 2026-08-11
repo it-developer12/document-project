@@ -12,29 +12,12 @@ import { ProcessColumns } from "@/app/component/ProcessColumns";
 import { Workflow, WorkflowActivity } from "./process";
 import dayjs from "dayjs";
 import { toast } from "react-toastify";
+import { useDocumentStore } from "@/store/document.store";
 
 export default function Page() {
-    interface TableState {
-        status: boolean;
-        text: string;
-        department: string;
-        company: string;
-        document_list: {
-            id: string;
-            title: string;
-            priority: Status;
-            owner: string;
-            department: string;
-            company: string;
-            status: DocStatus;
-            created: string;
-            updated: string;
-            end_date: string;
-        }[];
-    }
+    type DocStatus = "WAITING_APPROVAL" | "PROCESSING" | "REJECTED" | "CANCELLED" | "COMPLETED";
     type Status = "low" | "medium" | "high";
-    type DocStatus = "Draft" | "Approved" | "Processing" | "Completed" | "Cancelled" | "Pending" | "Rejected";
-    const documents: {
+    type TableDoc = {
         id: string;
         title: string;
         priority: Status;
@@ -45,10 +28,30 @@ export default function Page() {
         created: string;
         updated: string;
         end_date: string;
-    }[] = [
-            { id: "DOC-IT-001", title: "แบบฟอร์มเบิกทรัพย์สิน", priority: "high", owner: "Brian", company: "cff", department: "IT", status: "Processing", created: "2024-11-01", updated: "2024-11-08", end_date: "2024-11-08" },
-            { id: "DOC-IT-004", title: "แบบฟอร์มร้องขอดำเนินการด้าน IT", priority: "high", owner: "Marry", company: "cff", department: "Finance", status: "Processing", created: "2024-10-30", updated: "2024-11-07", end_date: "2024-10-30" },
-        ];
+        type: string;
+    }
+    interface TableState {
+        status: boolean;
+        text: string;
+        department: string;
+        company: string;
+        document_list: TableDoc[];
+    }
+    const docs = useDocumentStore((state) => state.processDocuments);
+
+    const DOCUMENT: TableDoc[] = docs.map((doc) => ({
+        id: doc.documentNo,
+        title: doc.formSchema.name,
+        priority: "high",
+        owner: doc.createdBy.firstName,
+        company: doc.formSchema.company.name,
+        department: doc.formSchema.division.name,
+        status: doc.status as DocStatus,
+        created: doc.createdAt,
+        end_date: doc.dueDate,
+        updated: doc.activities[0].createdAt,
+        type: doc.workflowInstance.workflowDefinition.versions[0].workflowStep[0].type
+    }))
 
     const company = [
         { label: "Cityfresh Fruit", value: "cff" },
@@ -75,7 +78,7 @@ export default function Page() {
     });
 
     function handleSearch(name: string) {
-        const filtered = documents.filter(doc => {
+        const filtered = DOCUMENT.filter(doc => {
             const matchesText = !DocumentTable.text || doc.title.toLowerCase().includes(DocumentTable.text.toLowerCase()) || doc.id.toLowerCase().includes(DocumentTable.text.toLowerCase());
             const matchesDepartment = !DocumentTable.department || doc.department.toLowerCase() === DocumentTable.department.toLowerCase();
             const matchesCompany = !DocumentTable.company || doc.company === DocumentTable.company;
@@ -259,7 +262,7 @@ export default function Page() {
                     </div>
                 </div>
                 <div className=''>
-                    <DataTable columns={ProcessColumns(setDetail)} data={DocumentTable.status ? DocumentTable.document_list : documents} />
+                    <DataTable columns={ProcessColumns(setDetail)} data={DocumentTable.status ? DocumentTable.document_list : DOCUMENT} />
                 </div>
             </div>
 

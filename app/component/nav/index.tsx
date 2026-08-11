@@ -20,7 +20,6 @@ const navItems = [
 
 export default function Nav() {
   const pathname = usePathname() || "/";
-  const user = useAuthStore((state) => state.user);
   const { data, isLoading, isError } = useNavData();
 
   const approveCount = data?.approve ?? 2;
@@ -39,48 +38,32 @@ export default function Nav() {
           <div className="flex flex-col gap-2">
             {navItems.map((item) => {
               const isActive = "/" + pathname.split('/')[1] === item.href;
-              const path = "/" + pathname.split('/')[1];
+              const count = item.href === "/approve" ? approveCount : item.href === "/process" ? processCount : 0;
+              const showCountBadge = !isActive && (item.href === "/approve" || item.href === "/process") && count > 0;
+
               return (
-                item.href === "/approve" || item.href === "/process" ?
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    className={`flex justify-between items-center rounded-md px-3 py-2 text-md font-medium transition-colors duration-150 ${isActive
-                      ? "bg-[#a8a8a8] text-"
-                      : "text-[#c0c0c0] hover:bg-[#a8a8a8] hover:text-black"
-                      }`}
-                  >
-                    <div className="flex gap-2 items-center">
-                      <Icon icon={item.icon} />
-                      <span>{item.label}</span>
-                    </div>
-                    <div className={``}>
-                      {isActive && (item.href === "/approve" || item.href === "/process") ? (
-                        <Icon icon={"weui:arrow-filled"} />
-                      ) : (approveCount > 0 || processCount > 0) && (
-                        <div className="text-white text-xs bg-red-500 rounded-full px-2 py-1">
-                          <span>{item.href === "/approve" ? approveCount : processCount}</span>
-                        </div>
-                      )}
-                    </div>
-                  </Link>
-                  :
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    className={`flex justify-between items-center rounded-md px-3 py-2 text-md font-medium transition-colors duration-150 ${isActive
-                      ? "bg-[#a8a8a8]"
-                      : "text-[#c0c0c0] hover:bg-[#a8a8a8] hover:text-black"
-                      }`}
-                  >
-                    <div className="flex gap-2 items-center">
-                      <Icon icon={item.icon} />
-                      <span>{item.label}</span>
-                    </div>
-                    <div className={`${isActive ? '' : 'hidden'}`}>
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={`flex justify-between items-center rounded-md px-3 py-2 text-md font-medium transition-colors duration-150 ${isActive
+                    ? "bg-[#a8a8a8] text-black"
+                    : "text-[#c0c0c0] hover:bg-[#a8a8a8] hover:text-black"
+                  }`}
+                >
+                  <div className="flex gap-2 items-center">
+                    <Icon icon={item.icon} />
+                    <span>{item.label}</span>
+                  </div>
+                  <div className="min-w-[1.5rem] flex justify-end">
+                    {isActive ? (
                       <Icon icon={"weui:arrow-filled"} />
-                    </div>
-                  </Link>
+                    ) : showCountBadge ? (
+                      <div className="text-white text-xs bg-red-500 rounded-full px-2 py-1">
+                        <span>{count}</span>
+                      </div>
+                    ) : null}
+                  </div>
+                </Link>
               );
             })}
           </div>

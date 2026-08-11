@@ -16,12 +16,12 @@ export type DocumentColumn = {
     company: string
     owner: string
     department: string
-    status: "Draft" | "Approved" | "Processing" | "Completed" | "Cancelled" | "Pending" | "Rejected"
+    status: "WAITING_APPROVAL" | "PROCESSING" | "REJECTED" | "CANCELLED" | "COMPLETED";
     created: string
     updated: string
 }
 type Priority = "low" | "medium" | "high"
-type Status = "Draft" | "Approved" | "Processing" | "Completed" | "Cancelled" | "Pending" | "Rejected";
+type Status = "WAITING_APPROVAL" | "PROCESSING" | "REJECTED" | "CANCELLED" | "COMPLETED";
 
 export const ProcessColumns = (
     setDetail: React.Dispatch<React.SetStateAction<{ open: boolean; document_id: string }>>
