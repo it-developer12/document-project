@@ -16,10 +16,12 @@ import {
     SelectValue,
 } from "@/components/ui/select"
 import Link from 'next/link';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { columns } from '@/app/component/DocumentColumn';
 import { DataTable } from '@/app/component/DocumentTable';
 import { BrushCleaning } from 'lucide-react';
+import { useDocumentStore } from '@/store/document.store';
+import { useGetDocuments } from '@/hooks/set-document';
 
 type DocStatus = "WAITING_APPROVAL" | "PROCESSING" | "REJECTED" | "CANCELLED" | "COMPLETED";
 type Status = "low" | "medium" | "high";
@@ -55,74 +57,6 @@ const EMPTY_TABLE_STATE: TableState = {
 
 const EMPTY_DOCUMENTS: TableDoc[] = [];
 
-const user_document = [
-  {
-    documentNo: "DOC-IT-001",
-    status: "COMPLETED",
-    dueDate: "2026-08-11T09:32:45.446Z",
-    formSchema: {
-      name: "แบบฟอร์มเปิกทรัพย์สิน",
-      company: {
-        name: "cff"
-      },
-      division: {
-        name: "Innovation Technology"
-      }
-    },
-    workflowInstance: {
-      workflowDefinition: {
-        versions: [
-          {
-            workflowStep: [
-              {
-                type: "FINISHER"
-              }
-            ]
-          }
-        ]
-      }
-    },
-    createdBy: {
-      firstName: "นครินทร์",
-      lastName: "โสดา"
-    },
-    createdAt: "2026-08-10T02:38:20.077Z",
-    activities: [
-      {
-        createdAt: "2026-08-10T09:54:44.429Z"
-      }
-    ]
-  }
-]
-
-const DOCUMENT:TableDoc[] = user_document.map((doc) => ({
-    id: doc.documentNo,
-    title: doc.formSchema.name,
-    priority: "high",
-    owner: doc.createdBy.firstName,
-    company: doc.formSchema.company.name,
-    department: doc.formSchema.division.name,
-    status: doc.status as DocStatus,
-    created: doc.createdAt,
-    end_date: doc.dueDate,
-    updated: doc.activities[0].createdAt,
-    type: doc.workflowInstance.workflowDefinition.versions[0].workflowStep[0].type
-}))
-    // async function getData(): Promise<DocumentColumn[]> {
-    //      fetch data with api
-    //     return [ data from api ]
-    // } 
-const TODOTABLE: TableDoc[] = DOCUMENT.filter((doc) => {
-    if(doc.type.length > 0) {
-        return doc
-    }
-})
-const CREATETABLE: TableDoc[] = DOCUMENT.filter((doc) => {
-    if(doc.type.length < 0) {
-        return doc
-    }
-})
-
 const COMPANY_OPTIONS = [
     { label: "Cityfresh Fruit", value: "cff" },
     { label: "Ctx holding", value: "ctx" },
@@ -152,6 +86,36 @@ function filterDocuments(documents: TableDoc[], table: TableState) {
 }
 
 export default function Home() {
+    const docMutate = useGetDocuments();
+    const docs = useDocumentStore((state) => state.documents);
+
+
+
+    const DOCUMENT: TableDoc[] = docs.map((doc) => ({
+        id: doc.documentNo,
+        title: doc.formSchema.name,
+        priority: "high",
+        owner: doc.createdBy.firstName,
+        company: doc.formSchema.company.name,
+        department: doc.formSchema.division.name,
+        status: doc.status as DocStatus,
+        created: doc.createdAt,
+        end_date: doc.dueDate,
+        updated: doc.activities[0].createdAt,
+        type: doc.workflowInstance.workflowDefinition.versions[0].workflowStep[0].type
+    }))
+
+    const TODOTABLE: TableDoc[] = DOCUMENT.filter((doc) => {
+        if (doc.type.length > 0) {
+            return doc
+        }
+    })
+    const CREATETABLE: TableDoc[] = DOCUMENT.filter((doc) => {
+        if (doc.type.length < 0) {
+            return doc
+        }
+    })
+
     const [todoTable, setTodoTable] = useState<TableState>(EMPTY_TABLE_STATE);
     const [createTable, setCreateTable] = useState<TableState>(EMPTY_TABLE_STATE);
     const [documentTable, setDocumentTable] = useState<TableState>(EMPTY_TABLE_STATE);
@@ -181,6 +145,11 @@ export default function Home() {
             status: true,
         }));
     }
+
+
+    useEffect(() => {
+        docMutate.mutate();
+    }, []);
 
     return (
         <div className="bg-slate-50 min-h-screen h-full w-full p-6">
@@ -270,59 +239,6 @@ export default function Home() {
                 <div className=''>
                     <DataTable columns={columns} data={todoTable.status ? todoTable.document_list : TODOTABLE} />
                 </div>
-                {/* Table */}
-                {/* <Table>
-                    <TableHeader>
-                        <TableRow>
-                            {headerTable.map((header) => (
-                                <TableHead key={header} className="bg-[#F5F5F5]">
-                                    {header}
-                                </TableHead>
-                            ))}
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {documents.map((document) => (
-                            <TableRow key={document.id}>
-                                <TableCell className="font-medium text-[#496aff]">{document.id}</TableCell>
-                                <TableCell>{document.title}</TableCell>
-                                <TableCell>{document.type}</TableCell>
-                                <TableCell>{document.owner}</TableCell>
-                                <TableCell>{document.department}</TableCell>
-                                <TableCell>
-                                    <StatusBadge status={document.status} />
-                                </TableCell>
-                                <TableCell>{document.updated}</TableCell>
-                            </TableRow>
-                        ))}
-                    </TableBody>
-                </Table> */}
-
-                {/* Pagination */}
-                {/* <div
-                    className="flex items-center justify-between px-5 py-3 border-t"
-                    style={{ borderColor: "var(--border)", background: "var(--secondary)" }}
-                >
-                    <span style={{ fontSize: "0.8rem", color: "var(--muted-foreground)" }}>
-                        Showing 1–8 of 1,284 documents
-                    </span>
-                    <div className="flex items-center gap-1">
-                        {["1", "2", "3", "…", "161"].map((p) => (
-                            <button
-                                key={p}
-                                className="w-7 h-7 rounded-md flex items-center justify-center transition-colors"
-                                style={{
-                                    fontSize: "0.78rem",
-                                    background: p === "1" ? "var(--primary)" : "transparent",
-                                    color: p === "1" ? "var(--primary-foreground)" : "var(--muted-foreground)",
-                                    fontWeight: p === "1" ? 600 : 400,
-                                }}
-                            >
-                                {p}
-                            </button>
-                        ))}
-                    </div>
-                </div> */}
             </div>
             <div className="mt-6 flex gap-4">
                 <Card className="w-1/4" >
@@ -452,59 +368,6 @@ export default function Home() {
                 <div className=''>
                     <DataTable columns={columns} data={createTable.status ? createTable.document_list : CREATETABLE} />
                 </div>
-                {/* Table */}
-                {/* <Table>
-                    <TableHeader>
-                        <TableRow>
-                            {headerTable.map((header) => (
-                                <TableHead key={header} className="bg-[#F5F5F5]">
-                                    {header}
-                                </TableHead>
-                            ))}
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {documents.map((document) => (
-                            <TableRow key={document.id}>
-                                <TableCell className="font-medium text-[#496aff]">{document.id}</TableCell>
-                                <TableCell>{document.title}</TableCell>
-                                <TableCell>{document.type}</TableCell>
-                                <TableCell>{document.owner}</TableCell>
-                                <TableCell>{document.department}</TableCell>
-                                <TableCell>
-                                    <StatusBadge status={document.status} />
-                                </TableCell>
-                                <TableCell>{document.updated}</TableCell>
-                            </TableRow>
-                        ))}
-                    </TableBody>
-                </Table> */}
-
-                {/* Pagination */}
-                {/* <div
-                    className="flex items-center justify-between px-5 py-3 border-t"
-                    style={{ borderColor: "var(--border)", background: "var(--secondary)" }}
-                >
-                    <span style={{ fontSize: "0.8rem", color: "var(--muted-foreground)" }}>
-                        Showing 1–8 of 1,284 documents
-                    </span>
-                    <div className="flex items-center gap-1">
-                        {["1", "2", "3", "…", "161"].map((p) => (
-                            <button
-                                key={p}
-                                className="w-7 h-7 rounded-md flex items-center justify-center transition-colors"
-                                style={{
-                                    fontSize: "0.78rem",
-                                    background: p === "1" ? "var(--primary)" : "transparent",
-                                    color: p === "1" ? "var(--primary-foreground)" : "var(--muted-foreground)",
-                                    fontWeight: p === "1" ? 600 : 400,
-                                }}
-                            >
-                                {p}
-                            </button>
-                        ))}
-                    </div>
-                </div> */}
             </div>
 
             <div className="flex flex-col rounded-xl border overflow-hidden mt-6" style={{ background: "var(--card)", borderColor: "var(--border)" }}>

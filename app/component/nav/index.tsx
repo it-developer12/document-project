@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Icon } from '@iconify/react';
 import { useAuthStore } from "@/store/auth.store";
+import { useNavData } from "@/hooks/nav-data";
 import { LogoutButton } from "../LogoutButton";
 import UserNav from "./UserNav";
 
@@ -20,8 +21,11 @@ const navItems = [
 export default function Nav() {
   const pathname = usePathname() || "/";
   const user = useAuthStore((state) => state.user);
+  const { data, isLoading, isError } = useNavData();
 
-  console.log(user)
+  const approveCount = data?.approve ?? 2;
+  const processCount = data?.process ?? 2;
+
   return (
     <div className="bg-[#1b1b1b] border-r border-slate-200 shadow-sm md:min-w-1/5  md:w-1/5 sticky top-0 h-screen hidden lg:block">
       <div className="flex h-full flex-col justify-between px-6 py-6 min-h-screen">
@@ -53,9 +57,9 @@ export default function Nav() {
                     <div className={``}>
                       {isActive && (item.href === "/approve" || item.href === "/process") ? (
                         <Icon icon={"weui:arrow-filled"} />
-                      ) : (
+                      ) : (approveCount > 0 || processCount > 0) && (
                         <div className="text-white text-xs bg-red-500 rounded-full px-2 py-1">
-                          <span>{2}</span>
+                          <span>{item.href === "/approve" ? approveCount : processCount}</span>
                         </div>
                       )}
                     </div>

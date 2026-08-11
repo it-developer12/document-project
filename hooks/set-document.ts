@@ -3,29 +3,24 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { AxiosError } from "axios";
+import { useDocumentStore } from "@/store/document.store";
+import { getDocumentList } from "@/api/document";
 
-import { getMe, loginApi, type LoginRequest } from "@/api/auth";
-import { useAuthStore } from "@/store/auth.store";
 
 type LoginErrorResponse = {
   message?: string;
 };
 
-export function useLogin() {
-  const router = useRouter();
+export function useGetDocuments() {
   const queryClient = useQueryClient();
-  const setUser = useAuthStore((state) => state.setUser);
+  const setDocument = useDocumentStore((state) => state.setDocuments);
 
   return useMutation({
-    mutationFn: (data: LoginRequest) => loginApi(data),
+    mutationFn: () => getDocumentList(),
 
     onSuccess: async () => {
-      const user = await getMe();
-
-      setUser(user);
-      queryClient.setQueryData(["auth", "me"], user);
-
-      router.replace("/dashboard");
+      setDocument(await getDocumentList());
+      queryClient.setQueryData(["document"], document);
     },
 
     onError: (error: AxiosError<LoginErrorResponse>) => {

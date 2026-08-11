@@ -16,11 +16,6 @@ export default function Home() {
     function handleSubmit(event: FormEvent<HTMLFormElement>) {
         event.preventDefault();
 
-        console.log("Form submitted", {
-            userName,
-            hasPassword: passWord.length > 0,
-        });
-
         loginMutation.mutate({
             userName,
             passWord,

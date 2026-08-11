@@ -28,12 +28,17 @@ import Link from "next/link";
 import Signature from "@/public/example_sign.png"
 import { toast } from "react-toastify";
 import Loading from "@/app/component/loading";
+import { approveMutation } from "@/hooks/approve-document";
+import { useCreateDocument } from "@/hooks/create-document";
+import { useGetDocuments } from "@/hooks/set-document";
 
 type FormSubmission = {
     document_no: string;
     schema_id: string;
     answers: string;
     snapshot: string;
+    due_date: string;
+    iso_document?: string;
 };
 
 const dataFromBackend = {
@@ -127,65 +132,65 @@ const fields = data_fields.map((field) => {
 
 
 const getDataFromBackend = {
-  id: "5a62fcb3-4b47-40af-bd08-f982557f9ab0",
-  documentNo: "DOC-IT-001",
-  formSchemaId: "e63726b1-0d3b-4006-a34f-8b10509236f1",
-  createdById: "bada0b01-9f79-494b-a7a9-ac0897f22924",
-  status: "WAITING_APPROVAL",
-  currentRevisionId: "6d5c341e-e02a-4dbc-be0f-16a2a48ccf60",
-  createdAt: "2026-08-05T09:57:49.869Z",
-  updatedAt: "2026-08-05T09:57:49.895Z",
-  currentRevision: {
-    id: "6d5c341e-e02a-4dbc-be0f-16a2a48ccf60",
-    documentId: "5a62fcb3-4b47-40af-bd08-f982557f9ab0",
-    revisionNo: 1,
-    snapshot: "[{\"id\":\"f4394492-22bd-4125-a3fb-d024a1c6f687\",\"type\":\"employee_detail\",\"label\":\"ข้อมูลพนักงาน\",\"placeholder\":\"\",\"required\":true,\"helpText\":\"\",\"width\":\"full\"},{\"id\":\"db5189c2-82de-46f4-832d-883bf8e705fd\",\"type\":\"text\",\"label\":\"สาเหตุ\",\"placeholder\":\"\",\"required\":true,\"helpText\":\"\",\"width\":\"full\"},{\"id\":\"ebaf5e7a-fb1f-42b1-9cee-a9e682424924\",\"type\":\"table\",\"label\":\"รายการทรัพย์สิน\",\"placeholder\":\"\",\"required\":true,\"helpText\":\"\",\"width\":\"full\",\"minRows\":1,\"maxRows\":20,\"columns\":[{\"id\":\"col-1\",\"label\":\"รหัสทรัพย์สิน\",\"type\":\"text\",\"width\":1},{\"id\":\"col-2\",\"label\":\"รายการ\",\"type\":\"text\",\"width\":2},{\"id\":\"col-3\",\"label\":\"จำนวน\",\"type\":\"number\",\"width\":1},{\"id\":\"col-4\",\"label\":\"หน่วย\",\"type\":\"text\",\"width\":1},{\"id\":\"col-11\",\"label\":\"สถานที่จัดเก็บทรัพย์สิน\",\"type\":\"text\",\"width\":2}]}]",
-    formData: "{\"f4394492-22bd-4125-a3fb-d024a1c6f687\":{\"employee_code\":\"2169089\",\"position\":\"เจ้าหน้าที่พัฒนาซอฟต์แวร์\",\"division\":\"เทคโนโลยีสารสนเทศ\",\"department\":\"พัฒนาเทคโนโลยีโซลูชั่น\",\"first_name\":\"Mock Name 13\",\"last_name\":\"Mock Surname 13\",\"company\":\"cff\"},\"db5189c2-82de-46f4-832d-883bf8e705fd\":\"เริ่มงานใหม่\",\"ebaf5e7a-fb1f-42b1-9cee-a9e682424924\":[{\"col-1\":\"WF-2130-3131\",\"col-2\":\"โน๊ตบุ๊ค\",\"col-3\":\"1\",\"col-4\":\"เครื่อง\",\"col-11\":\"บางบอนชั้น 2\"}]}",
-    submittedById: "bada0b01-9f79-494b-a7a9-ac0897f22924",
-    submittedAt: "2026-08-05T09:57:49.875Z",
-    createdAt: "2026-08-05T09:57:49.875Z"
-  },
-  createdBy: {
-    id: "bada0b01-9f79-494b-a7a9-ac0897f22924",
-    entra_id: null,
-    employee_code: "2169089",
-    title: "MR",
-    firstName: "นครินทร์",
-    lastName: "โสดา",
-    firstNameEn: null,
-    lastNameEn: null,
-    email: null,
-    role: "ADMIN",
-    status: true,
-    createdAt: "2026-07-27T08:16:31.056Z",
-    updatedAt: "2026-07-27T08:16:31.056Z",
-    companyId: "ad3104d0-1a15-4a1c-9300-b42d79fc7994",
-    positionId: "e141fdf0-625a-43dc-8f77-a2f35772379c",
-    users: [
-      {
-        id: "1cd97403-f174-4404-9ea3-9e0eb980b941",
-        userName: "admin",
-        userInfoId: "bada0b01-9f79-494b-a7a9-ac0897f22924",
-        userInfo: {
-          id: "bada0b01-9f79-494b-a7a9-ac0897f22924",
-          entra_id: null,
-          employee_code: "2169089",
-          title: "MR",
-          firstName: "นครินทร์",
-          lastName: "โสดา",
-          firstNameEn: null,
-          lastNameEn: null,
-          email: null,
-          role: "ADMIN",
-          status: true,
-          createdAt: "2026-07-27T08:16:31.056Z",
-          updatedAt: "2026-07-27T08:16:31.056Z",
-          companyId: "ad3104d0-1a15-4a1c-9300-b42d79fc7994",
-          positionId: "e141fdf0-625a-43dc-8f77-a2f35772379c"
-        }
-      }
-    ]
-  }
+    id: "5a62fcb3-4b47-40af-bd08-f982557f9ab0",
+    documentNo: "DOC-IT-001",
+    formSchemaId: "e63726b1-0d3b-4006-a34f-8b10509236f1",
+    createdById: "bada0b01-9f79-494b-a7a9-ac0897f22924",
+    status: "WAITING_APPROVAL",
+    currentRevisionId: "6d5c341e-e02a-4dbc-be0f-16a2a48ccf60",
+    createdAt: "2026-08-05T09:57:49.869Z",
+    updatedAt: "2026-08-05T09:57:49.895Z",
+    currentRevision: {
+        id: "6d5c341e-e02a-4dbc-be0f-16a2a48ccf60",
+        documentId: "5a62fcb3-4b47-40af-bd08-f982557f9ab0",
+        revisionNo: 1,
+        snapshot: "[{\"id\":\"f4394492-22bd-4125-a3fb-d024a1c6f687\",\"type\":\"employee_detail\",\"label\":\"ข้อมูลพนักงาน\",\"placeholder\":\"\",\"required\":true,\"helpText\":\"\",\"width\":\"full\"},{\"id\":\"db5189c2-82de-46f4-832d-883bf8e705fd\",\"type\":\"text\",\"label\":\"สาเหตุ\",\"placeholder\":\"\",\"required\":true,\"helpText\":\"\",\"width\":\"full\"},{\"id\":\"ebaf5e7a-fb1f-42b1-9cee-a9e682424924\",\"type\":\"table\",\"label\":\"รายการทรัพย์สิน\",\"placeholder\":\"\",\"required\":true,\"helpText\":\"\",\"width\":\"full\",\"minRows\":1,\"maxRows\":20,\"columns\":[{\"id\":\"col-1\",\"label\":\"รหัสทรัพย์สิน\",\"type\":\"text\",\"width\":1},{\"id\":\"col-2\",\"label\":\"รายการ\",\"type\":\"text\",\"width\":2},{\"id\":\"col-3\",\"label\":\"จำนวน\",\"type\":\"number\",\"width\":1},{\"id\":\"col-4\",\"label\":\"หน่วย\",\"type\":\"text\",\"width\":1},{\"id\":\"col-11\",\"label\":\"สถานที่จัดเก็บทรัพย์สิน\",\"type\":\"text\",\"width\":2}]}]",
+        formData: "{\"f4394492-22bd-4125-a3fb-d024a1c6f687\":{\"employee_code\":\"2169089\",\"position\":\"เจ้าหน้าที่พัฒนาซอฟต์แวร์\",\"division\":\"เทคโนโลยีสารสนเทศ\",\"department\":\"พัฒนาเทคโนโลยีโซลูชั่น\",\"first_name\":\"Mock Name 13\",\"last_name\":\"Mock Surname 13\",\"company\":\"cff\"},\"db5189c2-82de-46f4-832d-883bf8e705fd\":\"เริ่มงานใหม่\",\"ebaf5e7a-fb1f-42b1-9cee-a9e682424924\":[{\"col-1\":\"WF-2130-3131\",\"col-2\":\"โน๊ตบุ๊ค\",\"col-3\":\"1\",\"col-4\":\"เครื่อง\",\"col-11\":\"บางบอนชั้น 2\"}]}",
+        submittedById: "bada0b01-9f79-494b-a7a9-ac0897f22924",
+        submittedAt: "2026-08-05T09:57:49.875Z",
+        createdAt: "2026-08-05T09:57:49.875Z"
+    },
+    createdBy: {
+        id: "bada0b01-9f79-494b-a7a9-ac0897f22924",
+        entra_id: null,
+        employee_code: "2169089",
+        title: "MR",
+        firstName: "นครินทร์",
+        lastName: "โสดา",
+        firstNameEn: null,
+        lastNameEn: null,
+        email: null,
+        role: "ADMIN",
+        status: true,
+        createdAt: "2026-07-27T08:16:31.056Z",
+        updatedAt: "2026-07-27T08:16:31.056Z",
+        companyId: "ad3104d0-1a15-4a1c-9300-b42d79fc7994",
+        positionId: "e141fdf0-625a-43dc-8f77-a2f35772379c",
+        users: [
+            {
+                id: "1cd97403-f174-4404-9ea3-9e0eb980b941",
+                userName: "admin",
+                userInfoId: "bada0b01-9f79-494b-a7a9-ac0897f22924",
+                userInfo: {
+                    id: "bada0b01-9f79-494b-a7a9-ac0897f22924",
+                    entra_id: null,
+                    employee_code: "2169089",
+                    title: "MR",
+                    firstName: "นครินทร์",
+                    lastName: "โสดา",
+                    firstNameEn: null,
+                    lastNameEn: null,
+                    email: null,
+                    role: "ADMIN",
+                    status: true,
+                    createdAt: "2026-07-27T08:16:31.056Z",
+                    updatedAt: "2026-07-27T08:16:31.056Z",
+                    companyId: "ad3104d0-1a15-4a1c-9300-b42d79fc7994",
+                    positionId: "e141fdf0-625a-43dc-8f77-a2f35772379c"
+                }
+            }
+        ]
+    }
 }
 const { currentRevision } = getDataFromBackend;
 const fieldsFromBackend = JSON.parse(currentRevision.snapshot);
@@ -241,26 +246,47 @@ function FormPageContent() {
     } = form;
 
     const onSubmit = (data: Record<string, any>) => {
+        const approveMutate = approveMutation();
         const { employee_field } = data;
 
-        const employeeField = fields.find(
-            (field) => field.type === "employee_detail" // or "employee_field"
-        );
+        if (doc_mode === "approve") {
+            approveMutate.mutate({
+                document_code: dataFromBackend.code,
+                decision: "APPROVE",
+                comment: ""
+            });
 
-        if (employeeField && employee_field) {
-            data[employeeField.id] = data.employee_field;
-            delete data.employee_field;
+            if (approveMutate.isSuccess) {
+                toast.success("อนุมัติเอกสารสำเร็จ");
+                router.push("/approve");
+            }
+        } else if (doc_mode === "create") {
+            const createDocumentMutation = useCreateDocument();
+
+            const employeeField = fields.find(
+                (field) => field.type === "employee_detail" // or "employee_field"
+            );
+
+            if (employeeField && employee_field) {
+                data[employeeField.id] = data.employee_field;
+                delete data.employee_field;
+            }
+            const JSONfields = JSON.stringify(fields);
+            const JSONdata = JSON.stringify(data);
+            const payload: FormSubmission = {
+                document_no: dataFromBackend.code,
+                schema_id: dataFromBackend.id,
+                answers: JSONdata,
+                snapshot: JSONfields,
+                due_date: date ? date.toISOString() : "",
+                iso_document: "", // Add this line to include the iso_document field
+            };
+
+            createDocumentMutation.mutate(payload);
+
+            console.log(payload)
         }
-        const JSONfields = JSON.stringify(fields);
-        const JSONdata = JSON.stringify(data);
-        const payload: FormSubmission = {
-            document_no: dataFromBackend.code,
-            schema_id: dataFromBackend.id,
-            answers: JSONdata,
-            snapshot: JSONfields
-        };
 
-        console.log(payload)
     };
 
     const handleRemoveApprover = (index: number) => {
