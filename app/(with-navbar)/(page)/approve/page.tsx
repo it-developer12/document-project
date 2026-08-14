@@ -24,6 +24,7 @@ export default function Page() {
         updated: string;
         end_date: string;
         type: string;
+        schema_id: string;
     }
     interface TableState {
         status: boolean;
@@ -45,7 +46,7 @@ export default function Page() {
     ]
 
     const docs = useDocumentStore((state) => state.approveDocuments);
-
+    // console.log(docs)
     const DOCUMENT: TableDoc[] = docs.map((doc) => ({
         id: doc.documentNo,
         title: doc.formSchema.name,
@@ -57,7 +58,8 @@ export default function Page() {
         created: doc.createdAt,
         end_date: doc.dueDate,
         updated: doc.activities[0].createdAt,
-        type: doc.workflowInstance.workflowDefinition.versions[0].workflowStep[0].type
+        type: doc.workflowInstance.workflowDefinition.versions[0].workflowStep[0].type,
+        schema_id: doc.formSchema.code
     }))
 
     const [DocumentTable, setDocumentTable] = useState<TableState>({

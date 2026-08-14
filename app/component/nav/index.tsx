@@ -3,10 +3,8 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Icon } from '@iconify/react';
-import { useAuthStore } from "@/store/auth.store";
-import { useNavData } from "@/hooks/nav-data";
-import { LogoutButton } from "../LogoutButton";
 import UserNav from "./UserNav";
+import { useDocumentStore } from "@/store/document.store";
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: "material-symbols:dashboard-outline-rounded" },
@@ -20,10 +18,8 @@ const navItems = [
 
 export default function Nav() {
   const pathname = usePathname() || "/";
-  const { data, isLoading, isError } = useNavData();
-
-  const approveCount = data?.approve ?? 2;
-  const processCount = data?.process ?? 2;
+  const approve = useDocumentStore((state) => state.approveDocuments)
+  const process = useDocumentStore((state) => state.processDocuments)
 
   return (
     <div className="bg-[#1b1b1b] border-r border-slate-200 shadow-sm md:min-w-1/5  md:w-1/5 sticky top-0 h-screen hidden lg:block">
@@ -38,7 +34,7 @@ export default function Nav() {
           <div className="flex flex-col gap-2">
             {navItems.map((item) => {
               const isActive = "/" + pathname.split('/')[1] === item.href;
-              const count = item.href === "/approve" ? approveCount : item.href === "/process" ? processCount : 0;
+              const count = item.href === "/approve" ? approve.length : item.href === "/process" ? process.length : 0;
               const showCountBadge = !isActive && (item.href === "/approve" || item.href === "/process") && count > 0;
 
               return (

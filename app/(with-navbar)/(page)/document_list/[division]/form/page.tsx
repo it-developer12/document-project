@@ -18,7 +18,7 @@ import {
     CardHeader,
     CardTitle,
 } from "@/components/ui/card"
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import Select from 'react-select'
 import { useRouter, useSearchParams } from "next/navigation";
 import FormDetail from "@/SampleData/form_detail.json"
@@ -35,7 +35,6 @@ import { useFormSchema } from "@/hooks/form-list";
 import { useDocumentDetail } from "@/hooks/document-list";
 
 type FormSubmission = {
-    document_no: string;
     schema_id: string;
     answers: string;
     snapshot: string;
@@ -44,6 +43,18 @@ type FormSubmission = {
 };
 
 function FormPageContent() {
+    const form = useForm({
+        defaultValues: {},
+    });
+
+    const {
+        register,
+        control,
+        handleSubmit,
+        setValue,
+        getValues,
+        formState: { errors },
+    } = form;
     const useParams = useSearchParams();
     const schema_id = useParams.get('schema_id');
     const doc_id = useParams.get('doc_id');
@@ -62,9 +73,87 @@ function FormPageContent() {
 
     const { data, isLoading, error } = useFormSchema(schema_id || "");
     const { data: dataFromBackend } = useDocumentDetail(doc_id || "");
+    const approveMutate = approveMutation();
+    const createDocumentMutation = useCreateDocument();
+
+    const data_fields = useMemo(
+        () =>
+            data?.schemaVersion?.[0]?.fields?.map((item: any) => ({
+                id: item.fields.id,
+                type: item.fields.type,
+                label: item.fields.label,
+                placeholder: "",
+                required: item.required,
+                helpText: item.fields.helpText,
+                width: item.width,
+                option: typeof item.fields.option === "string"
+                    ? JSON.parse(item.fields.option)
+                    : item.fields.option
+            })) ?? [],
+        [data]
+    );
+
+    const fields = useMemo(
+        () =>
+            data_fields.map((field: any) => {
+                if (field.option) {
+                    const { option, ...rest } = field;
+                    return { ...rest, ...(option ?? {}) };
+                }
+                return field;
+            }),
+        [data_fields]
+    );
+
+    useEffect(() => {
+        if (!fields.length) return;
+
+        const values =
+            fields.map((field: any) => field.id).reduce(
+                (acc: any, id: any) => {
+                    acc[id] = "";
+                    return acc;
+                },
+                {} as Record<string, any>
+            ) ?? {};
+        
+        form.reset(values);
+
+        const isDocumentMode = doc_mode === "edit" || doc_mode === "view" || doc_mode === "approve";
+        if (!isDocumentMode || !doc_id || !dataFromBackend?.currentRevision) {
+            return;
+        }
+
+        const { currentRevision } = dataFromBackend;
+        const fieldsFromBackend = JSON.parse(currentRevision.snapshot);
+        const answersFromBackend = JSON.parse(currentRevision.formData);
+
+        const employeeField = fields.find(
+            (field: any) => field.type === "employee_detail"
+        );
+
+        const result = { ...answersFromBackend };
+
+        if (employeeField && employeeField.id in result) {
+            result.employee_field = result[employeeField.id];
+            delete result[employeeField.id];
+        }
+
+        const dataDeJSON = {
+            fields: fieldsFromBackend,
+            answers: result,
+        };
+
+        form.reset(dataDeJSON.answers);
+    }, [doc_id, doc_mode, dataFromBackend, fields, form]);
 
     if (isLoading) {
         return <Loading />
+    }
+
+    if(doc_mode === "create" && doc_id) {
+        router.push('dashboard')
+        toast.error('')
     }
 
     if (error) {
@@ -73,49 +162,17 @@ function FormPageContent() {
         return null;
     }
 
-    const data_fields = data.schemaVersion[0].fields.map((item: any) => ({
-        id: item.fields.id,
-        type: item.fields.type,
-        label: item.fields.label,
-        placeholder: "",
-        required: item.required,
-        helpText: item.fields.helpText,
-        width: item.width,
-        option: typeof item.fields.option === "string"
-            ? JSON.parse(item.fields.option)
-            : item.fields.option
-    }));
-
-    const fields = data_fields.map((field: any) => {
-        if (field.option) {
-            const { option, ...rest } = field;
-            return { ...rest, ...(option ?? {}) };
-        }
-        return field;
-    });
-
-
-
-    const form = useForm({
-        defaultValues: {},
-    });
-
-    const {
-        register,
-        control,
-        handleSubmit,
-        setValue,
-        getValues,
-        formState: { errors },
-    } = form;
-
-    const onSubmit = (data: Record<string, any>) => {
-        const approveMutate = approveMutation();
-        const { employee_field } = data;
+    const onSubmit = (formdata: Record<string, any>) => {
+        const { employee_field } = formdata;
 
         if (doc_mode === "approve") {
+            if (!dataFromBackend) {
+                toast.error("ข้อมูลเอกสารยังไม่พร้อม");
+                return;
+            }
+
             approveMutate.mutate({
-                document_code: dataFromBackend.code,
+                document_code: dataFromBackend.documentNo,
                 decision: "APPROVE",
                 comment: ""
             });
@@ -125,21 +182,18 @@ function FormPageContent() {
                 router.push("/approve");
             }
         } else if (doc_mode === "create") {
-            const createDocumentMutation = useCreateDocument();
-
             const employeeField = fields.find(
                 (field: any) => field.type === "employee_detail" // or "employee_field"
             );
 
             if (employeeField && employee_field) {
-                data[employeeField.id] = data.employee_field;
-                delete data.employee_field;
+                formdata[employeeField.id] = formdata.employee_field;
+                delete formdata.employee_field;
             }
             const JSONfields = JSON.stringify(fields);
-            const JSONdata = JSON.stringify(data);
+            const JSONdata = JSON.stringify(formdata);
             const payload: FormSubmission = {
-                document_no: dataFromBackend.code,
-                schema_id: dataFromBackend.id,
+                schema_id: data.id,
                 answers: JSONdata,
                 snapshot: JSONfields,
                 due_date: date ? date.toISOString() : "",
@@ -149,6 +203,7 @@ function FormPageContent() {
             createDocumentMutation.mutate(payload);
 
             console.log(payload)
+            toast.success("สร้างเอกสารสำเร็จ")
         }
 
     };
@@ -178,42 +233,6 @@ function FormPageContent() {
     const formApprover = FormDetail.find((form: any) => form.document_id === doc_id)?.approval.steps
     const isApproved = formApprover?.filter((step: any) => step.status === "approved") ?? []
 
-    useEffect(() => {
-        const values =
-            fields.map((field: any) => field.id).reduce(
-                (acc:any, id:any) => {
-                    acc[id] = "";
-                    return acc;
-                },
-                {} as Record<string, any>
-            ) ?? {};
-        form.reset(values);
-
-        if ((doc_mode == "edit" || doc_mode == "view" || doc_mode == "approve") && doc_id) {
-            const { currentRevision } = dataFromBackend;
-            const fieldsFromBackend = JSON.parse(currentRevision.snapshot);
-            const answersFromBackend = JSON.parse(currentRevision.formData);
-
-            const employeeField = fields.find(
-                (field: any) => field.type === "employee_detail"
-            );
-
-            const result = { ...answersFromBackend };
-
-            if (employeeField && employeeField.id in result) {
-                result.employee_field = result[employeeField.id];
-                delete result[employeeField.id];
-            }
-
-            const dataDeJSON = {
-                fields: fieldsFromBackend,
-                answers: result,
-            }
-
-            form.reset(dataDeJSON.answers);
-        }
-    }, [doc_id, form]);
-
     return (
         <form onSubmit={handleSubmit(onSubmit)} className="bg-slate-50 min-h-screen h-full w-full p-6">
             {doc_mode == "view" || doc_mode == "approve" && (
@@ -231,7 +250,7 @@ function FormPageContent() {
             )}
             <div className="bg-white border rounded-xl px-5 py-4 shadow w-full" style={{ scrollbarWidth: "none" }}>
                 <div className="text-2xl font-bold">
-                    <span>{dataFromBackend.name}</span>
+                    <span>{data?.name}</span>
                 </div>
                 <div className="mt-4">
                     <div className="">
@@ -272,7 +291,7 @@ function FormPageContent() {
                             </PopoverContent>
                         </Popover>
                     </div>
-                    {dataFromBackend.approvalSource != "TEMPLATE" ? approver.map((app, index) => (
+                    {data.approvalSource != "TEMPLATE" ? approver.map((app, index) => (
                         <div
                             key={index}
                             className={`flex items-center mt-2 gap-2`}
@@ -368,10 +387,7 @@ function FormPageContent() {
                         <div className="flex gap-4 justify-end">
                             <button className="text-white bg-black px-4 py-2 rounded-md hover:cursor-pointer" onClick={() => changePage("/reject")}>{"ตีกลับ"}</button>
                             <button className="text-white bg-red-500 px-4 py-2 rounded-md hover:cursor-pointer" onClick={() => changePage("/reject")}>{"ยกเลิก"}</button>
-                            <button className="text-white bg-[#4A4DF1] px-4 py-2 rounded-md hover:cursor-pointer" onClick={() => {
-                                toast.success("อนุมัติเอกสารสำเร็จ")
-                                changePage("/dashboard")
-                            }}>{"อนุญาติ"}</button>
+                            <button className="text-white bg-[#4A4DF1] px-4 py-2 rounded-md hover:cursor-pointer" type="submit">{"อนุญาติ"}</button>
                         </div>
                     </div>) :
                     (<div></div>)

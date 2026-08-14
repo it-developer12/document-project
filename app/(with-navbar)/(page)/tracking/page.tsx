@@ -25,25 +25,22 @@ import { PriorityBadge } from "@/app/component/PriorityBadge";
 import { DocumentTracking, DocumentTrackingRecord, Workflow, WorkflowActivity } from "./tracking";
 import dayjs from "dayjs";
 import { differenceInDays } from "date-fns";
+import { useGetTracking } from '@/hooks/set-tracking';
+import { useTrackingStore } from '@/store/tracking.store';
+import utc from 'dayjs/plugin/utc';
+import timezone from 'dayjs/plugin/timezone'
+
+dayjs.extend(utc);
+dayjs.extend(timezone);
 
 export default function Page() {
+    useGetTracking();
+    const lastestDoc = useTrackingStore((state) => state.LastestDocument)
     const steps = [
         { title: "Created", description: "สร้างเอกสาร", value: "created" },
         { title: "Approve", description: "ตรวจสอบและอนุญาติ", value: "approve" },
         { title: "Processing", description: "ดำเนินการ", value: "processing" },
         { title: "Complete", description: "ตรวจสอบและจัดเก็บ", value: "complete" },
-    ]
-    const last = [
-        { document_id: "DOC-IT-001", title: "DOC_A", owner: "Jame", updated_at: "2024-12-30" },
-        { document_id: "DOC-IT-002", title: "DOC_B", owner: "Marcus", updated_at: "2024-12-30" },
-        { document_id: "DOC-IT-003", title: "DOC_A", owner: "Susan", updated_at: "2024-12-30" },
-        { document_id: "DOC-IT-004", title: "DOC_C", owner: "Finn", updated_at: "2024-12-30" },
-        { document_id: "DOC-IT-005", title: "DOC_B", owner: "Marry", updated_at: "2024-12-30" },
-        { document_id: "DOC-IT-006", title: "DOC_A", owner: "Diana", updated_at: "2024-12-30" },
-        { document_id: "DOC-IT-007", title: "DOC_B", owner: "Annie", updated_at: "2024-12-30" },
-        { document_id: "DOC-IT-008", title: "DOC_C", owner: "Brian", updated_at: "2024-12-30" },
-        { document_id: "DOC-IT-009", title: "DOC_C", owner: "Frank", updated_at: "2024-12-30" },
-        { document_id: "DOC-IT-010", title: "DOC_A", owner: "Gorge", updated_at: "2024-12-30" },
     ]
 
     const [searchState, SetSearchState] = useState("");
@@ -154,10 +151,10 @@ export default function Page() {
     };
 
     function search(keyword: string) {
-        const filtered = last.filter(doc =>
-            doc.document_id.toLowerCase().includes(keyword.toLowerCase())
-        );
-        setSearchDoc(filtered)
+        // const filtered = last.filter(doc =>
+        //     doc.document_id.toLowerCase().includes(keyword.toLowerCase())
+        // );
+        // setSearchDoc(filtered)
     }
 
     function findDoc(documentId: string = searchState) {
@@ -500,29 +497,29 @@ export default function Page() {
                     <span>{"เอกสารที่แก้ไขล่าสุด"}</span>
                 </div>
                 <div className="mt-2 grid grid-cols-3 gap-4">
-                    {last.map((item, index) => (
+                    {lastestDoc.map((item, index) => (
                         <button
                             key={index}
                             className="flex justify-between min-w-1/4 p-2 px-4 text-sm bg-[#ebebeb] rounded-xl shadow border hover:cursor-pointer hover:bg-[#f0f0f0]"
                             onClick={() => {
-                                SetSearchState(item.document_id)
-                                findDoc(item.document_id)
+                                SetSearchState(item.document.documentNo)
+                                findDoc(item.document.documentNo)
                             }}
                         >
                             <div className="flex flex-col items-start w-[60%]">
                                 <div>
-                                    <span>{item.document_id}</span>
+                                    <span>{item.document.documentNo}</span>
                                 </div>
                                 <div className="text-nowrap overflow-x-hidden scrollbar-none">
-                                    <span>{item.title}</span>
+                                    <span>{item.document.formSchema.name}</span>
                                 </div>
                             </div>
                             <div className="flex flex-col items-end w-[40%]">
                                 <div>
-                                    <span>{"ผู้สร้าง "}{item.owner}</span>
+                                    <span>{"ผู้สร้าง "}{item.document.createdBy.firstName}</span>
                                 </div>
                                 <div>
-                                    <span>{"แก้ไขล่าสุด "}{item.updated_at}</span>
+                                    <span>{"แก้ไขล่าสุด "}{dayjs.utc(item.createdAt).tz("Asia/Bangkok").format("DD-MM-YYYY")}</span>
                                 </div>
                             </div>
                         </button>

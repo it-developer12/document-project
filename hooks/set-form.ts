@@ -16,11 +16,11 @@ export function useGetForms() {
     const setForms = useFormStore((state) => state.setForms);
 
     return useMutation({
-        mutationFn: () => getAllForm(),
+        mutationFn: getAllForm,
 
-        onSuccess: async () => {
-            setForms(await getAllForm());
-            queryClient.setQueryData(["form"], await getAllForm());
+        onSuccess: (forms) => {
+            setForms(forms);
+            queryClient.setQueryData(["form"], forms);
         },
 
         onError: (error: AxiosError<ErrorResponse>) => {

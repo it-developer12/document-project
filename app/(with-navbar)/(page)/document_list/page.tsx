@@ -12,7 +12,7 @@ export default function Page() {
 
     useEffect(() => {
         formMutation.mutate();
-    }, [forms]);
+    }, []);
     return (
         <div className="bg-slate-50 min-h-screen h-full w-full p-6">
             <div className="flex justify-center mt-10">

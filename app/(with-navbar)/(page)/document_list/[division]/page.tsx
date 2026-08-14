@@ -4,20 +4,22 @@ import Link from "next/link";
 import { useFormStore } from "@/store/form.store";
 import { useEffect } from "react";
 import { useGetForms } from "@/hooks/set-form";
+import { useParams } from "next/navigation";
 
-export default function Page({ params }: { params: { division: string } }) {
-    const { division } = params;
+export default function Page() {
+    const params = useParams<{ division: string }>();
+    const division = params?.division;
     const formMutation = useGetForms();
     const forms = useFormStore((state) => state.forms);
     const currentDivision = forms.find((item) => item.division_code === division);
 
 
     useEffect(() => {
-        if(forms.length === 0) {
+        if (forms.length === 0) {
             // Fetch forms if not already fetched
             formMutation.mutate();
         }
-    }, [forms]);
+    }, [division]);
     return (
         <div className="bg-slate-50 min-h-screen h-full w-full p-6">
             <div className='flex items-center gap-4'>

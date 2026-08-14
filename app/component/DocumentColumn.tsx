@@ -4,7 +4,6 @@ import { ColumnDef } from "@tanstack/react-table"
 import { StatusBadge } from "./StatusBadge"
 import { SquarePen } from "lucide-react"
 import Link from "next/link"
-import FormDetail from "@/SampleData/form_detail.json"
 import { PriorityBadge } from "./PriorityBadge"
 import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
@@ -27,13 +26,10 @@ export type DocumentColumn = {
   updated: string
   end_date: string
   type: string;
+  schema_id: string;
 }
 type Priority = "low" | "medium" | "high"
 type Status = "WAITING_APPROVAL" | "PROCESSING" | "REJECTED" | "CANCELLED" | "COMPLETED";
-
-const SCHEMA_ID_BY_DOCUMENT_ID = new Map(
-  FormDetail.map((form: any) => [form.document_id, form.schema_id]),
-)
 
 const COMPANY_LABELS: Record<string, string> = {
   ctx: "Ctx holding",
@@ -46,9 +42,8 @@ export const columns: ColumnDef<DocumentColumn>[] = [
     accessorKey: "id",
     header: "Document ID",
     cell: ({ row }) => {
-      const schema_id = SCHEMA_ID_BY_DOCUMENT_ID.get(row.original.id)
       return (
-        <Link href={`/document_list/it/form?schema_id=${schema_id}&doc_id=${row.original.id}&mode=view`}>
+        <Link href={`/document_list/it/form?schema_id=${row.original.schema_id}&doc_id=${row.original.id}&mode=view`}>
           <span style={{ color: "#4A4DF1" }}>{row.original.id}</span>
         </Link>
       )
@@ -106,14 +101,13 @@ export const columns: ColumnDef<DocumentColumn>[] = [
     header: "",
     enableSorting: false,
     cell: ({ row }) => {
-      const schema_id = SCHEMA_ID_BY_DOCUMENT_ID.get(row.original.id)
       return (
         <div className="flex gap-2 items-center">
           {/* <Link href={`/document_list/it/form?schema_id=${schema_id}&doc_id=${row.original.id}&mode=view`}>
             <Eye />
           </Link> */}
           {row.original.status === "REJECTED" && (
-            <Link href={`/document_list/it/form?schema_id=${schema_id}&doc_id=${row.original.id}&mode=edit`}>
+            <Link href={`/document_list/it/form?schema_id=${row.original.schema_id}&doc_id=${row.original.id}&mode=edit`}>
               <SquarePen />
             </Link>
           )}

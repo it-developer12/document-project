@@ -2,23 +2,30 @@
 
 import { ColumnDef } from "@tanstack/react-table"
 import { StatusBadge } from "./StatusBadge"
-import { Bold, Eye, SquarePen } from "lucide-react"
 import Link from "next/link"
 import FormDetail from "@/SampleData/form_detail.json"
 import { PriorityBadge } from "./PriorityBadge"
+import dayjs from 'dayjs';
+import utc from 'dayjs/plugin/utc';
+import timezone from 'dayjs/plugin/timezone'
+
+dayjs.extend(utc);
+dayjs.extend(timezone);
 
 // This type is used to define the shape of our data.
 // You can use a Zod schema here if you want.
 export type DocumentColumn = {
-    id: string
-    title: string
+    id: string;
+    title: string;
     priority: "low" | "medium" | "high"
-    company: string
-    owner: string
-    department: string
+    company: string;
+    owner: string;
+    department: string;
     status: "WAITING_APPROVAL" | "PROCESSING" | "REJECTED" | "CANCELLED" | "COMPLETED";
-    created: string
-    updated: string
+    created: string;
+    updated: string;
+    end_date: string
+    schema_id: string;
 }
 type Priority = "low" | "medium" | "high"
 type Status = "WAITING_APPROVAL" | "PROCESSING" | "REJECTED" | "CANCELLED" | "COMPLETED";
@@ -28,9 +35,8 @@ export const columns: ColumnDef<DocumentColumn>[] = [
         accessorKey: "id",
         header: "Document ID",
         cell: ({ row }) => {
-            const schema_id = FormDetail.find((form: any) => form.document_id === row.original.id)?.schema_id
             return (
-                <Link href={`/document_list/it/form?schema_id=${schema_id}&doc_id=${row.original.id}&mode=approve`}>
+                <Link href={`/document_list/it/form?schema_id=${row.original.schema_id}&doc_id=${row.original.id}&mode=approve`}>
                     <span style={{ color: "#4A4DF1" }}>{row.original.id}</span>
                 </Link>
             )
@@ -85,10 +91,22 @@ export const columns: ColumnDef<DocumentColumn>[] = [
     {
         accessorKey: "updated",
         header: "Last Updated",
+        cell: ({ row }) => {
+            const stringDate = dayjs.utc(row.original.updated).tz("Asia/Bangkok").format("DD-MM-YYYY")
+            return (
+                <span>{stringDate}</span>
+            )
+        }
     },
     {
         accessorKey: "end_date",
-        header: "วันที่สิ้นสุดเอกสาร"
+        header: "วันที่สิ้นสุดเอกสาร",
+        cell: ({ row }) => {
+            const stringDate = dayjs.utc(row.original.end_date).tz("Asia/Bangkok").format("DD-MM-YYYY")
+            return (
+                <span>{stringDate}</span>
+            )
+        }
     },
     {
         accessorKey: "view_or_edit",

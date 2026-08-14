@@ -37,6 +37,7 @@ type TableDoc = {
     updated: string;
     end_date: string;
     type: string;
+    schema_id: string;
 }
 
 interface TableState {
@@ -86,11 +87,9 @@ function filterDocuments(documents: TableDoc[], table: TableState) {
 }
 
 export default function Home() {
-    const docMutate = useGetDocuments();
+    useGetDocuments();
     const docs = useDocumentStore((state) => state.documents);
-
-
-
+    
     const DOCUMENT: TableDoc[] = docs.map((doc) => ({
         id: doc.documentNo,
         title: doc.formSchema.name,
@@ -102,7 +101,8 @@ export default function Home() {
         created: doc.createdAt,
         end_date: doc.dueDate,
         updated: doc.activities[0].createdAt,
-        type: doc.workflowInstance.workflowDefinition.versions[0].workflowStep[0].type
+        type: doc.workflowInstance.workflowDefinition.versions[0].workflowStep[0].type,
+        schema_id: doc.formSchema.code
     }))
 
     const TODOTABLE: TableDoc[] = DOCUMENT.filter((doc) => {
@@ -145,11 +145,6 @@ export default function Home() {
             status: true,
         }));
     }
-
-
-    useEffect(() => {
-        docMutate.mutate();
-    }, [docs]);
 
     return (
         <div className="bg-slate-50 min-h-screen h-full w-full p-6">

@@ -252,6 +252,7 @@ export function TableFieldPreview({ field, control, mode }: { field: FormField, 
                         {/* Add row */}
                         <button
                             onClick={addRow}
+                            type="button"
                             disabled={!!(field.maxRows && rows.length >= field.maxRows)}
                             className={`flex items-center gap-2 px-3 py-2 rounded-lg border border-dashed transition-all hover:bg-secondary disabled:opacity-40 ${mode === "view" ? "hidden" : ""}`}
                             style={{ borderColor: "var(--border)", color: "var(--muted-foreground)", fontSize: "0.78rem" }}

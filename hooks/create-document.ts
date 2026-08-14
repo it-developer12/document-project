@@ -10,9 +10,6 @@ export function useCreateDocument() {
       queryClient.invalidateQueries({
         queryKey: ["document"],
       });
-      queryClient.invalidateQueries({
-        queryKey: ["nav"],
-      });
     },
   });
 }
