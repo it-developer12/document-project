@@ -202,7 +202,8 @@ function FormPageContent() {
 
             createDocumentMutation.mutate(payload);
 
-            console.log(payload)
+            // console.log(payload)
+            router.push('/dashboard')
             toast.success("สร้างเอกสารสำเร็จ")
         }
 

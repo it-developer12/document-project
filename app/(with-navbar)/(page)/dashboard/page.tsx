@@ -36,7 +36,7 @@ type TableDoc = {
     created: string;
     updated: string;
     end_date: string;
-    type: string;
+    type: any[];
     schema_id: string;
 }
 
@@ -101,20 +101,21 @@ export default function Home() {
         created: doc.createdAt,
         end_date: doc.dueDate,
         updated: doc.activities[0].createdAt,
-        type: doc.workflowInstance.workflowDefinition.versions[0].workflowStep[0].type,
+        type: doc.workflowInstance.workflowDefinition.versions[0]?.workflowStep[0] ? [doc.workflowInstance.workflowDefinition.versions[0]?.workflowStep[0]] : [],
         schema_id: doc.formSchema.code
     }))
 
-    const TODOTABLE: TableDoc[] = DOCUMENT.filter((doc) => {
-        if (doc.type.length > 0) {
-            return doc
-        }
-    })
     const CREATETABLE: TableDoc[] = DOCUMENT.filter((doc) => {
         if (doc.type.length < 0) {
             return doc
         }
     })
+    const TODOTABLE: TableDoc[] = DOCUMENT.filter((doc) => {
+        if (doc.type.length > 0) {
+            return doc
+        }
+    })
+    
 
     const [todoTable, setTodoTable] = useState<TableState>(EMPTY_TABLE_STATE);
     const [createTable, setCreateTable] = useState<TableState>(EMPTY_TABLE_STATE);

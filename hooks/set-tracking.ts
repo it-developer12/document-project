@@ -21,7 +21,7 @@ export function useGetTracking() {
 
     useEffect(() => {
         if (query.data) {
-            setTrackingDoc(query.data)
+            setTrackingDoc(query.data);
         }
     }, [query.data, setTrackingDoc]);
 

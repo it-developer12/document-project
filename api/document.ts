@@ -58,3 +58,8 @@ export async function getLastestDocument() {
     const response = await api.get('/document/lastest_updated');
     return response.data
 }
+
+export async function getTrackingDocument(document_code: string) {
+    const response = await api.get(`/document/tracking/${document_code}`)
+    return response.data
+}

@@ -25,7 +25,7 @@ export type DocumentColumn = {
   created: string
   updated: string
   end_date: string
-  type: string;
+  type: any[];
   schema_id: string;
 }
 type Priority = "low" | "medium" | "high"

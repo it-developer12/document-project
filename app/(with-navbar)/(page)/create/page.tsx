@@ -31,6 +31,8 @@ import Select, { MultiValue } from 'react-select'
 import { FieldPreview } from "./PreviewRender";
 import { useRouter } from "next/navigation";
 import { toast } from "react-toastify";
+import { useCreateTemplate } from "@/hooks/create-template";
+import { CreateTemplatePayload } from "@/api/template";
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface PaletteItem {
     type: FieldType;
@@ -779,7 +781,7 @@ function PreviewModal({ fields, onClose }: { fields: FormField[]; onClose: () =>
 // ─── Main FormBuilder ─────────────────────────────────────────────────────────
 
 export default function Page() {
-
+    const template = useCreateTemplate();
     // Sample data
     // { ...makeField("text"), id: "f1", label: "Full Name", required: true, placeholder: "e.g. Sarah Chen" },
     // { ...makeField("email"), id: "f2", label: "Email Address", required: true, placeholder: "you@company.com" },
@@ -790,7 +792,7 @@ export default function Page() {
     ];
 
     const DEPARTMENT_OPTIONS = [
-        { label: "เทคโนโลยีสารสนเทศ", value: "9a34d702-6f51-4fbe-b887-6c89779e6fe9" },
+        { label: "เทคโนโลยีสารสนเทศ", value: "it" },
     ]
 
     interface EmployeeList {
@@ -836,16 +838,16 @@ export default function Page() {
     })
     const ApproverList: Options[] = [
         { value: "1157013", label: "Approver 1" },
+        { value: "2169088", label: "Approver 2" },
     ];
 
     const ProcessorList: ProcessorOptionType[] = [
-        { value: "2169088", label: "Processor 1", department: "9a34d702-6f51-4fbe-b887-6c89779e6fe9" },
-        { value: "1165055", label: "Processor 2", department: "9a34d702-6f51-4fbe-b887-6c89779e6fe9" },
+        { value: "2166061", label: "Processor 1", department: "it" },
+        { value: "1165055", label: "Processor 2", department: "it" },
     ]
 
     const FinisherList: Options[] = [
-        { value: "1165055", label: "Finisher 1" },
-        { value: "2169088", label: "Finisher 2" },
+        { value: "2162081", label: "Finisher 1" },
     ]
 
     const [formDetail, setFormDetail] = useState({
@@ -1220,69 +1222,20 @@ export default function Page() {
         const data = {
             form: {
                 name: formDetail.name,
-                code: formDetail.code,
                 divisionId: formDetail.department,
                 companyId: formDetail.company,
                 fields: newFields,
             },
             workflow: {
-                code: workflow.code,
-                name: workflow.name,
+                name: formDetail.name,
                 approver: approver,
                 processor: processor,
                 finisher: finisher
             }
         }
+
         console.log(data)
-        // console.log(processor)
-        // console.log(finisher)
-        // router.push('/dashboard')
-        // const number = getRandomInt(100000, 999999)
-        // const approval = {
-        //     type: "workflow",
-        //     current_level: 1,
-        //     steps: approver.map((item) => ({
-        //         level: item.level,
-        //         status: "waiting",
-        //         approvers: [
-        //             {
-        //                 employee_id: item.employee_id,
-        //                 name: item.label, // Replace with actual employee name if available
-        //                 status: "waiting",
-        //                 approved_at: null,
-        //                 comment: null,
-        //             },
-        //         ],
-        //     })),
-        // };
-        // const newForm = {
-        //     schema_id: formDetail.department + "_" + number.toString(),
-        //     name: formDetail.name,
-        //     department: formDetail.department,
-        //     company: formDetail.company,
-        //     version: "1",
-        //     approval: approval,
-        //     form_detail: fields
-        // };
-
-        // const response = await fetch("/api/form", {
-        //     method: "POST",
-        //     headers: {
-        //         "Content-Type": "application/json",
-        //     },
-        //     body: JSON.stringify({ newForm }),
-        // });
-
-        // if (!response.ok) {
-        //     const errorText = await response.text();
-        //     console.error("Failed to save form:", errorText);
-        //     toast.success("สร้างฟอร์มเอกสารสำเร็จ")
-        //     router.push("/dashboard")
-        //     return;
-        // }
-
-        // toast.success("สร้างฟอร์มเอกสารสำเร็จ")
-        // router.push("/dashboard")
+        template.mutate(data)
     }
 
     return (
@@ -1575,7 +1528,7 @@ export default function Page() {
 
                     return validApprovers.map((item, index) => ({
                         ...item,
-                        stepOrder: index + 1,
+                        level: index + 1,
                     }));
                 });
                 setModalStatus(prev => ({ ...prev, approve: false }))
