@@ -3,7 +3,6 @@
 import { ColumnDef } from "@tanstack/react-table"
 import { StatusBadge } from "./StatusBadge"
 import Link from "next/link"
-import FormDetail from "@/SampleData/form_detail.json"
 import { PriorityBadge } from "./PriorityBadge"
 import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
@@ -112,15 +111,13 @@ export const columns: ColumnDef<DocumentColumn>[] = [
         accessorKey: "view_or_edit",
         header: "ผู้ที่อนุมัติแล้ว",
         cell: ({ row }) => {
-            const formApprover = FormDetail.find((form: any) => form.document_id === row.original.id)?.approval.steps
-            const isApproved = formApprover?.filter((step: any) => step.status === "approved") ?? []
             return (
                 <div className="items-center flex text-nowrap overflow-x-scroll w-40 scrollbar-none text-overflow-hidden gap-1">
-                    {isApproved.length > 0 && isApproved.map((approver: any, index: number) => (
+                    {/* {isApproved.length > 0 && isApproved.map((approver: any, index: number) => (
                         <div className="rounded-full p-0.5 px-1 bg-green-400 text-white" key={index}>
                             <span>{approver.approvers[0].name}</span>
                         </div>
-                    ))}
+                    ))} */}
                 </div>
             )
         }

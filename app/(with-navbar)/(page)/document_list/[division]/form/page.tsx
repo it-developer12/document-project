@@ -21,7 +21,6 @@ import {
 import { Suspense, useEffect, useMemo, useState } from "react";
 import Select from 'react-select'
 import { useRouter, useSearchParams } from "next/navigation";
-import FormDetail from "@/SampleData/form_detail.json"
 import { startOfDay, parseISO } from "date-fns";
 import { th } from "date-fns/locale";
 import Link from "next/link";
@@ -144,6 +143,8 @@ function FormPageContent() {
             answers: result,
         };
 
+        setDate(new Date(dataFromBackend.dueDate))
+
         form.reset(dataDeJSON.answers);
     }, [doc_id, doc_mode, dataFromBackend, fields, form]);
 
@@ -230,9 +231,6 @@ function FormPageContent() {
     function changePage(route: string) {
         router.push(route)
     }
-
-    const formApprover = FormDetail.find((form: any) => form.document_id === doc_id)?.approval.steps
-    const isApproved = formApprover?.filter((step: any) => step.status === "approved") ?? []
 
     return (
         <form onSubmit={handleSubmit(onSubmit)} className="bg-slate-50 min-h-screen h-full w-full p-6">
@@ -400,7 +398,7 @@ function FormPageContent() {
                         {"ผู้ที่อนุมัติแล้ว"}
                     </h1>
                     <div className="mt-4 flex gap-6">
-                        {isApproved.map((app: any, index: number) => (
+                        {/* {isApproved.map((app: any, index: number) => (
                             <Card key={index} size="sm" className="w-full max-w-1/3 bg-green-500 text-white shadow transition-all duration-300 ease-out hover:scale-105">
                                 <CardHeader className="flex justify-between items-center">
                                     <CardTitle className="text-xl font-semibold">{app.approvers[0].name}</CardTitle>
@@ -420,7 +418,7 @@ function FormPageContent() {
                                     </CardContent>
                                 )}
                             </Card>
-                        ))}
+                        ))} */}
                     </div>
                 </div>
             )}

@@ -104,9 +104,10 @@ export default function Home() {
         type: doc.workflowInstance.workflowDefinition.versions[0]?.workflowStep[0] ? [doc.workflowInstance.workflowDefinition.versions[0]?.workflowStep[0]] : [],
         schema_id: doc.formSchema.code
     }))
+    console.log(DOCUMENT)
 
     const CREATETABLE: TableDoc[] = DOCUMENT.filter((doc) => {
-        if (doc.type.length < 0) {
+        if (doc.type.length < 1) {
             return doc
         }
     })

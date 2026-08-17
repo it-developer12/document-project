@@ -16,9 +16,6 @@ import {
 
 import { CheckIcon, ChevronUp, Eye, FileImage, Hash, LoaderCircleIcon, PlusCircle, Search, UploadCloud, X, XIcon } from 'lucide-react'
 import { Activity, useEffect, useMemo, useState } from "react";
-import TrackingData from "@/SampleData/tracking.json"
-import FormSchema from "@/SampleData/form.json"
-import FormDetail from "@/SampleData/form_detail.json"
 import { Control, Controller, useForm } from "react-hook-form";
 import { FieldPreview } from "@/app/component/FormRender";
 import { PriorityBadge } from "@/app/component/PriorityBadge";
@@ -411,14 +408,23 @@ export default function Page() {
         );
     }
 
-    function findCurrentStage(status: string) {
-        if (status === "WAITING_APPROVAL") {
-            return 2;
-        } else if (status === "PROCESSING") {
-            return 3;
-        } else if (status === "COMPLETE") {
-            return 4;
-        }
+    function findCurrentStage(status?: string) {
+        if (!status) return 1;
+
+        const stageMap: Record<string, number> = {
+            WAITING_APPROVAL: 2,
+            APPROVER_REJECTED: 2,
+            APPROVER_CANCELLED: 2,
+            PROCESSING: 3,
+            PROCESSOR_REJECTED: 3,
+            PROCESSOR_CANCELLED: 3,
+            COMPLETED: 4,
+            COMPLETE: 4,
+            REJECTED: 4,
+            CANCELLED: 4,
+        };
+
+        return stageMap[status] ?? 1;
     }
 
     function DetailModal({ onClose }: { onClose: () => void }) {
@@ -462,7 +468,6 @@ export default function Page() {
                     : new Date(modal_detail.sub_stage[index - 1].createAt).getTime();
 
             const diff = currentTime - previousTime;
-            console.log(diff)
             return {
                 ...proc,
                 timeDiff: Math.floor(diff / 3600000),
@@ -539,7 +544,7 @@ export default function Page() {
                                             {`${findStatus(act.status, act.decision)} by ${act.employee.firstName}`}
                                         </div>
                                         <div>
-                                            {`${act.timeSpent === -1 ? "ใช้เวลาน้อยกว่า 1 วัน" : act.timeSpent + " วัน"}`}
+                                            {`${act.status === "PENDING" ? "" : act.timeSpent === -1 ? "ใช้เวลาน้อยกว่า 1 วัน" : act.timeSpent + " วัน"}`}
                                         </div>
                                     </div>
                                 ))
@@ -695,7 +700,7 @@ export default function Page() {
                         <div className="flex justify-between">
                             <div>
                                 <div className="flex items-center">
-                                    <span className="">{detailDocument.formSchema.division.name ?? ""}</span>
+                                    <span className="">{detailDocument.formSchema.division?.name ?? ""}</span>
                                     <Icon icon={'mdi:keyboard-arrow-right'} className="" />
                                     <span className="text-[#3D52D5] font-bold">{" " + detailDocument.documentNo}</span>
                                 </div>
@@ -717,7 +722,7 @@ export default function Page() {
                                         <span>{"ฝ่าย/แผนก"}</span>
                                         <div className="flex items-center gap-0.5">
                                             <Icon icon={'icon-park-outline:new-computer'} />
-                                            <span>{detailDocument.formSchema.division.name}</span>
+                                            <span>{detailDocument.formSchema.division?.name}</span>
                                         </div>
                                     </div>
                                     <div className="px-2">
@@ -755,7 +760,7 @@ export default function Page() {
                         <div className="mt-10">
                             <Stepper
                                 defaultValue={1}
-                                value={findCurrentStage(detailDocument.status)}
+                                value={findCurrentStage(detailDocument?.status)}
                                 indicators={{
                                     completed: (
                                         <CheckIcon className="size-3.5" />

@@ -4,8 +4,6 @@ import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectVa
 import { Icon } from '@iconify/react';
 import { ArrowLeft, BrushCleaning } from "lucide-react";
 import Link from "next/link";
-import docDetail from "@/SampleData/form_detail.json"
-import TrackingData from "@/SampleData/tracking.json"
 import { useEffect, useState } from "react";
 import { DataTable } from "@/app/component/DocumentTable";
 import { ProcessColumns } from "@/app/component/ProcessColumns";
