@@ -786,9 +786,9 @@ export default function Page() {
     // { ...makeField("text"), id: "f1", label: "Full Name", required: true, placeholder: "e.g. Sarah Chen" },
     // { ...makeField("email"), id: "f2", label: "Email Address", required: true, placeholder: "you@company.com" },
     const COMPANY_OPTIONS = [
-        { label: "บริษัท ซิตี้เฟรชฟรุ๊ต จำกัด (CFF)", value: "ad3104d0-1a15-4a1c-9300-b42d79fc7994" },
-        { label: "บริษัท ซีทีเอ็กซ์ โฮลดิ้ง จำกัด (CTX)", value: "66024676-fa76-49c2-83f6-91922536f0d4" },
-        { label: "บริษัท โนเบิ้ลมาร์เก็ตติ้ง จำกัด (NBM)", value: "df7468c0-83f5-450a-92e9-c6945829f43a" },
+        { label: "บริษัท ซิตี้เฟรชฟรุ๊ต จำกัด (CFF)", value: "cff" },
+        { label: "บริษัท ซีทีเอ็กซ์ โฮลดิ้ง จำกัด (CTX)", value: "ctx" },
+        { label: "บริษัท โนเบิ้ลมาร์เก็ตติ้ง จำกัด (NBM)", value: "nbm" },
     ];
 
     const DEPARTMENT_OPTIONS = [
@@ -1233,8 +1233,6 @@ export default function Page() {
                 finisher: finisher
             }
         }
-
-        console.log(data)
         template.mutate(data)
     }
 

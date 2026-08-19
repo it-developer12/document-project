@@ -11,29 +11,29 @@ export default function WithNavbarLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const router = useRouter();
+  // const router = useRouter();
 
-  const user = useAuthStore((state) => state.user);
-  const clearUser = useAuthStore((state) => state.clearUser);
+  // const user = useAuthStore((state) => state.user);
+  // const clearUser = useAuthStore((state) => state.clearUser);
 
-  const { data, isPending, status } = useCurrentUser();
+  // const { data, isPending, status } = useCurrentUser();
 
-  const isUnauthenticated = status === "error" || !data;
+  // const isUnauthenticated = status === "error" || !data;
 
-  useEffect(() => {
-    if (!isPending && isUnauthenticated) {
-      clearUser();
-      router.replace("/");
-    }
-  }, [isPending, isUnauthenticated, clearUser, router]);
+  // useEffect(() => {
+  //   if (!isPending && isUnauthenticated) {
+  //     clearUser();
+  //     router.replace("/");
+  //   }
+  // }, [isPending, isUnauthenticated, clearUser, router]);
 
-  if (isPending) {
-    return <Loading />;
-  }
+  // if (isPending) {
+  //   return <Loading />;
+  // }
 
-  if (isUnauthenticated || !user) {
-    return null;
-  }
+  // if (isUnauthenticated || !user) {
+  //   return null;
+  // }
   return (
     <>
       <main className="min-h-full flex">

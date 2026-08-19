@@ -115,7 +115,6 @@ function FormPageContent() {
                 },
                 {} as Record<string, any>
             ) ?? {};
-        
         form.reset(values);
 
         const isDocumentMode = doc_mode === "edit" || doc_mode === "view" || doc_mode === "approve";
@@ -152,7 +151,7 @@ function FormPageContent() {
         return <Loading />
     }
 
-    if(doc_mode === "create" && doc_id) {
+    if (doc_mode === "create" && doc_id) {
         router.push('dashboard')
         toast.error('')
     }
@@ -163,9 +162,41 @@ function FormPageContent() {
         return null;
     }
 
+    function validateData(data: any) {
+        const errors: string[] = [];
+
+        fields.map((field: any) => {
+            if (field.required && field.type != "employee_detail") {
+                const fieldValue = data[field.id];
+                // Check if field is empty
+                if (
+                    fieldValue === undefined ||
+                    fieldValue === null ||
+                    fieldValue === "" ||
+                    (Array.isArray(fieldValue) && fieldValue.length === 0) ||
+                    (typeof fieldValue === "object" && Object.keys(fieldValue).length === 0)
+                ) {
+                    errors.push(`${field.label} จำเป็นต้องกรอก`);
+
+                }
+            } else if (field.type == "employee_detail" && field.required) {
+                const fieldValue = data["employee_field"]
+                if (fieldValue.employee_code.trim() === "" || fieldValue.first_name === "") {
+                    errors.push(`${field.label} จำเป็นต้องกรอก`);
+                }
+            }
+        });
+
+        if (errors.length > 0) {
+            errors.map(error => toast.error(error));
+            return false;
+        }
+
+        return true;
+    }
+
     const onSubmit = (formdata: Record<string, any>) => {
         const { employee_field } = formdata;
-
         if (doc_mode === "approve") {
             if (!dataFromBackend) {
                 toast.error("ข้อมูลเอกสารยังไม่พร้อม");
@@ -183,16 +214,23 @@ function FormPageContent() {
                 router.push("/approve");
             }
         } else if (doc_mode === "create") {
+            // Validate required fields
+            const data = formdata;
+
+            if (!validateData(data)) {
+                return;
+            }
+
             const employeeField = fields.find(
                 (field: any) => field.type === "employee_detail" // or "employee_field"
             );
 
             if (employeeField && employee_field) {
-                formdata[employeeField.id] = formdata.employee_field;
-                delete formdata.employee_field;
+                data[employeeField.id] = data.employee_field;
+                delete data.employee_field;
             }
             const JSONfields = JSON.stringify(fields);
-            const JSONdata = JSON.stringify(formdata);
+            const JSONdata = JSON.stringify(data);
             const payload: FormSubmission = {
                 schema_id: data.id,
                 answers: JSONdata,
@@ -201,11 +239,10 @@ function FormPageContent() {
                 iso_document: "", // Add this line to include the iso_document field
             };
 
-            createDocumentMutation.mutate(payload);
+            // createDocumentMutation.mutate(payload);
 
-            // console.log(payload)
-            router.push('/dashboard')
-            toast.success("สร้างเอกสารสำเร็จ")
+            // router.push('/dashboard')
+            // toast.success("สร้างเอกสารสำเร็จ")
         }
 
     };
