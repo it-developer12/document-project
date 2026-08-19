@@ -9,10 +9,22 @@ export interface LoginResponse {
   access_token: string;
 }
 
+export interface RegisterRequest {
+  userName: string;
+  passWord: string;
+  code: string;
+}
+
 export async function loginApi(
   data: LoginRequest,
 ): Promise<LoginResponse> {
   const response = await api.post<LoginResponse>("/auth/login", data);
+
+  return response.data;
+}
+
+export async function registerApi(data: RegisterRequest) {
+  const response = await api.post("/auth/register", data);
 
   return response.data;
 }

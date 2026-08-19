@@ -36,7 +36,7 @@ export async function createDocument(data: CreateDocumentPayload) {
 
 export async function approveDocument(data: ApproveDocumentPayload) {
     const response = await api.patch('/document/approve', data);
-    return response.data;
+    return response;
 }
 
 export async function addProcessDocument(data: AddProcessPayload) {

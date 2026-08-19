@@ -17,8 +17,9 @@ export function approveMutation() {
             router.push("/dashboard");
         },
 
-        onError: (error) => {
-            console.error("Error approving document:", error);
+        onError: (error: any) => {
+            const errorMessage = error?.response?.data?.message || error?.message || "Unknown error";
+            toast.error(errorMessage);
         }
     })
 }
