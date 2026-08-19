@@ -215,9 +215,8 @@ function FormPageContent() {
             }
         } else if (doc_mode === "create") {
             // Validate required fields
-            const data = formdata;
 
-            if (!validateData(data)) {
+            if (!validateData(formdata)) {
                 return;
             }
 
@@ -226,11 +225,11 @@ function FormPageContent() {
             );
 
             if (employeeField && employee_field) {
-                data[employeeField.id] = data.employee_field;
-                delete data.employee_field;
+                formdata[employeeField.id] = formdata.employee_field;
+                delete formdata.employee_field;
             }
             const JSONfields = JSON.stringify(fields);
-            const JSONdata = JSON.stringify(data);
+            const JSONdata = JSON.stringify(formdata);
             const payload: FormSubmission = {
                 schema_id: data.id,
                 answers: JSONdata,
