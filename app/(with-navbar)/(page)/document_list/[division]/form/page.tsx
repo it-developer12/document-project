@@ -239,10 +239,10 @@ function FormPageContent() {
                 iso_document: "", // Add this line to include the iso_document field
             };
 
-            // createDocumentMutation.mutate(payload);
+            createDocumentMutation.mutate(payload);
 
-            // router.push('/dashboard')
-            // toast.success("สร้างเอกสารสำเร็จ")
+            router.push('/dashboard')
+            toast.success("สร้างเอกสารสำเร็จ")
         }
 
     };
