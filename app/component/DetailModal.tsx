@@ -34,7 +34,7 @@ export function DetailModal({
     finishMutate
 }: DetailModalProps) {
     const inputRef = useRef<HTMLInputElement>(null);
-
+    
     useEffect(() => {
         if (detail.open && inputRef.current) {
             inputRef.current.focus();
@@ -42,7 +42,7 @@ export function DetailModal({
     }, [detail.open]);
 
     const type = docs.find((doc) => doc.documentNo === detail.document_id)
-        ?.workflowInstance.workflowDefinition.versions[0].workflowStep[0].type;
+        ?.workflowInstance.workflowDefinitionVersion.workflowStep[0].type;
     const activity = activities.find((act) => act.document_code === detail.document_id);
 
     function AddProcess() {

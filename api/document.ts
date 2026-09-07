@@ -19,6 +19,11 @@ export interface CreateDocumentPayload {
     iso_document?: string;
 }
 
+export interface UpdateDocumentPayload extends CreateDocumentPayload {
+    document_code: string;
+    priority: string;
+}
+
 export async function getNavNumber() {
     const response = await api.get('/document/nav_data');
     return response.data;
@@ -31,6 +36,11 @@ export async function getDocumentList() {
 
 export async function createDocument(data: CreateDocumentPayload) {
     const response = await api.post('/document/create', data);
+    return response.data;
+}
+
+export async function updateDocument(data: UpdateDocumentPayload) {
+    const response = await api.patch('/document/update', data);
     return response.data;
 }
 
@@ -61,5 +71,10 @@ export async function getLastestDocument() {
 
 export async function getTrackingDocument(document_code: string) {
     const response = await api.get(`/document/tracking/${document_code}`)
+    return response.data
+}
+
+export async function getCount() {
+    const response = await api.get('/document/count');
     return response.data
 }

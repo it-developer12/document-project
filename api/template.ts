@@ -46,3 +46,8 @@ export async function createTemplate(data: CreateTemplatePayload) {
     const response = await api.post('/template/create', data);
     return response.data
 }
+
+export async function updateTemplate(id:string, data: CreateTemplatePayload) {
+    const response = await api.patch(`/template/${id}`, data);
+    return response.data
+}

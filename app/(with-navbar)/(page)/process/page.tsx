@@ -14,6 +14,7 @@ import { useDocumentStore } from "@/store/document.store";
 import { useGetDocuments } from "@/hooks/set-document";
 import { processMutation } from "@/hooks/add-process-document";
 import { finishMutation } from "@/hooks/finish-document";
+import { useCompanyList, useDivisionList } from "@/hooks/create-form";
 
 const COMPANY = [
     { label: "Cityfresh Fruit", value: "cff" },
@@ -22,6 +23,8 @@ const COMPANY = [
 ]
 
 export default function Page() {
+    const { data: divisionList } = useDivisionList();
+    const { data: companyList } = useCompanyList();
     type DocStatus = "WAITING_APPROVAL" | "PROCESSING" | "REJECTED" | "CANCELLED" | "COMPLETED";
     type Status = "low" | "medium" | "high";
     type TableDoc = {
@@ -57,7 +60,7 @@ export default function Page() {
     const finishMutate = finishMutation(setDetail);
     const docs = useDocumentStore((state) => state.processDocuments);
     const activities = useDocumentStore((state) => state.activitiyDocuments)
-
+    
     const DOCUMENT: TableDoc[] = docs.map((doc) => ({
         id: doc.documentNo,
         title: doc.formSchema.name,
@@ -69,14 +72,11 @@ export default function Page() {
         created: doc.createdAt,
         end_date: doc.dueDate,
         updated: doc.activities[0].createdAt,
-        type: doc.workflowInstance.workflowDefinition.versions[0].workflowStep[0].type
+        type: doc.workflowInstance?.workflowDefinitionVersion?.workflowStep[0]?.type
     }))
 
-    const department = [
-        { label: "Innovation Technology", value: "it" },
-        { label: "Finance", value: "finance" },
-        { label: "B2C", value: "b2c" },
-    ]
+    const DEPARTMENT_OPTIONS = divisionList?.map((d: any) => ({ label: d.name, value: d.code })) ?? [];
+    const COMPANY_OPTIONS = companyList?.map((c: any) => ({ label: c.name, value: c.code })) ?? [];
 
     const [DocumentTable, setDocumentTable] = useState<TableState>({
         status: false,
@@ -169,7 +169,7 @@ export default function Page() {
 
                         <div className='w-1/4 flex gap-10'>
                             <Select
-                                items={department}
+                                items={DEPARTMENT_OPTIONS}
                                 value={DocumentTable.department}
                                 onValueChange={(seleted: any) => setDocumentTable(prev => ({ ...prev, department: seleted }))}
                             >
@@ -178,7 +178,7 @@ export default function Page() {
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectGroup>
-                                        {department.map((item) => (
+                                        {DEPARTMENT_OPTIONS.map((item: any) => (
                                             <SelectItem key={item.value} value={item.value}>
                                                 {item.label}
                                             </SelectItem>
@@ -190,7 +190,7 @@ export default function Page() {
 
                         <div className='w-1/4 flex gap-10'>
                             <Select
-                                items={COMPANY}
+                                items={COMPANY_OPTIONS}
                                 value={DocumentTable.company}
                                 onValueChange={(seleted: any) => setDocumentTable(prev => ({ ...prev, company: seleted }))}
                             >
@@ -199,7 +199,7 @@ export default function Page() {
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectGroup>
-                                        {COMPANY.map((item) => (
+                                        {COMPANY_OPTIONS.map((item: any) => (
                                             <SelectItem key={item.value} value={item.value}>
                                                 {item.label}
                                             </SelectItem>
