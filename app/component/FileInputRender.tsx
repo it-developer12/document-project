@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { UploadCloud, FileImage, X } from "lucide-react";
 import { useForm, SubmitHandler, Control, Controller } from "react-hook-form"
+import Link from "next/link";
 
 export function FileUploadPreview({ field, control, mode }: { field: FormField, control: Control<any>, mode: string }) {
         const [draggingFile, setDraggingFile] = useState(false);
@@ -36,12 +37,18 @@ export function FileUploadPreview({ field, control, mode }: { field: FormField, 
                 control={control}
                 defaultValue={field.multiple ? [] : null}
                 render={({ field: controllerField }) => {
-                    const files: File[] = field.multiple
-                        ? controllerField.value || []
+                    type FileLike = Partial<File> & {
+                        path?: string;
+                        originalName?: string;
+                        name?: string;
+                        lastModified?: number;
+                    };
+
+                    const files: FileLike[] = field.multiple
+                        ? (controllerField.value || [])
                         : controllerField.value
                             ? [controllerField.value]
                             : [];
-
                     const handleDrop = (
                         e: React.DragEvent
                     ) => {
@@ -145,12 +152,12 @@ export function FileUploadPreview({ field, control, mode }: { field: FormField, 
                                 <div className="flex flex-col gap-1.5">
                                     {files.map((file) => {
                                         const ext =
-                                            file.name.split(".").pop()?.toUpperCase() ??
+                                            file?.name?.split(".").pop()?.toUpperCase() ??
                                             "FILE";
                                         return (
                                             <div
                                                 key={`${file.name}-${file.lastModified}`}
-                                                className="flex items-center gap-2.5 px-3 py-2 rounded-lg border"
+                                                className="flex items-center gap-2.5 px-3 py-2 rounded-lg border hover:border-primary transition-colors"
                                                 style={{ borderColor: "var(--border)", background: "var(--secondary)" }}
                                             >
                                                 <div
@@ -160,9 +167,12 @@ export function FileUploadPreview({ field, control, mode }: { field: FormField, 
                                                     <FileImage size={13} color="var(--primary)" />
                                                 </div>
                                                 <div className="flex flex-col min-w-0 flex-1">
-                                                    <span style={{ fontSize: "1rem", fontWeight: 500, color: "var(--foreground)" }} className="truncate">
+                                                    <Link 
+                                                    href={file.path ? process.env.NEXT_PUBLIC_API_URL + "/" + file.path : "#"}
+                                                    target="_blank"
+                                                    style={{ fontSize: "1rem", fontWeight: 500, color: "var(--foreground)" }} className="truncate hover:underline">
                                                         {file.name}
-                                                    </span>
+                                                    </Link>
                                                     <span style={{ fontSize: "1rem", color: "var(--muted-foreground)" }}>{ext} file</span>
                                                 </div>
                                                 <button
@@ -184,7 +194,7 @@ export function FileUploadPreview({ field, control, mode }: { field: FormField, 
                                                             controllerField.onChange(null);
                                                         }
                                                     }}
-                                                    className="p-1 rounded-md hover:bg-destructive/10 transition-colors shrink-0"
+                                                    className={mode === "view" ? "hidden" : "p-1 rounded-md hover:bg-destructive/10 transition-colors shrink-0"}
                                                     style={{ color: "var(--muted-foreground)" }}
                                                 >
                                                     <X size={12} />

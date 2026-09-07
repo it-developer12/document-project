@@ -4,18 +4,16 @@ import {
 } from "lucide-react";
 import { Control, Controller, UseFormGetValues, UseFormSetValue } from "react-hook-form";
 import utilsUser from "@/utils/FindUser"
+import { useCompanyList, useEmployeeList } from "@/hooks/create-form";
 // ─── Employee Detail block ────────────────────────────────────────────────────
-
-const COMPANY_OPTIONS = [
-    { label: "บริษัท ซิตี้เฟรชฟรุ๊ต จำกัด (CFF)", value: "cff" },
-    { label: "บริษัท ซีทีเอ็กซ์ โฮลดิ้ง จำกัด (CTX)", value: "ctx" },
-    { label: "บริษัท โนเบิ้ลมาร์เก็ตติ้ง จำกัด (NBM)", value: "nbm" },
-];
 
 export function EmployeeDetailPreview({ field, control, setValue, getValues, mode }: {
     field: FormField, control: Control<any>, setValue: UseFormSetValue<any>;
     getValues: UseFormGetValues<any>, mode: string
 }) {
+    const { data: employeeList } = useEmployeeList();
+    const { data: companyList } = useCompanyList();
+    const COMPANY_OPTIONS = companyList?.map((c: any) => ({ label: c.name, value: c.code })) ?? [];
     const inputCls: React.CSSProperties = {
         width: "100%",
         padding: "0.375rem 0.625rem",
@@ -43,38 +41,38 @@ export function EmployeeDetailPreview({ field, control, setValue, getValues, mod
         const employeeCode = getValues(
             "employee_field.employee_code"
         );
-        const user = utilsUser.FindUser(employeeCode);
+        const user = employeeList?.find((u: any) => u.employee_code === employeeCode);
 
         if (!user) return;
 
         setValue(
             "employee_field.position",
-            user.position
+            user.position.name
         );
 
         setValue(
             "employee_field.division",
-            user.department_1
+            user.position.division.name
         );
 
         setValue(
             "employee_field.department",
-            user.department_2
+            user.position.department.name
         );
 
         setValue(
             "employee_field.first_name",
-            user.name
+            user.firstName
         );
 
         setValue(
             "employee_field.last_name",
-            user.surname
+            user.lastName
         );
 
         setValue(
             "employee_field.company",
-            user.company
+            user.company.name
         );
     }
 
@@ -237,7 +235,7 @@ export function EmployeeDetailPreview({ field, control, setValue, getValues, mod
                                         <SelectItem key={""} value={""}>
                                             {"บริษัท...."}
                                         </SelectItem>
-                                        {COMPANY_OPTIONS.map((item) => (
+                                        {COMPANY_OPTIONS.map((item: any) => (
                                             <SelectItem key={item.value} value={item.value}>
                                                 {item.label}
                                             </SelectItem>

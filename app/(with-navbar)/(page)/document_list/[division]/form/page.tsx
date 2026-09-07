@@ -29,6 +29,7 @@ import { toast } from "react-toastify";
 import Loading from "@/app/component/loading";
 import { approveMutation } from "@/hooks/approve-document";
 import { useCreateDocument } from "@/hooks/create-document";
+import { useUpdateDocument } from "@/hooks/update-document";
 import { useGetDocuments } from "@/hooks/set-document";
 import { useFormSchema } from "@/hooks/form-list";
 import { useDocumentDetail } from "@/hooks/document-list";
@@ -39,6 +40,7 @@ type FormSubmission = {
     snapshot: string;
     due_date: string;
     iso_document?: string;
+    priority: string;
 };
 
 function FormPageContent() {
@@ -60,6 +62,7 @@ function FormPageContent() {
     const doc_mode = useParams.get('mode');
     const router = useRouter();
     const [date, setDate] = useState<Date>();
+    const [priorityState, setPriorityState] = useState("");
     const [approver, setApprover] = useState([
         { name: "" }
     ]);
@@ -69,11 +72,17 @@ function FormPageContent() {
         { value: "2159001", label: "Approver 3" }, //2159001
         { value: "2254002", label: "Approver 4" }, //2254002
     ];
+    const priority = [
+        { value: "low", label: "น้อย" },
+        { value: "medium", label: "ปานกลาง" },
+        { value: "high", label: "สูง" },
+    ]
 
     const { data, isLoading, error } = useFormSchema(schema_id || "");
     const { data: dataFromBackend } = useDocumentDetail(doc_id || "");
     const approveMutate = approveMutation();
     const createDocumentMutation = useCreateDocument();
+    const updateDocumentMutation = useUpdateDocument();
 
     const data_fields = useMemo(
         () =>
@@ -92,16 +101,27 @@ function FormPageContent() {
         [data]
     );
 
+    const isDocumentMode =
+        doc_mode === "edit" || doc_mode === "view" || doc_mode === "approve";
+
+    const fieldsFromSnapshot = useMemo(() => {
+        if (!isDocumentMode || !dataFromBackend?.currentRevision?.snapshot) {
+            return [];
+        }
+
+        return JSON.parse(dataFromBackend.currentRevision.snapshot);
+    }, [dataFromBackend, isDocumentMode]);
+
     const fields = useMemo(
         () =>
-            data_fields.map((field: any) => {
+            (fieldsFromSnapshot.length > 0 ? fieldsFromSnapshot : data_fields).map((field: any) => {
                 if (field.option) {
                     const { option, ...rest } = field;
                     return { ...rest, ...(option ?? {}) };
                 }
                 return field;
             }),
-        [data_fields]
+        [data_fields, fieldsFromSnapshot]
     );
 
     useEffect(() => {
@@ -115,10 +135,8 @@ function FormPageContent() {
                 },
                 {} as Record<string, any>
             ) ?? {};
-        
         form.reset(values);
 
-        const isDocumentMode = doc_mode === "edit" || doc_mode === "view" || doc_mode === "approve";
         if (!isDocumentMode || !doc_id || !dataFromBackend?.currentRevision) {
             return;
         }
@@ -127,9 +145,11 @@ function FormPageContent() {
         const fieldsFromBackend = JSON.parse(currentRevision.snapshot);
         const answersFromBackend = JSON.parse(currentRevision.formData);
 
-        const employeeField = fields.find(
+        const employeeField = fieldsFromBackend.find(
             (field: any) => field.type === "employee_detail"
         );
+
+        const fileFields = fieldsFromBackend.filter((field: any) => field.type === "file");
 
         const result = { ...answersFromBackend };
 
@@ -138,13 +158,42 @@ function FormPageContent() {
             delete result[employeeField.id];
         }
 
+        fileFields.forEach((fileField: any) => {
+            const fileValue = result[fileField.id];
+
+            if (Array.isArray(fileValue) && Array.isArray(dataFromBackend.currentRevision.attachments)) {
+                result[fileField.id] = fileValue.map((file: any, index: number) => ({
+                    ...file,
+                    originalName:
+                        dataFromBackend.currentRevision.attachments[index]?.originalFileName ??
+                        file.name ??
+                        "",
+                    path:
+                        dataFromBackend.currentRevision.attachments[index]?.path ??
+                        file.path ??
+                        "",
+                }));
+            }
+        });
+
+        const values_snapshot =
+            fieldsFromBackend.map((field: any) => field.id).reduce(
+                (acc: any, id: any) => {
+                    acc[id] = "";
+                    return acc;
+                },
+                {} as Record<string, any>
+            ) ?? {};
+
+        form.reset(values_snapshot);
+
         const dataDeJSON = {
             fields: fieldsFromBackend,
             answers: result,
         };
-
+        
         setDate(new Date(dataFromBackend.dueDate))
-
+        setPriorityState(dataFromBackend.priority ?? "");
         form.reset(dataDeJSON.answers);
     }, [doc_id, doc_mode, dataFromBackend, fields, form]);
 
@@ -152,7 +201,7 @@ function FormPageContent() {
         return <Loading />
     }
 
-    if(doc_mode === "create" && doc_id) {
+    if (doc_mode === "create" && doc_id) {
         router.push('dashboard')
         toast.error('')
     }
@@ -163,18 +212,109 @@ function FormPageContent() {
         return null;
     }
 
-    const onSubmit = (formdata: Record<string, any>) => {
-        const { employee_field } = formdata;
+    function validateData(data: any) {
+        const errors: string[] = [];
 
+        fields.map((field: any) => {
+            if (field.required && field.type != "employee_detail") {
+                const fieldValue = data[field.id];
+                // Check if field is empty
+                if (
+                    fieldValue === undefined ||
+                    fieldValue === null ||
+                    fieldValue === "" ||
+                    (Array.isArray(fieldValue) && fieldValue.length === 0) ||
+                    (typeof fieldValue === "object" && Object.keys(fieldValue).length === 0)
+                ) {
+                    errors.push(`${field.label} จำเป็นต้องกรอก`);
+
+                }
+            } else if (field.type == "employee_detail" && field.required) {
+                const fieldValue = data["employee_field"]
+                if (fieldValue.employee_code.trim() === "" || fieldValue.first_name === "") {
+                    errors.push(`${field.label} จำเป็นต้องกรอก`);
+                }
+            }
+        });
+
+        if (priorityState === "") {
+            errors.push(`ยังไม่ได้เลือกระดับความสำคัญ`)
+        }
+
+        if (errors.length > 0) {
+            errors.map(error => toast.error(error));
+            return false;
+        }
+
+        return true;
+    }
+
+    function cleanAnswerData(obj: Record<string, any>) {
+        const result: Record<string, any> = {};
+
+        Object.entries(obj).forEach(([key, value]) => {
+            if (value instanceof File) {
+                result[key] = {
+                    name: value.name,
+                    size: value.size,
+                    type: value.type,
+                    lastModified: value.lastModified,
+                };
+                return;
+            }
+
+            if (Array.isArray(value)) {
+                result[key] = value
+                    .map((item) => {
+                        if (item instanceof File) {
+                            return {
+                                name: item.name,
+                                size: item.size,
+                                type: item.type,
+                                lastModified: item.lastModified,
+                            };
+                        }
+
+                        if (item && typeof item === "object" && Object.keys(item).length > 0) {
+                            return item;
+                        }
+
+                        return null;
+                    })
+                    .filter(Boolean);
+
+                return;
+            }
+
+            if (value && typeof value === "object" && Object.keys(value).length > 0) {
+                result[key] = value;
+                return;
+            }
+
+            if (value !== null && value !== undefined && value !== "") {
+                result[key] = value;
+            }
+        });
+
+        return result;
+    }
+
+    const onSubmit = (formdata: Record<string, any>, decision: string) => {
+        const { employee_field } = formdata;
         if (doc_mode === "approve") {
             if (!dataFromBackend) {
                 toast.error("ข้อมูลเอกสารยังไม่พร้อม");
                 return;
             }
 
+            if (!decision) {
+                toast.error("ไม่พบการตัดสินใจ");
+                return;
+            }
+
             approveMutate.mutate({
                 document_code: dataFromBackend.documentNo,
-                decision: "APPROVE",
+                decision,
                 comment: ""
             });
 
@@ -182,30 +322,66 @@ function FormPageContent() {
                 toast.success("อนุมัติเอกสารสำเร็จ");
                 router.push("/approve");
             }
-        } else if (doc_mode === "create") {
-            const employeeField = fields.find(
-                (field: any) => field.type === "employee_detail" // or "employee_field"
-            );
+        } else if (doc_mode === "create" || doc_mode === "edit") {
+            if (!validateData(formdata)) return;
 
+            const employeeField = fields.find((field: any) => field.type === "employee_detail");
             if (employeeField && employee_field) {
                 formdata[employeeField.id] = formdata.employee_field;
                 delete formdata.employee_field;
             }
-            const JSONfields = JSON.stringify(fields);
-            const JSONdata = JSON.stringify(formdata);
-            const payload: FormSubmission = {
-                schema_id: data.id,
-                answers: JSONdata,
-                snapshot: JSONfields,
-                due_date: date ? date.toISOString() : "",
-                iso_document: "", // Add this line to include the iso_document field
-            };
 
-            createDocumentMutation.mutate(payload);
+            const formDataPayload = new FormData();
 
-            // console.log(payload)
-            router.push('/dashboard')
-            toast.success("สร้างเอกสารสำเร็จ")
+            formDataPayload.append("schema_id", data.id);
+            formDataPayload.append("snapshot", JSON.stringify(fields));
+            formDataPayload.append("answers", JSON.stringify(cleanAnswerData(formdata)));
+            formDataPayload.append("due_date", date ? date.toISOString() : "");
+            formDataPayload.append("priority", priorityState);
+            // if (isoDocumentValue) {
+            //     formData.append("iso_document", isoDocumentValue); // if backend expects string like ISO code
+            // }
+
+            // const fileList = Object.entries(formdata).forEach(([key, value]) => {
+            //     if (value instanceof File) {
+            //         formDataPayload.append(key, value);
+            //     } else if (Array.isArray(value) && value.every((v) => v instanceof File)) {
+            //         value.forEach((file) => formDataPayload.append(key, file));
+            //     }
+            // });
+
+
+            // append uploaded files
+            // if (fileList && fileList.length > 0) {
+            //     fileList.forEach((file) => {
+            //         formDataPayload.append("files", file); // same key as FilesInterceptor('files')
+            //     });
+            // }
+
+            // add actual file field(s)
+            Object.entries(formdata).forEach(([key, value]) => {
+                if (value instanceof File) {
+                    formDataPayload.append('files', value);
+                } else if (Array.isArray(value) && value.every((v) => v instanceof File)) {
+                    value.forEach((file) => formDataPayload.append('files', file));
+                }
+            });
+
+            // if you have a dedicated ISO document file
+            // payload.append("iso_document", isoFile);
+
+            if (doc_mode === "edit") {
+                formDataPayload.append("document_code", doc_id ?? "");
+                updateDocumentMutation.mutate(
+                    { ...formDataPayload } as any,
+                    { onSuccess: () => router.push("/dashboard") }
+                );
+                return;
+            }
+
+            createDocumentMutation.mutate(formDataPayload as any);
+            router.push("/dashboard");
+            toast.success("สร้างเอกสารสำเร็จ");
         }
 
     };
@@ -233,7 +409,13 @@ function FormPageContent() {
     }
 
     return (
-        <form onSubmit={handleSubmit(onSubmit)} className="bg-slate-50 min-h-screen h-full w-full p-6">
+        <form
+            onSubmit={handleSubmit((formdata, event) => {
+                const submitter = (event?.nativeEvent as SubmitEvent).submitter as HTMLButtonElement | null;
+                onSubmit(formdata, submitter?.value ?? "");
+            })}
+            className="bg-slate-50 min-h-screen h-full w-full p-6"
+        >
             {doc_mode == "view" || doc_mode == "approve" && (
                 <div className='flex items-center gap-4 mb-4'>
                     <Link href={`${doc_mode === "approve" ? '/approve' : '/dashboard'}`} accessKey="it01">
@@ -252,14 +434,34 @@ function FormPageContent() {
                     <span>{data?.name}</span>
                 </div>
                 <div className="mt-4">
-                    <div className="">
-                        <div className="font-semibold">
-                            <span>{"ISO ref. "}</span>
+                    <div className="flex justify-between w-full">
+                        <div className="w-1/2">
+                            <div className="font-semibold">
+                                <span>{"ISO ref. "}</span>
+                            </div>
+                            <div>
+                                <input type="text" className="w-1/2 p-1.5 pl-2 py-2 border rounded bg-[#F3F4F8] text-sm" placeholder="iso ref."
+                                    disabled={doc_mode == "view" || doc_mode == "approve"}
+                                />
+                            </div>
                         </div>
-                        <div>
-                            <input type="text" className="w-1/4 p-1.5 pl-2 py-2 border rounded bg-[#F3F4F8] text-sm" placeholder="iso ref."
-                                disabled={doc_mode == "view" || doc_mode == "approve"}
-                            />
+                        <div className="w-1/2">
+                            <div className="w-full">
+                                <div className="w-full flex justify-end">
+                                    <span>{"ระดับความสำคัญ"}</span>
+                                </div>
+                                <div className="w-full flex justify-end">
+                                    <Select
+                                        isDisabled={doc_mode !== "create"}
+                                        value={priority.find((op) => op.value === priorityState) || null}
+                                        name="priority"
+                                        id="priority"
+                                        options={priority}
+                                        className="w-1/2"
+                                        onChange={(op) => setPriorityState(op?.value ?? "")}
+                                    />
+                                </div>
+                            </div>
                         </div>
                     </div>
                     <div className="mt-4 flex gap-2 items-center">
@@ -341,7 +543,7 @@ function FormPageContent() {
                     )) : <div></div>}
                 </div>
                 <div className="grid grid-cols-2 gap-4 mt-4">
-                    {fields.map((f: any) => (
+                    {(doc_mode === "create" ? fields : fieldsFromSnapshot).map((f: any) => (
                         <div
                             key={f.id}
                             className="flex flex-col gap-1.5"
@@ -384,9 +586,9 @@ function FormPageContent() {
                 ) : doc_mode == "approve" ?
                     (<div className="mt-10">
                         <div className="flex gap-4 justify-end">
-                            <button className="text-white bg-black px-4 py-2 rounded-md hover:cursor-pointer" onClick={() => changePage("/reject")}>{"ตีกลับ"}</button>
-                            <button className="text-white bg-red-500 px-4 py-2 rounded-md hover:cursor-pointer" onClick={() => changePage("/reject")}>{"ยกเลิก"}</button>
-                            <button className="text-white bg-[#4A4DF1] px-4 py-2 rounded-md hover:cursor-pointer" type="submit">{"อนุญาติ"}</button>
+                            <button className="text-white bg-black px-4 py-2 rounded-md hover:cursor-pointer" type="submit" value="REJECT">{"ตีกลับ"}</button>
+                            <button className="text-white bg-red-500 px-4 py-2 rounded-md hover:cursor-pointer" type="submit" value="CANCEL">{"ยกเลิก"}</button>
+                            <button className="text-white bg-[#4A4DF1] px-4 py-2 rounded-md hover:cursor-pointer" type="submit" value="APPROVE">{"อนุญาติ"}</button>
                         </div>
                     </div>) :
                     (<div></div>)

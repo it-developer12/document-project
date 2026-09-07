@@ -22,6 +22,8 @@ import { DataTable } from '@/app/component/DocumentTable';
 import { BrushCleaning } from 'lucide-react';
 import { useDocumentStore } from '@/store/document.store';
 import { useGetDocuments } from '@/hooks/set-document';
+import { useDocumentCount } from '@/hooks/document-list';
+import { useCompanyList, useDivisionList } from '@/hooks/create-form';
 
 type DocStatus = "WAITING_APPROVAL" | "PROCESSING" | "REJECTED" | "CANCELLED" | "COMPLETED";
 type Status = "low" | "medium" | "high";
@@ -58,18 +60,6 @@ const EMPTY_TABLE_STATE: TableState = {
 
 const EMPTY_DOCUMENTS: TableDoc[] = [];
 
-const COMPANY_OPTIONS = [
-    { label: "Cityfresh Fruit", value: "cff" },
-    { label: "Ctx holding", value: "ctx" },
-    { label: "Noble marketing", value: "nbm" },
-];
-
-const DEPARTMENT_OPTIONS = [
-    { label: "Innovation Technology", value: "it" },
-    { label: "Finance", value: "finance" },
-    { label: "B2C", value: "b2c" },
-];
-
 function filterDocuments(documents: TableDoc[], table: TableState) {
     const searchText = table.text.trim().toLowerCase();
 
@@ -87,13 +77,26 @@ function filterDocuments(documents: TableDoc[], table: TableState) {
 }
 
 export default function Home() {
+    const { data: divisionList } = useDivisionList();
+    const { data: companyList } = useCompanyList();
     useGetDocuments();
+    const count = useDocumentCount();
     const docs = useDocumentStore((state) => state.documents);
-    
+
+    const COMPANY_OPTIONS = companyList?.map((company: any) => ({
+        label: company.name,
+        value: company.code,
+    })) ?? [];
+
+    const DEPARTMENT_OPTIONS = divisionList?.map((division: any) => ({
+        label: division.name,
+        value: division.code,
+    })) ?? [];
+
     const DOCUMENT: TableDoc[] = docs.map((doc) => ({
         id: doc.documentNo,
         title: doc.formSchema.name,
-        priority: "high",
+        priority: doc.priority as Status,
         owner: doc.createdBy.firstName,
         company: doc.formSchema.company.name,
         department: doc.formSchema.division.name,
@@ -101,10 +104,9 @@ export default function Home() {
         created: doc.createdAt,
         end_date: doc.dueDate,
         updated: doc.activities[0].createdAt,
-        type: doc.workflowInstance.workflowDefinition.versions[0]?.workflowStep[0] ? [doc.workflowInstance.workflowDefinition.versions[0]?.workflowStep[0]] : [],
+        type: doc.workflowInstance.workflowDefinitionVersion.workflowStep[0]?.type ? [doc.workflowInstance.workflowDefinitionVersion.workflowStep[0]?.type] : [],
         schema_id: doc.formSchema.code
     }))
-    console.log(DOCUMENT)
 
     const CREATETABLE: TableDoc[] = DOCUMENT.filter((doc) => {
         if (doc.type.length < 1) {
@@ -116,7 +118,6 @@ export default function Home() {
             return doc
         }
     })
-    
 
     const [todoTable, setTodoTable] = useState<TableState>(EMPTY_TABLE_STATE);
     const [createTable, setCreateTable] = useState<TableState>(EMPTY_TABLE_STATE);
@@ -198,7 +199,7 @@ export default function Home() {
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectGroup>
-                                        {DEPARTMENT_OPTIONS.map((item) => (
+                                        {DEPARTMENT_OPTIONS.map((item: any) => (
                                             <SelectItem key={item.value} value={item.value}>
                                                 {item.label}
                                             </SelectItem>
@@ -219,7 +220,7 @@ export default function Home() {
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectGroup>
-                                        {COMPANY_OPTIONS.map((item) => (
+                                        {COMPANY_OPTIONS.map((item: any) => (
                                             <SelectItem key={item.value} value={item.value}>
                                                 {item.label}
                                             </SelectItem>
@@ -248,7 +249,7 @@ export default function Home() {
                         </CardAction>
                     </CardHeader>
                     <CardContent>
-                        <p className="text-2xl font-bold">{1284}</p>
+                        <p className="text-2xl font-bold">{count.data?.total || 0}</p>
                     </CardContent>
                 </Card>
                 <Card className="w-1/4" >
@@ -261,7 +262,7 @@ export default function Home() {
                         </CardAction>
                     </CardHeader>
                     <CardContent>
-                        <p className="text-2xl font-bold">{834}</p>
+                        <p className="text-2xl font-bold">{count.data?.approved || 0}</p>
                     </CardContent>
                 </Card>
                 <Card className="w-1/4" >
@@ -274,7 +275,7 @@ export default function Home() {
                         </CardAction>
                     </CardHeader>
                     <CardContent>
-                        <p className="text-2xl font-bold">{139}</p>
+                        <p className="text-2xl font-bold">{count.data?.processing || 0}</p>
                     </CardContent>
                 </Card>
                 <Card className="w-1/4" >
@@ -287,7 +288,7 @@ export default function Home() {
                         </CardAction>
                     </CardHeader>
                     <CardContent>
-                        <p className="text-2xl font-bold">{24}</p>
+                        <p className="text-2xl font-bold">{count.data?.cancelled || 0}</p>
                     </CardContent>
                 </Card>
             </div>
@@ -327,7 +328,7 @@ export default function Home() {
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectGroup>
-                                        {DEPARTMENT_OPTIONS.map((item) => (
+                                        {DEPARTMENT_OPTIONS.map((item: any) => (
                                             <SelectItem key={item.value} value={item.value}>
                                                 {item.label}
                                             </SelectItem>
@@ -348,7 +349,7 @@ export default function Home() {
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectGroup>
-                                        {COMPANY_OPTIONS.map((item) => (
+                                        {COMPANY_OPTIONS.map((item: any) => (
                                             <SelectItem key={item.value} value={item.value}>
                                                 {item.label}
                                             </SelectItem>
@@ -402,7 +403,7 @@ export default function Home() {
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectGroup>
-                                        {DEPARTMENT_OPTIONS.map((item) => (
+                                        {DEPARTMENT_OPTIONS.map((item: any) => (
                                             <SelectItem key={item.value} value={item.value}>
                                                 {item.label}
                                             </SelectItem>
@@ -423,7 +424,7 @@ export default function Home() {
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectGroup>
-                                        {COMPANY_OPTIONS.map((item) => (
+                                        {COMPANY_OPTIONS.map((item: any) => (
                                             <SelectItem key={item.value} value={item.value}>
                                                 {item.label}
                                             </SelectItem>

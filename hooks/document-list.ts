@@ -1,10 +1,25 @@
-import { getDocumentDetail, getDocumentList } from "@/api/document";
+import { getCount, getDocumentDetail, getDocumentList } from "@/api/document";
 import { useQuery } from "@tanstack/react-query";
 
 export function useDocument() {
     return useQuery({
         queryKey: ["document"],
         queryFn: getDocumentList,
+        retry: false,
+        staleTime: 30 * 60000, // 30 minutes
+    })
+}
+
+export function useDocumentCount() {
+    return useQuery({
+        queryKey: ["document-count"],
+        queryFn: async () => {
+            const res = await getCount();
+            if (!res) {
+                return Promise.reject(new Error("Failed to fetch document count"));
+            }
+            return res;
+        },
         retry: false,
         staleTime: 30 * 60000, // 30 minutes
     })

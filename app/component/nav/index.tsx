@@ -10,6 +10,7 @@ const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: "material-symbols:dashboard-outline-rounded" },
   { href: "/approve", label: "อนุมัติเอกสาร", icon: "carbon:document-set" },
   { href: "/create", label: "สร้างเอกสาร", icon: "gridicons:create" },
+  { href: "/update_form", label: "แก้ไขเอกสาร", icon: "material-symbols:edit-document-outline"},
   { href: "/document_list", label: "คลังเอกสาร", icon: "fluent-mdl2:document-set" },
   { href: "/process", label: "ดำเนินการ", icon: "streamline-ultimate:loading-bold" },
   { href: "/tracking", label: "ตรวจสอบสถานะ", icon: "iconamoon:search-light" },

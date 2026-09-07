@@ -1,5 +1,5 @@
 'use client'
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import {
     DndContext,
     DragOverlay,
@@ -29,11 +29,12 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import Select, { MultiValue } from 'react-select'
 import { FieldPreview } from "./PreviewRender";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "react-toastify";
-import { useCreateTemplate } from "@/hooks/create-template";
 import { CreateTemplatePayload } from "@/api/template";
-import { useCompanyList, useDivisionList, useEmployeeList } from "@/hooks/create-form";
+import { useFormSchemaWorkflow } from "@/hooks/form-list";
+import { useUpdateTemplate } from "@/hooks/update-template";
+import { useDivisionList, useCompanyList, useEmployeeList } from "@/hooks/create-form";
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface PaletteItem {
     type: FieldType;
@@ -782,7 +783,10 @@ function PreviewModal({ fields, onClose }: { fields: FormField[]; onClose: () =>
 // ─── Main FormBuilder ─────────────────────────────────────────────────────────
 
 export default function Page() {
-    const template = useCreateTemplate();
+    const useParams = useSearchParams();
+    const schema_id = useParams.get('schema_id');
+    const template = useUpdateTemplate();
+    const { data, isLoading, error } = useFormSchemaWorkflow(schema_id || "")
     const { data: divisionList } = useDivisionList();
     const { data: companyList } = useCompanyList();
     const { data: employeeList } = useEmployeeList();
@@ -792,6 +796,7 @@ export default function Page() {
     const COMPANY_OPTIONS = companyList?.map((c: any) => ({ label: c.name, value: c.code })) ?? [];
 
     const DEPARTMENT_OPTIONS = divisionList?.map((d: any) => ({ label: d.name, value: d.code })) ?? [];
+    // Sample data
 
     interface EmployeeList {
         employee_code: string;
@@ -872,6 +877,62 @@ export default function Page() {
     // Whether the active drag is hovering over the canvas
     const [isOverCanvas, setIsOverCanvas] = useState(false);
 
+    useEffect(() => {
+        if (!data) return
+        setFormDetail(prev => ({
+            ...prev,
+            name: data.name,
+            company: data.company.code,
+            department: data.division.code,
+            code: schema_id ?? ""
+        }))
+        const length = data.schemaVersion.length
+        const result = data.schemaVersion[length - 1].workflowDefinitionVersion.workflowStep.flatMap((item: any) => {
+            const key = item.type.toLowerCase();
+
+            return item[key].map(({ employee, level }: any) => ({
+                type: item.type,
+                level: level,
+                ...employee,
+            }));
+        });
+
+        setApprover([])
+        setProcessor([])
+        result.map((employee: any) => {
+            if (employee.type === "APPROVER") {
+                setApprover(prev => ([...prev, { name: employee.firstName, employee_code: employee.employee_code, level: employee.level }]))
+            }
+            if (employee.type === "PROCESSOR") {
+                setProcessor(prev => ([...prev, { employee_code: employee.employee_code, name: employee.firstName }]))
+            }
+            if (employee.type === "FINISHER") {
+                setFinisher({ employee_code: employee.employee_code, name: employee.firstName })
+            }
+        })
+
+        const field =
+            data?.schemaVersion?.[length - 1]?.fields?.map((item: any) => {
+                const option =
+                    typeof item.fields.option === "string"
+                        ? JSON.parse(item.fields.option)
+                        : item.fields.option ?? {};
+
+                return {
+                    id: item.fields.id,
+                    type: item.fields.type,
+                    label: item.fields.label,
+                    placeholder: "",
+                    required: item.required,
+                    helpText: item.fields.helpText,
+                    width: item.width,
+
+                    ...option,
+                };
+            }) ?? [];
+
+        setFields(field)
+    }, [data, schema_id])
 
     const sensors = useSensors(
         useSensor(PointerSensor, { activationConstraint: { distance: 6 } })
@@ -1145,10 +1206,6 @@ export default function Page() {
         )
     }
 
-    function getRandomInt(min: number, max: number) {
-        return Math.floor(Math.random() * (max - min + 1)) + min;
-    }
-
     interface BaseField {
         id: string;
         type: string;
@@ -1208,21 +1265,28 @@ export default function Page() {
     async function saveForm() {
         const newFields = normalizeFields(fields);
 
-        const data = {
+        const payload = {
             form: {
-                name: formDetail.name,
+                code: schema_id,
                 divisionId: formDetail.department,
                 companyId: formDetail.company,
                 fields: newFields,
             },
             workflow: {
                 name: formDetail.name,
+                code: data.schemaVersion[0].workflowDefinitionVersion.workflowDefinition.code,
                 approver: approver,
                 processor: processor,
                 finisher: finisher
             }
         }
-        template.mutate(data)
+
+        if (!schema_id) {
+            toast.error('ไม่สามารถแก้ไขรูปแบบเอกสารที่ไม่มีในระบบได้')
+            return
+        }
+        // console.log(payload)
+        template.mutate({ id: schema_id, data: payload })
     }
 
     return (
@@ -1252,15 +1316,16 @@ export default function Page() {
                         <div className="flex flex-col gap-3 md:flex-row md:items-center">
                             <div className="flex flex-col gap-2 min-w-0 md:flex-row md:items-center md:gap-2 w-full">
                                 <span className="text-nowrap">{"ชื่อเอกสาร"}</span>
-                                <input type="text" className="pl-2 border py-1 rounded bg-[#F3F4F8] text-sm w-full md:w-40"
+                                <input type="text" disabled className="pl-2 border py-1 rounded bg-[#F3F4F8] text-sm w-full md:w-40"
                                     value={formDetail.name} onChange={e => setFormDetail(prev => ({ ...prev, name: e.target.value }))}
                                 />
                             </div>
                             <div className="flex flex-col gap-2 min-w-0 md:flex-row md:items-center md:gap-2 w-full">
                                 <span className="text-nowrap">{"เอกสารของแผนก"}</span>
                                 <Select
-                                    <{ label: string; value: string }>
+                                    isDisabled={true}
                                     options={DEPARTMENT_OPTIONS}
+                                    value={DEPARTMENT_OPTIONS.find((option: any) => option.value === formDetail.department) ?? null}
                                     onChange={(seleted) => {
                                         if (!seleted) return;
                                         setFormDetail(prev => ({ ...prev, department: seleted.value }));
@@ -1270,8 +1335,9 @@ export default function Page() {
                             <div className="flex flex-col gap-2 min-w-0 md:flex-row md:items-center md:gap-2 w-full">
                                 <span className="text-nowrap">{"เอกสารของบริษัท"}</span>
                                 <Select
-                                    <{ label: string; value: string }>
+                                    isDisabled={true}
                                     options={COMPANY_OPTIONS}
+                                    value={COMPANY_OPTIONS.find((option: any) => option.value === formDetail.company) ?? null}
                                     onChange={(seleted) => {
                                         if (!seleted) return;
                                         setFormDetail(prev => ({ ...prev, company: seleted.value }));
@@ -1302,7 +1368,7 @@ export default function Page() {
                                     {"เพิ่มผู้อนุมัติ"}
                                 </button>
                                 <div className="flex items-center w-full overflow-x-auto scrollbar-none">
-                                    {approver[0].employee_code != "" && approver.map((app, index) => (
+                                    {approver[0]?.employee_code != "" && approver.map((app, index) => (
                                         <div key={index} className="flex items-center">
                                             <span>{app.name}</span>
                                             {index != approver.length - 1 && <ArrowRight size={14} />}
@@ -1334,7 +1400,7 @@ export default function Page() {
                                     {"เพิ่มผู้ดำเนินการ"}
                                 </button>
                                 <div className="flex items-center w-full overflow-x-auto scrollbar-none">
-                                    {processor[0].employee_code != "" && processor.map((app, index) => (
+                                    {processor[0]?.employee_code != "" && processor.map((app, index) => (
                                         <div className="flex" key={index}>
                                             <span>{app.name}</span>
                                             {index != processor.length - 1 && ", "}
