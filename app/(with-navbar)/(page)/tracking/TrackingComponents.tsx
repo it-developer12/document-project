@@ -117,17 +117,17 @@ export function ActivityHistory({ activities }: { activities: any[] }) {
 
 export function DetailModal({ stage, stages, document: detailDocument, onClose }: { stage: string; stages: TrackingStage[]; document: DetailDocument; onClose: () => void }) {
     const modalDetail = stages.find((item) => item.stage === stage)
-    
+
     if (!modalDetail) return null
 
     const approverRows = (modalDetail.sub_stage ?? []).map((step, index, rows) => {
         const startedAt = new Date(step.startedAt).getTime()
         const actedAt = new Date(step.actedAt).getTime()
-        const previousActedAt = index === 0 ? new Date(detailDocument.createdAt).getTime() : new Date(rows[index - 1].actedAt).getTime()
+        const previousActedAt = index === 0 ? new Date(detailDocument.document.createdAt).getTime() : new Date(rows[index - 1].actedAt).getTime()
         return { ...step, timeSpent: (actedAt - startedAt) / 86400000 < 1 ? -1 : Math.floor((actedAt - startedAt) / 86400000), timeDiff: (startedAt - previousActedAt) / 86400000 < 1 ? -1 : Math.floor((startedAt - previousActedAt) / 86400000) }
     })
     const processRows = (modalDetail.sub_stage ?? []).map((process, index, rows) => {
-        const approvalSteps = detailDocument.workflowInstance?.executions?.[0]?.steps ?? []
+        const approvalSteps = detailDocument.document.workflowInstance?.executions?.[0]?.steps ?? []
         const previousTime = index === 0 ? new Date(approvalSteps.at(-1)?.actedAt).getTime() : new Date(rows[index - 1].createAt).getTime()
         return { ...process, diff: Math.floor((new Date(process.createAt).getTime() - previousTime) / 3600000) }
     })
@@ -152,7 +152,7 @@ export function DetailModal({ stage, stages, document: detailDocument, onClose }
                                             ?
                                             `${item.timeSpent} วัน`
                                             :
-                                            item.timeSpent === -1 && (item.status !== "WAITING")
+                                            item.timeSpent === -1 && (item.status !== "WAITING") && (item.status !== "SKIPPED")
                                                 ?
                                                 "ใช้เวลาน้อยกว่า 1 วัน"
                                                 :
@@ -161,19 +161,40 @@ export function DetailModal({ stage, stages, document: detailDocument, onClose }
                             :
                             stage === "process"
                                 ?
-                                processRows.map((item, index) =>
-                                    <div key={index} className="w-full bg-green-500 text-white p-3 flex justify-between rounded-2xl">
-                                        <span>{item.description} by {item.processBy.firstName}</span>
-                                        <span>{item.diff > 0
-                                            ?
-                                            `${item.diff} ชั่วโมง`
-                                            :
-                                            "น้อยกว่า 1 ชั่วโมง"}</span>
-                                    </div>)
+                                <>
+                                    {detailDocument.processor.map((pro: any, idx: number) =>
+                                        <div key={idx} className={`w-full text-white p-3 flex justify-between rounded-2xl ${detailDocument.document.status === "PROCESSING" ? "bg-blue-500" : detailDocument.document.status === "COMPLETED" ? "bg-green-500" : "bg-gray-400"}`}>
+                                            <span>{detailDocument.document.status === "PROCESSING" ? "กำลังดำเนินการ" : "ผู้ดำเนินการ"} {"โดย"} {pro.processor[0].employee.firstName}</span>
+                                        </div>
+                                    )}
+                                    <div className="flex justify-center">
+                                        <hr className="w-11/12 border-2 border-gray-400 rounded-full" />
+                                    </div>
+                                    {processRows.map((item, index) =>
+                                        <div key={index} className="w-full bg-green-500 text-white p-3 flex justify-between rounded-2xl">
+                                            <span>{item.description} by {item.processBy.firstName}</span>
+                                            <span>{item.diff > 0
+                                                ?
+                                                `${item.diff} ชั่วโมง`
+                                                :
+                                                "น้อยกว่า 1 ชั่วโมง"}</span>
+                                        </div>
+                                    )}
+                                </>
                                 :
-                                <div className="w-full bg-green-500 text-white p-3 flex justify-between rounded-2xl">
-                                    <span>{modalDetail.activity[0]?.message} by {modalDetail.activity[0]?.createdBy?.firstName}</span>
-                                </div>
+                                stage === "submit"
+                                    ?
+                                    <div className="w-full bg-green-500 text-white p-3 flex justify-between rounded-2xl">
+                                        <span>{modalDetail.activity[0]?.message} by {modalDetail.activity[0]?.createdBy?.firstName}</span>
+                                    </div>
+                                    :
+                                    <>
+                                        {detailDocument.document.status === "COMPLETED" ? (
+                                            <div className="w-full bg-green-500 text-white p-3 flex justify-between rounded-2xl">
+                                                <span>{modalDetail.activity[0]?.message} by {modalDetail.activity[0]?.createdBy?.firstName}</span>
+                                            </div>
+                                        ) : (<></>)}
+                                    </>
                         }
                     </div>
                 </div>

@@ -7,7 +7,6 @@ import Link from "next/link";
 export function FileUploadPreview({ field, control, mode }: { field: FormField, control: Control<any>, mode: string }) {
         const [draggingFile, setDraggingFile] = useState(false);
         // const [droppedFiles, setDroppedFiles] = useState<string[]>([]);
-
         const handleDragOver = (e: React.DragEvent) => {
             e.preventDefault();
             e.stopPropagation();

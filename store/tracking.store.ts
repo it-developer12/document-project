@@ -14,6 +14,7 @@ export type LastestDocumentItem = {
 }
 
 export type DocumentDetail = {
+    priority: "low" | "medium" | "high";
     documentNo: string;
     status: string;
     dueDate: string;
@@ -68,22 +69,27 @@ export type DocumentDetail = {
     }>;
 }
 
+type res = {
+    document: DocumentDetail,
+    processor: any
+}
+
 
 
 interface TrackingState {
     LastestDocument: LastestDocumentItem[];
     SearchDocument: LastestDocumentItem[];
-    SearchDocumentDetail: DocumentDetail;
+    SearchDocumentDetail: res;
     setLastestDocument: (document: LastestDocumentItem[]) => void;
     setSearchDocument: (document: LastestDocumentItem[]) => void;
-    setDocumentDetail: (detail: DocumentDetail) => void;
+    setDocumentDetail: (detail: res) => void;
     ClearTrackingDocument: () => void;
 }
 
 export const useTrackingStore = create<TrackingState>((set) => ({
     LastestDocument: [],
     SearchDocument: [],
-    SearchDocumentDetail: {} as DocumentDetail,
+    SearchDocumentDetail: {} as res,
 
     setLastestDocument: (document) => set({
         LastestDocument: document.slice(0, 10)

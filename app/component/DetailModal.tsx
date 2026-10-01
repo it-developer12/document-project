@@ -40,11 +40,11 @@ export function DetailModal({
             inputRef.current.focus();
         }
     }, [detail.open]);
-
-    const type = docs.find((doc) => doc.documentNo === detail.document_id)
-        ?.workflowInstance.workflowDefinitionVersion.workflowStep[0].type;
+    const workflow = docs.find((doc) => doc.documentNo === detail.document_id)?.workflowInstance.workflowDefinitionVersion.workflowStep
+    const type = workflow.map((w:any) => ( w.type ))
     const activity = activities.find((act) => act.document_code === detail.document_id);
-
+    const isProcessor = type.find((t:any) => t === "PROCESSOR")
+    const isFinisher = type.find((t:any) => t === "FINISHER")
     function AddProcess() {
         if (!message.trim()) {
             toast.error("กรุณากรอกคำอธิบายการดำเนินการ");
@@ -111,7 +111,7 @@ export function DetailModal({
                                 <span>{"การดำเนินการ"}</span>
                             </div>
                             <div className="space-y-2">
-                                {type === "PROCESSOR" ? (
+                                {isProcessor && (
                                     <div className="space-y-2">
                                         <input
                                             ref={inputRef}
@@ -133,7 +133,8 @@ export function DetailModal({
                                             {"เพิ่ม"}
                                         </button>
                                     </div>
-                                ) : (
+                                )}
+                                {isFinisher && (
                                     <button
                                         className="bg-[#4A4DF1] text-white rounded py-2 w-full hover:cursor-pointer hover:bg-blue-700 transition"
                                         onClick={() => FinishDocument(detail.document_id)}

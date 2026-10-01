@@ -47,16 +47,16 @@ export const ProcessColumns = (
         },
         {
             accessorKey: "title",
-            header: "Title",
+            header: "ชื่อเอกสาร",
         },
         {
             accessorKey: "priority",
-            header: "Priority",
+            header: "ระดับความสำคัญ",
             cell: ({ row }) => <PriorityBadge status={row.original.priority as Priority} />
         },
         {
             accessorKey: "company",
-            header: "Company",
+            header: "บริษัท",
             cell: ({ row }) => {
                 var company_name = "";
                 switch (row.original.company) {
@@ -80,20 +80,30 @@ export const ProcessColumns = (
         },
         {
             accessorKey: "owner",
-            header: "Owner",
+            header: "ผู้สร้างเอกสาร",
         },
         {
             accessorKey: "department",
-            header: "Department",
+            header: "เอกสารของแผนก",
         },
         {
             accessorKey: "status",
-            header: "Status",
+            header: "สถานะ",
             cell: ({ row }) => <StatusBadge status={row.original.status as Status} />
         },
         {
+            accessorKey: "created",
+            header: "วันที่สร้างเอกสาร",
+            cell: ({ row }) => {
+                const stringDate = dayjs.utc(row.original.created).tz("Asia/Bangkok").format("DD-MM-YYYY")
+                return (
+                    <span>{stringDate}</span>
+                )
+            }
+        },
+        {
             accessorKey: "updated",
-            header: "Last Updated",
+            header: "แก้ไขล่าสุด",
             cell: ({ row }) => {
                 const stringDate = dayjs.utc(row.original.updated).tz("Asia/Bangkok").format("DD-MM-YYYY")
                 return (

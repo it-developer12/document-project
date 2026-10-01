@@ -64,9 +64,9 @@ export default function Page() {
     const DOCUMENT: TableDoc[] = docs.map((doc) => ({
         id: doc.documentNo,
         title: doc.formSchema.name,
-        priority: "high",
+        priority: doc.priority as Status,
         owner: doc.createdBy.firstName,
-        company: doc.formSchema.company.name,
+        company: doc.formSchema.company.code,
         department: doc.formSchema.division.name,
         status: doc.status as DocStatus,
         created: doc.createdAt,
@@ -133,7 +133,7 @@ export default function Page() {
                 </Link>
                 <div className="">
                     <h1 className="text-2xl font-bold">{"ดำเนินการเอกสาร"}</h1>
-                    <span>{"Neque porro quisquam est qui dolorem ipsum quia dolor sit amet, consectetur, adipisci velit..."}</span>
+                    <span>{"ดำเนินการตามที่เอกสารร้องขอ"}</span>
                 </div>
             </div>
 

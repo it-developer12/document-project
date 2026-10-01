@@ -90,6 +90,7 @@ export function FileUploadPreview({ field }: { field: FormField }) {
             </label>
             <input
                 id={inputId}
+                disabled
                 type="file"
                 className="hidden"
                 accept={acceptStr}

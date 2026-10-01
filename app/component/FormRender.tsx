@@ -33,7 +33,7 @@ export function FieldPreview({ field, control, setValue, getValues, mode }: {
                             ...inputStyle,
                             resize: "none",
                         }}
-                        disabled = {mode === "view"}
+                        disabled={mode === "view"}
                     />
                 )}
             />
@@ -49,7 +49,7 @@ export function FieldPreview({ field, control, setValue, getValues, mode }: {
                     <select
                         {...controllerField}
                         style={inputStyle}
-                        disabled = {mode === "view"}
+                        disabled={mode === "view"}
                     >
                         <option value="">
                             Select an option...
@@ -83,7 +83,7 @@ export function FieldPreview({ field, control, setValue, getValues, mode }: {
                             >
                                 <input
                                     type="radio"
-                                    disabled = {mode === "view"}
+                                    disabled={mode === "view"}
                                     value={o}
                                     checked={
                                         controllerField.value === o
@@ -112,27 +112,22 @@ export function FieldPreview({ field, control, setValue, getValues, mode }: {
                             <label key={o} className="flex items-center gap-2 w-1/4">
                                 <input
                                     type="checkbox"
-                                    disabled = {mode === "view"}
+                                    disabled={mode === "view"}
                                     style={{ accentColor: "var(--primary)" }}
                                     checked={
-                                        controllerField.value?.includes(o)
+                                        Array.isArray(controllerField.value) &&
+                                        controllerField.value.includes(o)
                                     }
-                                    onChange={(e) => {
-                                        const current =
-                                            controllerField.value || [];
+                                    onChange={(event) => {
+                                        const currentValue = Array.isArray(controllerField.value)
+                                            ? controllerField.value
+                                            : [];
 
-                                        if (e.target.checked) {
-                                            controllerField.onChange([
-                                                ...current,
-                                                o,
-                                            ]);
-                                        } else {
-                                            controllerField.onChange(
-                                                current.filter(
-                                                    (x: string) => x !== o
-                                                )
-                                            );
-                                        }
+                                        const nextValue = event.target.checked
+                                            ? [...new Set([...currentValue, o])]
+                                            : currentValue.filter((value: string) => value !== o);
+
+                                        controllerField.onChange(nextValue);
                                     }}
                                 />
                                 {o}
@@ -152,10 +147,11 @@ export function FieldPreview({ field, control, setValue, getValues, mode }: {
                 render={({ field: controllerField }) => (
                     <div className="flex items-center gap-2">
                         <button
+                            type="button"
                             className="relative w-10 h-6 rounded-full border transition-colors"
                             style={{ background: controllerField.value ? "var(--primary)" : "var(--switch-background)" }}
                             onClick={() => controllerField.onChange(!controllerField.value)}
-                            disabled = {mode === "view"}
+                            disabled={mode === "view"}
                         >
                             <div
                                 className="absolute top-1 w-4 h-4 border rounded-full transition-all"
@@ -169,15 +165,44 @@ export function FieldPreview({ field, control, setValue, getValues, mode }: {
 
         );
     }
+    if (field.type === "phone") {
+        return (
+            <Controller
+                name={field.id}
+                control={control}
+                defaultValue=""
+                render={({ field: controllerField }) => (
+                    <input
+                        {...controllerField}
+                        type="tel"
+                        inputMode="numeric"
+                        autoComplete="tel"
+                        maxLength={10}
+                        placeholder={field.placeholder || "0812345678"}
+                        disabled={mode === "view"}
+                        style={inputStyle}
+                        value={controllerField.value ?? ""}
+                        onChange={(event) => {
+                            const value = event.target.value
+                                .replace(/\D/g, "")
+                                .slice(0, 10);
+
+                            controllerField.onChange(value);
+                        }}
+                    />
+                )}
+            />
+        );
+    }
     if (field.type === "file") {
-        return <FileUploadPreview field={field} control={control} mode={mode}/>;
+        return <FileUploadPreview field={field} control={control} mode={mode} />;
     }
     if (field.type === "table") {
-        return <TableFieldPreview field={field} control={control} mode={mode}/>
+        return <TableFieldPreview field={field} control={control} mode={mode} />
         // onChange={onChange}
     }
     if (field.type === "employee_detail") {
-        return <EmployeeDetailPreview field={field} control={control} setValue={setValue} getValues={getValues} mode={mode}/>
+        return <EmployeeDetailPreview field={field} control={control} setValue={setValue} getValues={getValues} mode={mode} />
     }
     return (
         <Controller
@@ -187,7 +212,7 @@ export function FieldPreview({ field, control, setValue, getValues, mode }: {
             render={({ field: controllerField }) => (
                 <input
                     {...controllerField}
-                    disabled = {mode === "view"}
+                    disabled={mode === "view"}
                     type={field.type === "date" ? "date" : field.type === "email" ? "email" : field.type === "number" ? "number" : "text"}
                     placeholder={field.placeholder}
                     style={inputStyle}

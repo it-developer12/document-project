@@ -76,12 +76,20 @@ function filterDocuments(documents: TableDoc[], table: TableState) {
     });
 }
 
+function getType(workflowInstance: any) {
+    const workflow = workflowInstance?.workflowDefinitionVersion?.workflowStep?.map((step: any) => step.type) ?? []
+    const execution = workflowInstance?.executions[0]?.steps?.map((exe: any) => exe.type) ?? []
+    return [...workflow, ...execution]
+}
+
 export default function Home() {
     const { data: divisionList } = useDivisionList();
     const { data: companyList } = useCompanyList();
     useGetDocuments();
     const count = useDocumentCount();
     const docs = useDocumentStore((state) => state.documents);
+    const appDocs = useDocumentStore((state) => state.approveDocuments)
+    const proDocs = useDocumentStore((state) => state.processDocuments)
 
     const COMPANY_OPTIONS = companyList?.map((company: any) => ({
         label: company.name,
@@ -98,13 +106,13 @@ export default function Home() {
         title: doc.formSchema.name,
         priority: doc.priority as Status,
         owner: doc.createdBy.firstName,
-        company: doc.formSchema.company.name,
+        company: doc.currentRevision.company.code,
         department: doc.formSchema.division.name,
         status: doc.status as DocStatus,
         created: doc.createdAt,
         end_date: doc.dueDate,
-        updated: doc.activities[0].createdAt,
-        type: doc.workflowInstance.workflowDefinitionVersion.workflowStep[0]?.type ? [doc.workflowInstance.workflowDefinitionVersion.workflowStep[0]?.type] : [],
+        updated: doc.activities[0]?.createdAt,
+        type: getType(doc.workflowInstance),
         schema_id: doc.formSchema.code
     }))
 
@@ -154,7 +162,7 @@ export default function Home() {
             <div className='flex justify-between items-center'>
                 <div className="">
                     <h1 className="text-2xl font-bold mb-4">Document Dashboard</h1>
-                    <span>{"Manage and track all organizational documents"}</span>
+                    <span>{"จัดการและติดตามสถานะของเอกสารทั้งหมด"}</span>
                 </div>
                 <Link href={'/document_list'}>
                     <div className='text-white p-2 bg-[#1b1b1b] rounded-md flex justify-between items-center gap-1'>
@@ -241,7 +249,7 @@ export default function Home() {
             <div className="mt-6 flex gap-4">
                 <Card className="w-1/4" >
                     <CardHeader>
-                        <CardTitle>{"Totals Documents"}</CardTitle>
+                        <CardTitle>{"เอกสารทั้งหมด"}</CardTitle>
                         <CardAction>
                             <div className="bg-[#d3e8ff] rounded-lg p-2">
                                 <Icon icon="carbon:document" className="text-lg text-[#007bff]" />
@@ -254,7 +262,7 @@ export default function Home() {
                 </Card>
                 <Card className="w-1/4" >
                     <CardHeader>
-                        <CardTitle>{"Approved Documents"}</CardTitle>
+                        <CardTitle>{"เอกสารที่อนุมัติแล้ว"}</CardTitle>
                         <CardAction>
                             <div className="bg-[#d3ffd9] rounded-lg p-2">
                                 <Icon icon="material-symbols:check-box-outline" className="text-lg text-[#00b318]" />
@@ -267,7 +275,7 @@ export default function Home() {
                 </Card>
                 <Card className="w-1/4" >
                     <CardHeader>
-                        <CardTitle>{"Processing Documents"}</CardTitle>
+                        <CardTitle>{"เอกสารที่กำลังดำเนินการ"}</CardTitle>
                         <CardAction>
                             <div className="bg-[#fcffd3] rounded-lg p-2">
                                 <Icon icon="tabler:clock" className="text-lg text-[#c8d600]" />
@@ -280,7 +288,7 @@ export default function Home() {
                 </Card>
                 <Card className="w-1/4" >
                     <CardHeader>
-                        <CardTitle>{"Cancelled Documents"}</CardTitle>
+                        <CardTitle>{"เอกสารที่ถูกยกเลิก"}</CardTitle>
                         <CardAction>
                             <div className="bg-[#ffd3d3] rounded-lg p-2">
                                 <Icon icon="material-symbols:error-outline-rounded" className="text-lg text-[#d60000]" />

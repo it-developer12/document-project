@@ -21,12 +21,22 @@ export async function getFormFields(schema_id: string) {
     return response.data;
 }
 
-export async function getFormDetail(schema_id: string) {
-    const response = await api.get(`form/form_detail/${schema_id}`)
+export async function getFormDetail(schema_id: string, isDraft: string) {
+    const response = await api.get(`form/form_detail/${schema_id}?isDraft=${isDraft}`)
     if (response.status === 200) {
         // toast.success("ดึงข้อมูลเอกสารสำเร็จ")
     } else {
         toast.error("ไม่สามารถดึงข้อมูลเอกสารได้")
+    }
+    return response.data;
+}
+
+export async function getPublishForm() {
+    const response = await api.get('/form/all_publish_form');
+    if (response.status === 200) {
+        // toast.success("ดึงรายการเอกสารสำเร็จ");
+    } else {
+        toast.error("ไม่สามารถดึงรายการเอกสารได้");
     }
     return response.data;
 }
