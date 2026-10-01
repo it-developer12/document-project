@@ -39,7 +39,7 @@ export async function createDocument(data: CreateDocumentPayload) {
     return response.data;
 }
 
-export async function updateDocument(data: UpdateDocumentPayload) {
+export async function updateDocument(data: UpdateDocumentPayload | FormData) {
     const response = await api.patch('/document/update', data);
     return response.data;
 }

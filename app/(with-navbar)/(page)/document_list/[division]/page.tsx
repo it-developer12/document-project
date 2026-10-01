@@ -3,22 +3,19 @@ import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { useFormStore } from "@/store/form.store";
 import { useEffect } from "react";
-import { useGetForms } from "@/hooks/set-form";
+import { useGetAllPublishForms, useGetForms } from "@/hooks/set-form";
 import { useParams } from "next/navigation";
 
 export default function Page() {
     const params = useParams<{ division: string }>();
     const division = params?.division;
-    const formMutation = useGetForms();
-    const forms = useFormStore((state) => state.forms);
+    const formMutation = useGetAllPublishForms();
+    const forms = useFormStore((state) => state.publish_form);
     const currentDivision = forms.find((item) => item.division_code === division);
 
-
+    
     useEffect(() => {
-        if (forms.length === 0) {
-            // Fetch forms if not already fetched
-            formMutation.mutate();
-        }
+        formMutation.mutate()
     }, [division]);
     return (
         <div className="bg-slate-50 min-h-screen h-full w-full p-6">
@@ -30,7 +27,7 @@ export default function Page() {
                 </Link>
                 <div className="">
                     <h1 className="text-2xl font-bold">{currentDivision ? currentDivision.division_name : "รายการเอกสาร"}</h1>
-                    <span>{"Neque porro quisquam est qui dolorem ipsum quia dolor sit amet, consectetur, adipisci velit..."}</span>
+                    <span>{`รูปแบบเอกสารทั้งหมดในแผนก${currentDivision ? currentDivision?.division_name : ""}`}</span>
                 </div>
             </div>
             {currentDivision && currentDivision.forms.map((form, index: number) => (

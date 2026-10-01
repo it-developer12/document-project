@@ -23,17 +23,18 @@ import {
     Hash, Mail, Phone, Link, GripVertical, Trash2, Settings,
     Eye, Plus, X, ToggleLeft, Paperclip, Table2,
     PlusCircle, UserSquare2,
-    ArrowRight
+    ArrowRight,
+    Save
 } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import Select, { MultiValue } from 'react-select'
 import { FieldPreview } from "./PreviewRender";
-import { useRouter } from "next/navigation";
-import { toast } from "react-toastify";
-import { useCreateTemplate } from "@/hooks/create-template";
-import { CreateTemplatePayload } from "@/api/template";
+import { useCreateDrafTemplate, useCreateTemplate } from "@/hooks/create-template";
 import { useCompanyList, useDivisionList, useEmployeeList } from "@/hooks/create-form";
+import { toast } from "react-toastify";
+import { Field, FieldLabel } from "@/components/ui/field";
+import { Checkbox } from "@/components/ui/checkbox";
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface PaletteItem {
     type: FieldType;
@@ -500,6 +501,7 @@ function PropertiesPanel({
         fontSize: "0.8rem",
     };
     const hasOptions = ["select", "radio", "checkbox"].includes(field.type);
+    const isEmployeeDetailField = field.type === 'employee_detail'
 
     return (
         <div className="flex flex-col h-full overflow-y-auto" style={{ scrollbarWidth: "none" }}>
@@ -562,7 +564,7 @@ function PropertiesPanel({
                 </div>
 
                 {/* Width */}
-                <div className="flex flex-col gap-1.5">
+                <div className={`flex flex-col gap-1.5 ${isEmployeeDetailField ? "hidden" : ""}`}>
                     <label style={{ fontSize: "0.75rem", fontWeight: 500, color: "var(--muted-foreground)" }}>Width</label>
                     <div className="grid grid-cols-2 gap-2">
                         {(["full", "half"] as const).map((w) => (
@@ -783,6 +785,7 @@ function PreviewModal({ fields, onClose }: { fields: FormField[]; onClose: () =>
 
 export default function Page() {
     const template = useCreateTemplate();
+    const draft = useCreateDrafTemplate();
     const { data: divisionList } = useDivisionList();
     const { data: companyList } = useCompanyList();
     const { data: employeeList } = useEmployeeList();
@@ -841,13 +844,15 @@ export default function Page() {
 
     const ProcessorList: ProcessorOptionType[] = employeeList?.map((e: any) => ({ label: e.fullName, value: e.employee_code, department: e.position.division.code })) ?? [];
 
-    const FinisherList: Options[] = employeeListOptions
+    const FinisherList: Options[] = employeeList?.map((e: any) => ({ label: e.fullName, value: e.employee_code, department: e.position.division.code })) ?? [];
 
     const [formDetail, setFormDetail] = useState({
         name: "",
         code: "",
         department: "",
-        company: "",
+        iso_no: "",
+        have_approver: false,
+        approve_strategy: "1",
         approver_type: "current",
         processor_type: "current",
         finisher_type: "current"
@@ -994,7 +999,7 @@ export default function Page() {
             return EmployeeList.filter(
                 (option: any) => !selectedValues.includes(option.value)
             );
-        } else if (type === "process") {
+        } else if (type === "process" || type == "finisher") {
             const DepartmentList = EmployeeList.filter((em: any) => em.department === formDetail.department)
             const selectedValues = DepartmentList
                 .map((item: any) => item.employee_id);
@@ -1006,6 +1011,14 @@ export default function Page() {
     };
 
     function EmployeeModal({ onClose, type, List }: { onClose: () => void, type: string, List: any }) {
+        const approvalStrategies = [
+            { label: "1 ระดับ: หัวหน้างาน (Lv.3)", value: "1" },
+            { label: "2 ระดับ: หัวหน้างาน (Lv.3) → ผู้จัดการแผนก (Lv.4)", value: "2" },
+            { label: "3 ระดับ: หัวหน้างาน (Lv.3) → ผู้จัดการแผนก (Lv.4) → ผู้จัดการฝ่าย (Lv.6)", value: "3" },
+            { label: "4 ระดับ: หัวหน้างาน (Lv.3) → ผู้จัดการแผนก (Lv.4) → ผู้จัดการฝ่าย (Lv.6) → ผู้อำนวยการ (Lv.7)", value: "4" },
+            { label: "5 ระดับ: หัวหน้างาน (Lv.3) → ผู้จัดการแผนก (Lv.4) → ผู้จัดการฝ่าย (Lv.6) → ผู้อำนวยการ (Lv.7) → CEO", value: "5" },
+        ];
+
         return (
             <div
                 className="fixed inset-0 z-50 flex items-center justify-center p-6"
@@ -1022,64 +1035,93 @@ export default function Page() {
                         <button onClick={onClose} className="hover:cursor-pointer" style={{ color: "var(--muted-foreground)" }}><X size={16} /></button>
                     </div>
                     <div className="overflow-y-auto p-6 flex flex-col gap-5 min-h-[80vh]" style={{ scrollbarWidth: "none" }}>
-                        {type == "ผู้อนุมัติ" && List.map((app: any, index: number) => (
-                            <div
-                                key={index}
-                                className={`flex flex-col gap-2 min-w-0 md:flex-row md:items-center md:gap-2 w-full`}
-                            >
-                                <div className="flex gap-2 items-center">
-                                    <span>
-                                        {type} {"คนที่"} {index + 1}
-                                    </span>
+                        <div>
+                            <div className={`space-y-2 ${type === "ผู้อนุมัติ" ? '' : 'hidden'}`}>
+                                <div>
+                                    <span>{"รูปแบบการอนุมัติ"}</span>
                                 </div>
-                                <Select
-                                    key={index}
-                                    defaultInputValue=""
-                                    placeholder="โปรดเลือกผู้อนุญาติเอกสาร"
-                                    className="md:w-1/2 rounded-lg basic-multi-select"
-                                    options={getAvailableOptions(index, approver, ApproverList, "approve")}
-                                    value={ApproverList.filter(
-                                        (option) => approver
-                                            .filter((_, i) => i == index)
-                                            .flatMap((item) => item.employee_code).includes(option.value))
-                                    }
-                                    onChange={(selected) => {
-                                        setApprover(prev =>
-                                            prev.map((item, i) =>
-                                                i === index
-                                                    ? {
-                                                        ...item,
-                                                        employee_code: selected?.value ?? "",
-                                                        name: selected?.label ?? ""
-                                                    }
-                                                    : item
-                                            )
-                                        );
-                                    }}
-                                />
-                                {
-                                    index === approver.length - 1 && (
-                                        <div className="flex gap-2">
-                                            <button
-                                                type="button"
-                                                onClick={handleAddApprover}
-                                                className="bg-green-400 text-white px-2 py-0.5 rounded-md hover:cursor-pointer"
-                                            >
-                                                เพิ่ม
-                                            </button>
-
-                                            <button
-                                                type="button"
-                                                onClick={() => handleRemoveApprover(index)}
-                                                className={`bg-red-400 text-white px-2 py-0.5 rounded-md ${index === 0 ? 'hidden' : ''}`}
-                                            >
-                                                ลบ
-                                            </button>
-                                        </div>
-                                    )
-                                }
+                                <div>
+                                    <Select
+                                        options={approvalStrategies}
+                                        value={approvalStrategies.find(option => option.value === formDetail.approve_strategy) ?? null}
+                                        onChange={(selected) => {
+                                            if (!selected) return;
+                                            setFormDetail(prev => ({ ...prev, approve_strategy: selected.value }));
+                                        }}
+                                    />
+                                </div>
                             </div>
-                        ))}
+                            <div className={`${type === "ผู้อนุมัติ" ? 'mt-8' : ''}`}>
+                                <div className={`flex justify-start space-x-4 mt-4 ${type === "ผู้อนุมัติ" ? '' : 'hidden'}`}>
+                                    <Field orientation="horizontal" className="w-auto">
+                                        <FieldLabel htmlFor="show" className="text-md">{'เลือกผู้อนุมัติเพิ่มสำหรับเอกสาร'}</FieldLabel>
+                                        <Checkbox
+                                            id="show"
+                                            checked={formDetail.have_approver}
+                                            onCheckedChange={(checked) => setFormDetail(prev => ({ ...prev, have_approver: checked }))}
+                                        />
+                                    </Field>
+                                </div>
+                                {formDetail.have_approver && List.map((app: any, index: number) => (
+                                    <div
+                                        key={index}
+                                        className={`flex flex-col gap-2 min-w-0 md:flex-row md:items-center md:gap-2 w-full ${type === "ผู้อนุมัติ" ? 'mt-8' : ''}`}
+                                    >
+                                        <div className="flex gap-2 items-center">
+                                            <span>
+                                                {type} {"คนที่"} {index + 1}
+                                            </span>
+                                        </div>
+                                        <Select
+                                            key={index}
+                                            defaultInputValue=""
+                                            placeholder="โปรดเลือกผู้อนุญาติเอกสาร"
+                                            className="md:w-1/2 rounded-lg basic-multi-select"
+                                            options={getAvailableOptions(index, approver, ApproverList, "approve")}
+                                            value={ApproverList.filter(
+                                                (option) => approver
+                                                    .filter((_, i) => i == index)
+                                                    .flatMap((item) => item.employee_code).includes(option.value))
+                                            }
+                                            onChange={(selected) => {
+                                                setApprover(prev =>
+                                                    prev.map((item, i) =>
+                                                        i === index
+                                                            ? {
+                                                                ...item,
+                                                                employee_code: selected?.value ?? "",
+                                                                name: selected?.label ?? ""
+                                                            }
+                                                            : item
+                                                    )
+                                                );
+                                            }}
+                                        />
+                                        {
+                                            index === approver.length - 1 && (
+                                                <div className="flex gap-2">
+                                                    <button
+                                                        type="button"
+                                                        onClick={handleAddApprover}
+                                                        className="bg-green-400 text-white px-2 py-0.5 rounded-md hover:cursor-pointer"
+                                                    >
+                                                        เพิ่ม
+                                                    </button>
+
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleRemoveApprover(index)}
+                                                        className={`bg-red-400 text-white px-2 py-0.5 rounded-md ${index === 0 ? 'hidden' : ''}`}
+                                                    >
+                                                        ลบ
+                                                    </button>
+                                                </div>
+                                            )
+                                        }
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
                         {type == "ผู้ดำเนินการ" && List.map((app: any, index: number) => (
                             <div
                                 key={index}
@@ -1145,10 +1187,6 @@ export default function Page() {
         )
     }
 
-    function getRandomInt(min: number, max: number) {
-        return Math.floor(Math.random() * (max - min + 1)) + min;
-    }
-
     interface BaseField {
         id: string;
         type: string;
@@ -1205,24 +1243,84 @@ export default function Page() {
         return fields.map(normalizeField);
     }
 
+    function validate(data: any): boolean {
+        const status = {
+            name: { status: false, msg: "" },
+            division: { status: false, msg: "" },
+            fields: { status: false, msg: "" },
+            processor: { status: false, msg: "" },
+            finisher: { status: false, msg: "" },
+        };
+
+        if (!data.form.name.trim()) {
+            status.name = { status: true, msg: "ยังไม่ได้ตั้งชื่อเอกสาร" };
+        }
+
+        if (!data.form.divisionId) {
+            status.division = { status: true, msg: "ยังไม่ได้เลือกแผนก" };
+        }
+
+        if (data.form.fields.length === 0) {
+            status.fields = { status: true, msg: "เพิ่มฟิลด์อย่างน้อย 1 ฟิลด์" };
+        }
+
+        if (!data.workflow.processor.some((item: any) => item.employee_code)) {
+            status.processor = { status: true, msg: "ต้องเลือกผู้ดำเนินการอย่างน้อย 1 คน" };
+        }
+
+        if (!data.workflow.finisher.employee_code) {
+            status.finisher = { status: true, msg: "ยังไม่ได้เลือกผู้สิ้นสุดเอกสาร" };
+        }
+
+        const errors = Object.values(status).filter((item) => item.status);
+
+        errors.forEach((item) => toast.error(item.msg));
+
+        return errors.length === 0;
+    }
+
     async function saveForm() {
         const newFields = normalizeFields(fields);
 
         const data = {
             form: {
-                name: formDetail.name,
+                name: formDetail.name.trim(),
                 divisionId: formDetail.department,
-                companyId: formDetail.company,
+                iso_no: formDetail.iso_no,
                 fields: newFields,
             },
             workflow: {
-                name: formDetail.name,
-                approver: approver,
+                name: formDetail.name.trim(),
+                approver: approver[0].employee_code === "" ? undefined : approver,
                 processor: processor,
                 finisher: finisher
             }
         }
+
+        if (!validate(data)) return;
         template.mutate(data)
+    }
+
+    async function saveDraft() {
+        const newFields = normalizeFields(fields);
+
+        const data = {
+            form: {
+                name: formDetail.name.trim(),
+                divisionId: formDetail.department,
+                iso_no: formDetail.iso_no,
+                fields: newFields,
+            },
+            workflow: {
+                name: formDetail.name.trim(),
+                approver: approver[0].employee_code === "" ? undefined : approver,
+                processor: processor,
+                finisher: finisher
+            }
+        }
+
+        if (!validate(data)) return;
+        draft.mutate(data)
     }
 
     return (
@@ -1249,14 +1347,14 @@ export default function Page() {
                         </p>
                     </div>
                     <div className="space-y-4 w-full md:w-3/5">
-                        <div className="flex flex-col gap-3 md:flex-row md:items-center">
-                            <div className="flex flex-col gap-2 min-w-0 md:flex-row md:items-center md:gap-2 w-full">
+                        <div className="w-full flex flex-col gap-3 md:flex-row md:items-center">
+                            <div className="flex flex-col gap-2 min-w-48 md:flex-row md:items-center md:gap-2 w-full">
                                 <span className="text-nowrap">{"ชื่อเอกสาร"}</span>
                                 <input type="text" className="pl-2 border py-1 rounded bg-[#F3F4F8] text-sm w-full md:w-40"
                                     value={formDetail.name} onChange={e => setFormDetail(prev => ({ ...prev, name: e.target.value }))}
                                 />
                             </div>
-                            <div className="flex flex-col gap-2 min-w-0 md:flex-row md:items-center md:gap-2 w-full">
+                            <div className="flex flex-col gap-2 min-w-48 md:flex-row md:items-center md:gap-2 w-full">
                                 <span className="text-nowrap">{"เอกสารของแผนก"}</span>
                                 <Select
                                     <{ label: string; value: string }>
@@ -1264,17 +1362,6 @@ export default function Page() {
                                     onChange={(seleted) => {
                                         if (!seleted) return;
                                         setFormDetail(prev => ({ ...prev, department: seleted.value }));
-                                    }}
-                                    className="w-full md:w-52 rounded-lg" />
-                            </div>
-                            <div className="flex flex-col gap-2 min-w-0 md:flex-row md:items-center md:gap-2 w-full">
-                                <span className="text-nowrap">{"เอกสารของบริษัท"}</span>
-                                <Select
-                                    <{ label: string; value: string }>
-                                    options={COMPANY_OPTIONS}
-                                    onChange={(seleted) => {
-                                        if (!seleted) return;
-                                        setFormDetail(prev => ({ ...prev, company: seleted.value }));
                                     }}
                                     className="w-full md:w-52 rounded-lg" />
                             </div>
@@ -1371,7 +1458,7 @@ export default function Page() {
                                         placeholder="โปรดเลือกผู้สำเร็จเอกสาร"
                                         className="w-full sm:w-2/5 rounded-lg basic-multi-select"
                                         defaultValue={{ label: "โปรดเลือกผู้สำเร็จเอกสาร", value: "1" }}
-                                        options={FinisherList.filter(em => em.value !== finisher.employee_code)}
+                                        options={getAvailableOptions(0, finisher, FinisherList, "finisher")}
                                         value={FinisherList.find(option => option.value === finisher.employee_code) ?? null}
                                         onChange={(selected) => {
                                             if (!selected) return;
@@ -1380,23 +1467,46 @@ export default function Page() {
                                     />
                                 </div>
                             </div>
+                            <div className="mt-2">
+                                <div className="flex items-center gap-2">
+                                    <span>{"ISO ref. "}</span>
+                                    <input
+                                        type="text"
+                                        className="w-1/4 p-1.5 pl-2 py-1 border rounded bg-[#F3F4F8] text-sm"
+                                        placeholder="iso ref."
+                                        value={formDetail.iso_no}
+                                        onChange={e => setFormDetail(prev => ({ ...prev, iso_no: e.target.value }))}
+                                    />
+                                </div>
+                            </div>
                         </div>
                     </div>
                     <div className="flex flex-col gap-2 items-stretch justify-end w-full md:w-1/5 md:flex-row md:items-center md:justify-end">
-                        <button
-                            onClick={() => setPreview(true)}
-                            className="flex items-center justify-center gap-2 px-4 py-2 rounded-lg border transition-colors hover:bg-secondary hover:cursor-pointer w-full md:w-auto"
-                            style={{ borderColor: "var(--border)", color: "var(--foreground)", fontSize: "0.8rem" }}
-                        >
-                            <Eye size={14} /> {"Preview"}
-                        </button>
-                        <button
-                            className="flex items-center gap-2 px-4 py-2 rounded-lg transition-all hover:opacity-90 hover:cursor-pointer"
-                            style={{ background: "var(--primary)", color: "var(--primary-foreground)", fontSize: "0.8rem", fontWeight: 500 }}
-                            onClick={() => saveForm()}
-                        >
-                            {"Save Form"}
-                        </button>
+                        <div className="w-full space-y-2">
+                            <div className="flex gap-2 justify-center">
+                                <button
+                                    onClick={() => setPreview(true)}
+                                    className="flex items-center justify-center gap-2 px-4 py-2 rounded-lg border transition-colors hover:bg-secondary hover:cursor-pointer w-full md:w-auto"
+                                    style={{ borderColor: "var(--border)", color: "var(--foreground)", fontSize: "0.8rem" }}
+                                >
+                                    <Eye size={14} /> {"Preview"}
+                                </button>
+                                <button
+                                    className="flex items-center justify-center bg-[#979797] text-white gap-2 px-4 py-2 rounded-lg transition-all hover:opacity-90 hover:cursor-pointer"
+                                    style={{ fontSize: "0.8rem", fontWeight: 500 }}
+                                    onClick={() => saveDraft()}
+                                >{"บันทึกฉบับร่าง"}</button>
+                            </div>
+                            <div className="w-full flex justify-center">
+                                <button
+                                    className="flex items-center justify-center w-[70%] gap-2 px-4 py-2 rounded-lg transition-all hover:opacity-90 hover:cursor-pointer"
+                                    style={{ background: "var(--primary)", color: "var(--primary-foreground)", fontSize: "0.8rem", fontWeight: 500 }}
+                                    onClick={() => saveForm()}
+                                >
+                                    <Save size={14} />  {"Save Form"}
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -1506,37 +1616,37 @@ export default function Page() {
             </DragOverlay>
 
             {preview && <PreviewModal fields={fields} onClose={() => setPreview(false)} />}
-            {modalStatus.approve && <EmployeeModal onClose={() => {
-                setApprover(prev => {
-                    const validApprovers: ApproverListType[] = prev.filter(item => item.employee_code !== "");
+            {modalStatus.approve && (
+                <EmployeeModal
+                    onClose={() => {
+                        setApprover((prev) => {
+                            const validApprovers = prev.filter((item) => item.employee_code);
+                            return validApprovers.length > 0 ? validApprovers.map((item, index) => ({
+                                ...item,
+                                level: index + 1,
+                            }))
+                                : [{ level: 1, employee_code: "", name: "" }];
+                        });
+                        setModalStatus((prev) => ({ ...prev, approve: false }));
+                    }}
+                    type="ผู้อนุมัติ"
+                    List={approver}
+                />
+            )}
 
-                    // Don't remove if only one valid approver remains
-                    if (validApprovers.length <= 1) {
-                        return prev;
-                    }
-
-                    return validApprovers.map((item, index) => ({
-                        ...item,
-                        level: index + 1,
-                    }));
-                });
-                setModalStatus(prev => ({ ...prev, approve: false }))
-            }} type="ผู้อนุมัติ" List={approver} />}
-            {modalStatus.process && <EmployeeModal onClose={() => {
-                setProcessor(prev => {
-                    const validProcessor: EmployeeList[] = prev.filter(item => item.employee_code !== "");
-
-                    // Don't remove if only one valid approver remains
-                    if (validProcessor.length <= 1) {
-                        return prev;
-                    }
-
-                    return validProcessor.map((item, index) => ({
-                        ...item,
-                    }));
-                })
-                setModalStatus(prev => ({ ...prev, process: false }))
-            }} type="ผู้ดำเนินการ" List={processor} />}
+            {modalStatus.process && (
+                <EmployeeModal
+                    onClose={() => {
+                        setProcessor((prev) => {
+                            const validProcessor = prev.filter((item) => item.employee_code);
+                            return validProcessor.length > 0 ? validProcessor : [{ employee_code: "", name: "" }];
+                        });
+                        setModalStatus((prev) => ({ ...prev, process: false }));
+                    }}
+                    type="ผู้ดำเนินการ"
+                    List={processor}
+                />
+            )}
         </DndContext>
     );
 }

@@ -2,7 +2,7 @@
 import { useForm, SubmitHandler, Control, Controller } from "react-hook-form"
 import Image from 'next/image'
 import { FieldPreview } from "@/app/component/FormRender";
-import { ArrowLeft, ChevronDownIcon, CircleCheck } from "lucide-react"
+import { ArrowLeft, ChevronDownIcon, CircleCheck, MoveRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
 import {
@@ -33,6 +33,7 @@ import { useUpdateDocument } from "@/hooks/update-document";
 import { useGetDocuments } from "@/hooks/set-document";
 import { useFormSchema } from "@/hooks/form-list";
 import { useDocumentDetail } from "@/hooks/document-list";
+import { useCompanyList } from "@/hooks/create-form";
 
 type FormSubmission = {
     schema_id: string;
@@ -62,10 +63,17 @@ function FormPageContent() {
     const doc_mode = useParams.get('mode');
     const router = useRouter();
     const [date, setDate] = useState<Date>();
+    const { data: companyList } = useCompanyList();
     const [priorityState, setPriorityState] = useState("");
+    const [commentModalOpen, setCommentModalOpen] = useState(false);
+    const [pendingDecision, setPendingDecision] = useState("");
+    const [comment, setComment] = useState("");
+    const [company, setCompany] = useState("");
     const [approver, setApprover] = useState([
         { name: "" }
     ]);
+
+    const COMPANY_OPTIONS = companyList?.map((c: any) => ({ label: c.name as string, value: c.code as string })) ?? [];
     const ApproverLists = [
         { value: "2168160", label: "Approver 1" }, //2168160
         { value: "2153002", label: "Approver 2" }, //2153002
@@ -83,6 +91,17 @@ function FormPageContent() {
     const approveMutate = approveMutation();
     const createDocumentMutation = useCreateDocument();
     const updateDocumentMutation = useUpdateDocument();
+    const isNewVersion = useMemo(() => {
+        const currentRevision = dataFromBackend?.currentRevision;
+        const currentSchemaVersionId = data?.schemaVersion?.[0]?.id;
+
+        if (dataFromBackend?.status !== "DRAFT" || !currentRevision?.formData || !currentSchemaVersionId) {
+            return false;
+        }
+
+        const answersFromBackend = JSON.parse(currentRevision.formData);
+        return answersFromBackend.schema_version_id !== currentSchemaVersionId;
+    }, [data, dataFromBackend]);
 
     const data_fields = useMemo(
         () =>
@@ -113,29 +132,49 @@ function FormPageContent() {
     }, [dataFromBackend, isDocumentMode]);
 
     const fields = useMemo(
-        () =>
-            (fieldsFromSnapshot.length > 0 ? fieldsFromSnapshot : data_fields).map((field: any) => {
+        () => {
+            const sourceFields = fieldsFromSnapshot.length > 0 && !isNewVersion
+                ? fieldsFromSnapshot
+                : data_fields;
+
+            return sourceFields.map((field: any) => {
                 if (field.option) {
                     const { option, ...rest } = field;
                     return { ...rest, ...(option ?? {}) };
                 }
                 return field;
-            }),
-        [data_fields, fieldsFromSnapshot]
+            });
+        },
+        [data_fields, fieldsFromSnapshot, isNewVersion]
     );
 
     useEffect(() => {
+        if (!data) return;
         if (!fields.length) return;
+        const getDefaultValue = (field: any) => {
+            if (field.type === "toggle") return false;
+            if (field.type === "checkbox") return [];
+            return "";
+        };
 
         const values =
-            fields.map((field: any) => field.id).reduce(
-                (acc: any, id: any) => {
-                    acc[id] = "";
+            fields.reduce(
+                (acc: Record<string, any>, field: any) => {
+                    acc[field.id] = getDefaultValue(field);
                     return acc;
                 },
-                {} as Record<string, any>
-            ) ?? {};
-        form.reset(values);
+                {}
+            );
+        const currentFormValues = form.getValues() as Record<string, any>;
+        const existingEmployeeField = currentFormValues.employee_field;
+
+        form.reset({
+            ...values,
+            ...(existingEmployeeField
+                ? { employee_field: existingEmployeeField }
+                : {}),
+        });
+        // form.reset(values);
 
         if (!isDocumentMode || !doc_id || !dataFromBackend?.currentRevision) {
             return;
@@ -160,19 +199,36 @@ function FormPageContent() {
 
         fileFields.forEach((fileField: any) => {
             const fileValue = result[fileField.id];
+            if (!fileValue) return;
 
-            if (Array.isArray(fileValue) && Array.isArray(dataFromBackend.currentRevision.attachments)) {
+            const attachments = Array.isArray(
+                dataFromBackend.currentRevision.attachments
+            )
+                ? dataFromBackend.currentRevision.attachments
+                : [];
+
+            if (fileField.multiple) {
                 result[fileField.id] = fileValue.map((file: any, index: number) => ({
                     ...file,
                     originalName:
-                        dataFromBackend.currentRevision.attachments[index]?.originalFileName ??
+                        attachments[index]?.originalFileName ??
                         file.name ??
                         "",
                     path:
-                        dataFromBackend.currentRevision.attachments[index]?.path ??
+                        attachments[index]?.path ??
                         file.path ??
                         "",
                 }));
+            } else {
+                result[fileField.id] = {
+                    ...result[fileField.id],
+                    originalName:
+                        attachments[0]?.originalFileName ??
+                        "",
+                    path:
+                        attachments[0]?.path ??
+                        "",
+                }
             }
         });
 
@@ -191,9 +247,10 @@ function FormPageContent() {
             fields: fieldsFromBackend,
             answers: result,
         };
-        
+
         setDate(new Date(dataFromBackend.dueDate))
         setPriorityState(dataFromBackend.priority ?? "");
+        setCompany(dataFromBackend?.currentRevision?.company?.code ?? "")
         form.reset(dataDeJSON.answers);
     }, [doc_id, doc_mode, dataFromBackend, fields, form]);
 
@@ -212,41 +269,83 @@ function FormPageContent() {
         return null;
     }
 
-    function validateData(data: any) {
+    function validateData(data: Record<string, any>): boolean {
         const errors: string[] = [];
 
-        fields.map((field: any) => {
-            if (field.required && field.type != "employee_detail") {
-                const fieldValue = data[field.id];
-                // Check if field is empty
+        const isEmpty = (value: any): boolean => {
+            if (value === undefined || value === null) return true;
+
+            if (typeof value === "string") {
+                return value.trim() === "";
+            }
+
+            if (Array.isArray(value)) {
+                return value.length === 0;
+            }
+
+            if (value instanceof FileList) {
+                return value.length === 0;
+            }
+
+            if (value instanceof File) {
+                return false;
+            }
+
+            if (typeof value === "object") {
+                return Object.keys(value).length === 0;
+            }
+
+            return false;
+        };
+
+        fields.forEach((field: any) => {
+            if (!field.required) return;
+
+            const value =
+                field.type === "employee_detail"
+                    ? data.employee_field
+                    : data[field.id];
+
+            if (field.type === "employee_detail") {
                 if (
-                    fieldValue === undefined ||
-                    fieldValue === null ||
-                    fieldValue === "" ||
-                    (Array.isArray(fieldValue) && fieldValue.length === 0) ||
-                    (typeof fieldValue === "object" && Object.keys(fieldValue).length === 0)
+                    !value ||
+                    !value.employee_code ||
+                    !value.first_name
                 ) {
                     errors.push(`${field.label} จำเป็นต้องกรอก`);
+                }
 
-                }
-            } else if (field.type == "employee_detail" && field.required) {
-                const fieldValue = data["employee_field"]
-                if (fieldValue.employee_code.trim() === "" || fieldValue.first_name === "") {
-                    errors.push(`${field.label} จำเป็นต้องกรอก`);
-                }
+                return;
+            }
+
+            if (isEmpty(value)) {
+                errors.push(`${field.label} จำเป็นต้องกรอก`);
+                return;
+            }
+
+            if (
+                field.type === "phone" &&
+                !/^0\d{9}$/.test(String(value))
+            ) {
+                errors.push(`${field.label} ต้องเป็นเบอร์โทรศัพท์ 10 หลัก`);
             }
         });
 
-        if (priorityState === "") {
-            errors.push(`ยังไม่ได้เลือกระดับความสำคัญ`)
+        if (!priorityState) {
+            errors.push("ยังไม่ได้เลือกระดับความสำคัญ");
         }
 
-        if (errors.length > 0) {
-            errors.map(error => toast.error(error));
-            return false;
+        if (!date) {
+            errors.push("ยังไม่ได้กรอกวันที่สิ้นสุดเอกสาร");
         }
 
-        return true;
+        if (!company) {
+            errors.push("ยังไม่ได้เลือกบริษัทที่ดำเนินการ");
+        }
+
+        errors.forEach((error) => toast.error(error));
+
+        return errors.length === 0;
     }
 
     function cleanAnswerData(obj: Record<string, any>) {
@@ -275,13 +374,9 @@ function FormPageContent() {
                             };
                         }
 
-                        if (item && typeof item === "object" && Object.keys(item).length > 0) {
-                            return item;
-                        }
-
-                        return null;
+                        return item;
                     })
-                    .filter(Boolean);
+                    .filter((item) => item !== null && item !== undefined);
 
                 return;
             }
@@ -311,17 +406,19 @@ function FormPageContent() {
                 toast.error("ไม่พบการตัดสินใจ");
                 return;
             }
-
-            approveMutate.mutate({
-                document_code: dataFromBackend.documentNo,
-                decision,
-                comment: ""
-            });
-
-            if (approveMutate.isSuccess) {
-                toast.success("อนุมัติเอกสารสำเร็จ");
-                router.push("/approve");
+            console.log(decision)
+            if (decision === "APPROVE") {
+                approveMutate.mutate({
+                    document_code: dataFromBackend.documentNo,
+                    decision: decision,
+                    comment: "",
+                });
+            } else {
+                setPendingDecision(decision);
+                setComment("");
+                setCommentModalOpen(true);
             }
+
         } else if (doc_mode === "create" || doc_mode === "edit") {
             if (!validateData(formdata)) return;
 
@@ -331,32 +428,16 @@ function FormPageContent() {
                 delete formdata.employee_field;
             }
 
+            formdata.schema_version_id = data.schemaVersion[0].id
             const formDataPayload = new FormData();
-
+            const is_publish = decision === "draft" ? false : true
             formDataPayload.append("schema_id", data.id);
             formDataPayload.append("snapshot", JSON.stringify(fields));
             formDataPayload.append("answers", JSON.stringify(cleanAnswerData(formdata)));
             formDataPayload.append("due_date", date ? date.toISOString() : "");
             formDataPayload.append("priority", priorityState);
-            // if (isoDocumentValue) {
-            //     formData.append("iso_document", isoDocumentValue); // if backend expects string like ISO code
-            // }
-
-            // const fileList = Object.entries(formdata).forEach(([key, value]) => {
-            //     if (value instanceof File) {
-            //         formDataPayload.append(key, value);
-            //     } else if (Array.isArray(value) && value.every((v) => v instanceof File)) {
-            //         value.forEach((file) => formDataPayload.append(key, file));
-            //     }
-            // });
-
-
-            // append uploaded files
-            // if (fileList && fileList.length > 0) {
-            //     fileList.forEach((file) => {
-            //         formDataPayload.append("files", file); // same key as FilesInterceptor('files')
-            //     });
-            // }
+            formDataPayload.append("is_publish", String(is_publish));
+            formDataPayload.append("company_code", company);
 
             // add actual file field(s)
             Object.entries(formdata).forEach(([key, value]) => {
@@ -367,21 +448,14 @@ function FormPageContent() {
                 }
             });
 
-            // if you have a dedicated ISO document file
-            // payload.append("iso_document", isoFile);
-
             if (doc_mode === "edit") {
                 formDataPayload.append("document_code", doc_id ?? "");
-                updateDocumentMutation.mutate(
-                    { ...formDataPayload } as any,
-                    { onSuccess: () => router.push("/dashboard") }
-                );
+                updateDocumentMutation.mutate(formDataPayload as any);
                 return;
             }
 
             createDocumentMutation.mutate(formDataPayload as any);
-            router.push("/dashboard");
-            toast.success("สร้างเอกสารสำเร็จ");
+
         }
 
     };
@@ -408,6 +482,65 @@ function FormPageContent() {
         router.push(route)
     }
 
+    function submitApproval() {
+        if (!dataFromBackend || !pendingDecision) return;
+
+        approveMutate.mutate({
+            document_code: dataFromBackend.documentNo,
+            decision: pendingDecision,
+            comment,
+        });
+        setCommentModalOpen(false);
+    }
+
+    function commentModal({ onClose }: { onClose: () => void }) {
+        return (
+            <div
+                className="fixed inset-0 z-50 flex items-center justify-center p-6"
+                style={{ background: "rgba(0,0,0,0.4)", backdropFilter: "blur(4px)" }}
+                onClick={onClose}
+            >
+                <div
+                    className="flex flex-col w-full max-w-3xl max-h-[90vh] rounded-2xl overflow-hidden shadow-2xl"
+                    style={{ background: "var(--card)", border: "1px solid var(--border)" }}
+                    onClick={(e) => e.stopPropagation()}
+                >
+                    <div className="flex items-center justify-between border-b p-5">
+                        <h2 className="text-xl font-semibold">เหตุผลในการตีกลับหรือยกเลิกเอกสาร</h2>
+                        <button type="button" onClick={onClose} className="text-2xl leading-none" aria-label="ปิด">
+                            &times;
+                        </button>
+                    </div>
+                    <div className="flex flex-col gap-2 p-5">
+                        <label htmlFor="approval-comment" className="font-medium">เหตุผล</label>
+                        <textarea
+                            id="approval-comment"
+                            value={comment}
+                            onChange={(event) => setComment(event.target.value)}
+                            placeholder="กรอกความคิดเห็น"
+                            rows={5}
+                            className="w-full resize-y rounded-md border p-3 outline-none focus:ring-2 focus:ring-blue-500"
+                            autoFocus
+                        />
+                    </div>
+                    <div className="flex justify-end gap-2 border-t p-5">
+                        <button type="button" onClick={onClose} className="rounded-md bg-gray-200 px-4 py-2">
+                            ยกเลิก
+                        </button>
+                        <button
+                            type="button"
+                            onClick={submitApproval}
+                            disabled={approveMutate.isPending}
+                            className="rounded-md bg-[#4A4DF1] px-4 py-2 text-white disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                            {approveMutate.isPending ? "กำลังส่ง..." : "ยืนยัน"}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        )
+    }
+
     return (
         <form
             onSubmit={handleSubmit((formdata, event) => {
@@ -416,7 +549,7 @@ function FormPageContent() {
             })}
             className="bg-slate-50 min-h-screen h-full w-full p-6"
         >
-            {doc_mode == "view" || doc_mode == "approve" && (
+            {(doc_mode == "view" || doc_mode == "approve") && (
                 <div className='flex items-center gap-4 mb-4'>
                     <Link href={`${doc_mode === "approve" ? '/approve' : '/dashboard'}`} accessKey="it01">
                         <div className='text-white p-2 bg-[#1b1b1b] rounded-md flex justify-between items-center'>
@@ -425,72 +558,92 @@ function FormPageContent() {
                     </Link>
                     <div className="">
                         <h1 className="text-2xl font-bold">{"ย้อนกลับ"}</h1>
-                        <span>{"Neque porro quisquam est qui dolorem ipsum quia dolor sit amet, consectetur, adipisci velit..."}</span>
+                        <span>{"ย้อนกลับไปหน้า Dashboard"}</span>
                     </div>
                 </div>
             )}
             <div className="bg-white border rounded-xl px-5 py-4 shadow w-full" style={{ scrollbarWidth: "none" }}>
                 <div className="text-2xl font-bold">
                     <span>{data?.name}</span>
+                    {(doc_mode != "create" && doc_id) && (
+                        <>
+                            <span className="font-light">{" เลขที่เอกสาร "}</span>
+                            <span className="font-bold">{doc_id}</span>
+                        </>
+                    )}
                 </div>
                 <div className="mt-4">
-                    <div className="flex justify-between w-full">
-                        <div className="w-1/2">
-                            <div className="font-semibold">
-                                <span>{"ISO ref. "}</span>
-                            </div>
+                    <div className="flex justify-between w-full gap-8">
+                        <div className="gap-2 w-full">
                             <div>
-                                <input type="text" className="w-1/2 p-1.5 pl-2 py-2 border rounded bg-[#F3F4F8] text-sm" placeholder="iso ref."
-                                    disabled={doc_mode == "view" || doc_mode == "approve"}
-                                />
+                                <span>
+                                    {"วันครบกำหนดเอกสาร (Due date)"}
+                                </span>
+                                <span className="text-red-500">{" *"}</span>
                             </div>
+                            <Popover>
+                                <PopoverTrigger render={
+                                    <Button variant={"outline"} data-empty={!date} className="w-full justify-between text-left font-normal data-[empty=true]:text-muted-foreground">
+                                        {date ?
+                                            new Intl.DateTimeFormat("th-TH", { dateStyle: "long", }).format(date)
+                                            :
+                                            <span>{"เลือกวันที่"}</span>
+                                        }
+                                        <ChevronDownIcon data-icon="inline-end" /></Button>} />
+                                <PopoverContent className="w-auto p-0" align="start">
+                                    <Calendar
+                                        mode="single"
+                                        selected={date}
+                                        onSelect={setDate}
+                                        defaultMonth={date}
+                                        locale={th}
+                                        disabled={[
+                                            { before: startOfDay(new Date()) },
+                                            ...(doc_mode === "view" || doc_mode === "approve" ? [() => true] : []),
+                                        ]}
+                                    />
+                                </PopoverContent>
+                            </Popover>
                         </div>
-                        <div className="w-1/2">
+                        <div className="w-full">
                             <div className="w-full">
-                                <div className="w-full flex justify-end">
+                                <div className="w-full flex">
                                     <span>{"ระดับความสำคัญ"}</span>
+                                    <span className="text-red-500">{" *"}</span>
                                 </div>
-                                <div className="w-full flex justify-end">
+                                <div className="w-full flex">
                                     <Select
-                                        isDisabled={doc_mode !== "create"}
+                                        isDisabled={doc_mode === "view" || doc_mode === "approve"}
                                         value={priority.find((op) => op.value === priorityState) || null}
                                         name="priority"
                                         id="priority"
                                         options={priority}
-                                        className="w-1/2"
+                                        className="w-full"
                                         onChange={(op) => setPriorityState(op?.value ?? "")}
                                     />
                                 </div>
                             </div>
                         </div>
-                    </div>
-                    <div className="mt-4 flex gap-2 items-center">
-                        <span>
-                            {"วันที่สิ้นสุดเอกสาร"}
-                        </span>
-                        <Popover>
-                            <PopoverTrigger render={
-                                <Button variant={"outline"} data-empty={!date} className="w-53 justify-between text-left font-normal data-[empty=true]:text-muted-foreground">
-                                    {date ?
-                                        new Intl.DateTimeFormat("th-TH", { dateStyle: "long", }).format(date)
-                                        :
-                                        <span>{"เลือกวันที่"}</span>
-                                    }
-                                    <ChevronDownIcon data-icon="inline-end" /></Button>} />
-                            <PopoverContent className="w-auto p-0" align="start">
-                                <Calendar
-                                    mode="single"
-                                    selected={date}
-                                    onSelect={setDate}
-                                    defaultMonth={date}
-                                    locale={th}
-                                    disabled={[
-                                        { before: startOfDay(new Date()) },
-                                        ...(doc_mode === "view" || doc_mode === "approve" ? [() => true] : []),
-                                    ]}
-                                />
-                            </PopoverContent>
-                        </Popover>
+
+                        <div className="w-full">
+                            <div className="w-full">
+                                <div className="w-full flex">
+                                    <span>{"บริษัทที่ดำเนินการ"}</span>
+                                    <span className="text-red-500">{" *"}</span>
+                                </div>
+                                <div className="w-full flex">
+                                    <Select
+                                        isDisabled={doc_mode === "view" || doc_mode === "approve"}
+                                        value={COMPANY_OPTIONS.filter((com: any) => com.value === company)}
+                                        name="company"
+                                        id="company"
+                                        options={COMPANY_OPTIONS}
+                                        className="w-full"
+                                        onChange={(op) => setCompany(op.value ?? "")}
+                                    />
+                                </div>
+                            </div>
+                        </div>
                     </div>
                     {data.approvalSource != "TEMPLATE" ? approver.map((app, index) => (
                         <div
@@ -543,7 +696,7 @@ function FormPageContent() {
                     )) : <div></div>}
                 </div>
                 <div className="grid grid-cols-2 gap-4 mt-4">
-                    {(doc_mode === "create" ? fields : fieldsFromSnapshot).map((f: any) => (
+                    {(doc_mode === "create" || isNewVersion ? fields : fieldsFromSnapshot).map((f: any) => (
                         <div
                             key={f.id}
                             className="flex flex-col gap-1.5"
@@ -553,7 +706,7 @@ function FormPageContent() {
                                 {f.label}
                                 {f.required && <span style={{ color: "var(--destructive)", marginLeft: "0.25rem" }}>*</span>}
                             </label>
-                            <FieldPreview field={f as FormField} control={form.control as Control} setValue={setValue} getValues={getValues} mode={doc_mode == "view" || doc_mode === "approve" ? "view" : "edit"} />
+                            <FieldPreview field={f as FormField} control={form.control as Control} setValue={setValue} getValues={getValues} mode={doc_mode === "approve" || doc_mode === "view" ? "view" : doc_mode ?? "edit"} />
                             {f.helpText && (
                                 <p style={{ fontSize: "1rem", color: "var(--muted-foreground)" }}>{f.helpText}</p>
                             )}
@@ -574,6 +727,15 @@ function FormPageContent() {
                                     </button>
                                     <button
                                         type="submit"
+                                        value={"draft"}
+                                        className="px-5 py-2.5 rounded-lg hover:cursor-pointer bg-[#979797]"
+                                        style={{ color: "var(--primary-foreground)", fontSize: "1rem", fontWeight: 500 }}
+                                    >
+                                        {"บันทึกแบบร่าง"}
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        value={"submit"}
                                         className="px-5 py-2.5 rounded-lg hover:cursor-pointer"
                                         style={{ background: "var(--primary)", color: "var(--primary-foreground)", fontSize: "1rem", fontWeight: 500 }}
                                     >
@@ -594,6 +756,7 @@ function FormPageContent() {
                     (<div></div>)
                 }
             </div>
+            {commentModalOpen && commentModal({ onClose: () => setCommentModalOpen(false) })}
             {doc_mode == "approve" && (
                 <div className="bg-white border rounded-xl px-5 py-4 shadow w-full mt-4" style={{ scrollbarWidth: "none" }}>
                     <h1 className="text-2xl font-bold">
@@ -621,6 +784,30 @@ function FormPageContent() {
                                 )}
                             </Card>
                         ))} */}
+                    </div>
+                </div>
+            )}
+            {(doc_mode == "view") && (
+                <div className="bg-white border rounded-xl px-5 py-4 shadow w-full mt-4">
+                    <div>
+                        <span className="font-bold text-xl">{"สายอนุมัติของเอกสาร"}</span>
+                    </div>
+                    <div className="flex space-x-4 mt-4">
+                        {dataFromBackend?.currentRevision?.workflowExecution?.steps.map((app: any, index: number) => {
+                            return (
+                                <div className="flex items-center space-x-2">
+                                    <div className="space-x-2 bg-[#fef3c7] rounded-2xl px-2 py-1">
+                                        <span>{`ลำดับที่ ` + app.level}</span>
+                                        <span>{app.employee.firstName}</span>
+                                    </div>
+                                    <div className="">
+                                        <div className={`${index != dataFromBackend?.currentRevision?.workflowExecution?.steps.length - 1 && dataFromBackend?.currentRevision?.workflowExecution?.steps.length > 1 ? "" : "hidden"}`}>
+                                            <MoveRight className=""/>
+                                        </div>
+                                    </div>
+                                </div>
+                            )
+                        })}
                     </div>
                 </div>
             )}

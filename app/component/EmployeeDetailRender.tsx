@@ -1,10 +1,13 @@
+'use client'
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
     Search
 } from "lucide-react";
-import { Control, Controller, UseFormGetValues, UseFormSetValue } from "react-hook-form";
+import { Control, Controller, UseFormGetValues, UseFormSetValue, useWatch } from "react-hook-form";
 import utilsUser from "@/utils/FindUser"
 import { useCompanyList, useEmployeeList } from "@/hooks/create-form";
+import { useCallback, useEffect } from "react";
+import { useCurrentUser } from "@/hooks/use-current-user";
 // ─── Employee Detail block ────────────────────────────────────────────────────
 
 export function EmployeeDetailPreview({ field, control, setValue, getValues, mode }: {
@@ -13,6 +16,11 @@ export function EmployeeDetailPreview({ field, control, setValue, getValues, mod
 }) {
     const { data: employeeList } = useEmployeeList();
     const { data: companyList } = useCompanyList();
+    const { data: currentUser} = useCurrentUser();
+    const employeeCodeValue = useWatch({
+        control,
+        name: "employee_field.employee_code",
+    });
     const COMPANY_OPTIONS = companyList?.map((c: any) => ({ label: c.name, value: c.code })) ?? [];
     const inputCls: React.CSSProperties = {
         width: "100%",
@@ -37,11 +45,13 @@ export function EmployeeDetailPreview({ field, control, setValue, getValues, mod
         <span style={{ color: "var(--destructive)", marginLeft: "0.2rem" }}>*</span>
     );
 
-    function searchUser() {
-        const employeeCode = getValues(
-            "employee_field.employee_code"
+    const searchUser = useCallback((id: string) => {
+        setValue(
+            "employee_field.employee_code",
+            id
         );
-        const user = employeeList?.find((u: any) => u.employee_code === employeeCode);
+
+        const user = employeeList?.find((u: any) => u.employee_code === id);
 
         if (!user) return;
 
@@ -74,7 +84,15 @@ export function EmployeeDetailPreview({ field, control, setValue, getValues, mod
             "employee_field.company",
             user.company.name
         );
-    }
+    }, [employeeList, setValue]);
+
+    useEffect(() => {
+        const employeeCode = currentUser?.user_info.employee_code;
+
+        if (!employeeCode || !employeeList || employeeCodeValue || mode != 'create') return;
+
+        searchUser(employeeCode);
+    }, [currentUser, employeeCodeValue, employeeList, searchUser]);
 
     return (
 
@@ -98,11 +116,11 @@ export function EmployeeDetailPreview({ field, control, setValue, getValues, mod
                                     type="text"
                                     placeholder="รหัสพนักงาน"
                                     style={{ ...inputCls, flex: 1 }}
-                                    disabled = {mode == "view"}
+                                    disabled
                                 />
                             )}
                         />
-                        <button
+                        {/* <button
                             className="flex items-center justify-center px-2.5 rounded-lg shrink-0 transition-opacity hover:opacity-80"
                             style={{ background: "var(--primary)", color: "var(--primary-foreground)" }}
                             tabIndex={-1}
@@ -110,7 +128,7 @@ export function EmployeeDetailPreview({ field, control, setValue, getValues, mod
                             onClick={searchUser}
                         >
                             <Search size={13} />
-                        </button>
+                        </button> */}
                     </div>
                 </div>
 
