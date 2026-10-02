@@ -48,7 +48,7 @@ export default function Page() {
         title: doc.formSchema.name,
         priority: doc.priority as Status,
         owner: doc.createdBy.firstName,
-        company: doc.formSchema.company.code,
+        company: doc.currentRevision.company.code,
         department: doc.formSchema.division.name,
         status: doc.status as DocStatus,
         created: doc.createdAt,

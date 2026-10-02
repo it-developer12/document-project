@@ -795,7 +795,7 @@ function FormPageContent() {
                     <div className="flex space-x-4 mt-4">
                         {dataFromBackend?.currentRevision?.workflowExecution?.steps.map((app: any, index: number) => {
                             return (
-                                <div className="flex items-center space-x-2">
+                                <div key={index} className="flex items-center space-x-2">
                                     <div className="space-x-2 bg-[#fef3c7] rounded-2xl px-2 py-1">
                                         <span>{`ลำดับที่ ` + app.level}</span>
                                         <span>{app.employee.firstName}</span>
