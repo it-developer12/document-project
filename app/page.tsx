@@ -5,38 +5,32 @@ import { useRouter } from "next/navigation";
 
 import { useLogin } from "@/hooks/user-login";
 import { useRegister } from "@/hooks/user-register";
+import { useCurrentUser } from "@/hooks/use-current-user";
+import { useForgotPassword } from "@/hooks/forget-password";
 
 export default function Home() {
     const [isRegistering, setIsRegistering] = useState(false);
+    const [isForgotPassword, setIsForgotPassword] = useState(false);
 
     const router = useRouter();
     const loginMutation = useLogin();
     const registerMutation = useRegister(setIsRegistering);
+    const forgotPasswordMutation = useForgotPassword();
+    const { data: currentUser, isPending: isCheckingAuth, isError: authCheckFailed } = useCurrentUser();
 
     const [userName, setUsername] = useState("");
     const [passWord, setPassword] = useState("");
     const [code, setCode] = useState("");
+    const [forgotUserName, setForgotUserName] = useState("");
+    const [forgotEmployeeCode, setForgotEmployeeCode] = useState("");
     const [registerMessage, setRegisterMessage] = useState("");
-
-    const hasAccessToken = (() => {
-        try {
-            const cookieValue = document.cookie
-                .split("; ")
-                .find((cookie) => cookie.startsWith("access_token="));
-
-            if (cookieValue) return true;
-
-            return Boolean(window.localStorage.getItem("access_token"));
-        } catch {
-            return false;
-        }
-    })();
+    const [forgotPasswordMessage, setForgotPasswordMessage] = useState("");
 
     useEffect(() => {
-        if (hasAccessToken) {
+        if (!isCheckingAuth && !authCheckFailed && currentUser) {
             router.replace("/dashboard");
         }
-    }, [hasAccessToken, router]);
+    }, [authCheckFailed, currentUser, isCheckingAuth, router]);
 
     function handleSubmit(event: FormEvent<HTMLFormElement>) {
         event.preventDefault();
@@ -51,10 +45,33 @@ export default function Home() {
                 {
                     onSuccess: () => {
                         setIsRegistering(false);
-                        setRegisterMessage("Registration successful. Please log in.");
+                        setRegisterMessage("สมัครสมาชิกสำเร็จ กรุณาเข้าสู่ระบบ");
                         setPassword("");
                         setCode("");
-                    },
+                    }
+                },
+            );
+            return;
+        }
+
+        if (isForgotPassword) {
+            if (!forgotUserName || !forgotEmployeeCode) {
+                setForgotPasswordMessage("กรุณากรอกข้อมูลให้ครบถ้วน");
+                return;
+            }
+
+            forgotPasswordMutation.mutate(
+                {
+                    userName: forgotUserName,
+                    code: forgotEmployeeCode,
+                },
+                {
+                    onSuccess: () => {
+                        setIsForgotPassword(false);
+                        setForgotPasswordMessage("ข้อมูลรีเซ็ตรหัสผ่านถูกส่งแล้ว กรุณาติดต่อแอดมินเพื่อยืนยันตัวตน");
+                        setForgotUserName("");
+                        setForgotEmployeeCode("");
+                    }
                 },
             );
             return;
@@ -66,7 +83,7 @@ export default function Home() {
         });
     }
 
-    if (hasAccessToken) {
+    if (isCheckingAuth || (!authCheckFailed && currentUser)) {
         return null;
     }
 
@@ -105,117 +122,207 @@ export default function Home() {
                     </div>
 
                     <div className="relative flex items-center justify-center p-5 sm:p-8 lg:p-12">
-                        <form onSubmit={handleSubmit} className="w-full max-w-md space-y-6">
-                            <div className="space-y-2 text-center lg:text-left">
-                                <p className="text-xs font-semibold uppercase text-[#4A4DF1]">
-                                    {isRegistering ? "สมัครสมาชิก" : "เข้าสู่ระบบ"}
-                                </p>
-                                <h2 className="text-3xl font-bold tracking-[-0.04em] text-slate-900">
-                                    {isRegistering ? "สร้างบัญชีใหม่" : "ยินดีต้อนรับ"}
-                                </h2>
-                            </div>
-
-                            <div className="space-y-5">
-                                <div className="space-y-2">
-                                    <label htmlFor="username" className="flex items-center gap-1 text-sm font-medium text-slate-700">
-                                        <span>{"ชื่อผู้ใช้"}</span>
-                                        <span className="text-red-500">{"*"}</span>
-                                    </label>
-                                    <input
-                                        id="username"
-                                        type="text"
-                                        className="w-full rounded-2xl border border-slate-200 bg-slate-50/80 px-3.5 py-3.5 text-sm text-slate-900 shadow-[inset_0_1px_2px_rgba(15,23,42,0.04)] outline-none transition duration-200 placeholder:text-slate-400 focus:border-[#4A4DF1] focus:bg-white focus:ring-4 focus:ring-indigo-100"
-                                        value={userName}
-                                        onChange={(event) => setUsername(event.target.value)}
-                                        autoComplete="username"
-                                        placeholder={isRegistering ? "กรอกชื่อผู้ใช้" : "กรอกรหัสพนักงาน"}
-                                        required
-                                    />
+                        {isForgotPassword ? (
+                            <form onSubmit={handleSubmit} className="w-full max-w-md space-y-6">
+                                <div className="space-y-2 text-center lg:text-left">
+                                    <p className="text-xs font-semibold uppercase text-[#4A4DF1]">
+                                        ลืมรหัสผ่าน
+                                    </p>
+                                    <h2 className="text-3xl font-bold tracking-[-0.04em] text-slate-900">
+                                        รีเซ็ตรหัสผ่าน
+                                    </h2>
                                 </div>
 
-                                <div className="space-y-2">
-                                    <label htmlFor="password" className="flex items-center gap-1 text-sm font-medium text-slate-700">
-                                        <span>{"รหัสผ่าน"}</span>
-                                        <span className="text-red-500">{"*"}</span>
-                                    </label>
-                                    <input
-                                        id="password"
-                                        name="password"
-                                        type="password"
-                                        className="w-full rounded-2xl border border-slate-200 bg-slate-50/80 px-3.5 py-3.5 text-sm text-slate-900 shadow-[inset_0_1px_2px_rgba(15,23,42,0.04)] outline-none transition duration-200 placeholder:text-slate-400 focus:border-[#4A4DF1] focus:bg-white focus:ring-4 focus:ring-indigo-100"
-                                        value={passWord}
-                                        onChange={(event) => setPassword(event.target.value)}
-                                        autoComplete={isRegistering ? "new-password" : "current-password"}
-                                        placeholder="กรอกรหัสผ่าน"
-                                        required
-                                    />
-                                </div>
-
-                                {isRegistering && (
+                                <div className="space-y-5">
                                     <div className="space-y-2">
-                                        <label htmlFor="code" className="flex items-center gap-1 text-sm font-medium text-slate-700">
-                                            <span>{"รหัสพนักงาน"}</span>
+                                        <label htmlFor="forgot-username" className="flex items-center gap-1 text-sm font-medium text-slate-700">
+                                            <span>{"ชื่อผู้ใช้ (username)"}</span>
                                             <span className="text-red-500">{"*"}</span>
                                         </label>
                                         <input
-                                            id="code"
-                                            name="code"
+                                            id="forgot-username"
                                             type="text"
                                             className="w-full rounded-2xl border border-slate-200 bg-slate-50/80 px-3.5 py-3.5 text-sm text-slate-900 shadow-[inset_0_1px_2px_rgba(15,23,42,0.04)] outline-none transition duration-200 placeholder:text-slate-400 focus:border-[#4A4DF1] focus:bg-white focus:ring-4 focus:ring-indigo-100"
-                                            value={code}
-                                            onChange={(event) => setCode(event.target.value)}
-                                            placeholder="กรอกรหัสยืนยัน"
+                                            value={forgotUserName}
+                                            onChange={(event) => setForgotUserName(event.target.value)}
+                                            autoComplete="username"
+                                            placeholder="กรอกชื่อผู้ใช้"
                                             required
                                         />
                                     </div>
+
+                                    <div className="space-y-2">
+                                        <label htmlFor="forgot-employee-code" className="flex items-center gap-1 text-sm font-medium text-slate-700">
+                                            <span>{"รหัสพนักงาน (employee code)"}</span>
+                                            <span className="text-red-500">{"*"}</span>
+                                        </label>
+                                        <input
+                                            id="forgot-employee-code"
+                                            type="text"
+                                            className="w-full rounded-2xl border border-slate-200 bg-slate-50/80 px-3.5 py-3.5 text-sm text-slate-900 shadow-[inset_0_1px_2px_rgba(15,23,42,0.04)] outline-none transition duration-200 placeholder:text-slate-400 focus:border-[#4A4DF1] focus:bg-white focus:ring-4 focus:ring-indigo-100"
+                                            value={forgotEmployeeCode}
+                                            onChange={(event) => setForgotEmployeeCode(event.target.value)}
+                                            autoComplete="off"
+                                            placeholder="กรอกรหัสพนักงาน"
+                                            required
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="space-y-3 pt-2">
+                                    <button
+                                        type="submit"
+                                        className="flex w-full items-center justify-center rounded-2xl bg-[#4A4DF1] px-4 py-3.5 text-sm font-semibold text-white shadow-[0_18px_32px_rgba(74,77,241,0.28)] transition duration-200 hover:-translate-y-0.5 hover:bg-[#3d43d8] focus:outline-none focus:ring-4 focus:ring-indigo-200 disabled:cursor-not-allowed disabled:opacity-70"
+                                    >
+                                        ส่งข้อมูล
+                                    </button>
+
+                                    <button
+                                        type="button"
+                                        className="flex w-full items-center justify-center text-sm font-medium text-[#4A4DF1] transition hover:text-[#3d43d8]"
+                                        onClick={() => {
+                                            setIsForgotPassword(false);
+                                            setForgotPasswordMessage("");
+                                        }}
+                                    >
+                                        กลับเข้าสู่ระบบ
+                                    </button>
+                                </div>
+
+                                {forgotPasswordMessage && (
+                                    <p className="rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-700 shadow-sm">
+                                        {forgotPasswordMessage}
+                                    </p>
                                 )}
-                            </div>
+                            </form>
+                        ) : (
+                            <form onSubmit={handleSubmit} className="w-full max-w-md space-y-6">
+                                <div className="space-y-2 text-center lg:text-left">
+                                    <p className="text-xs font-semibold uppercase text-[#4A4DF1]">
+                                        {isRegistering ? "สมัครสมาชิก" : "เข้าสู่ระบบ"}
+                                    </p>
+                                    <h2 className="text-3xl font-bold tracking-[-0.04em] text-slate-900">
+                                        {isRegistering ? "สร้างบัญชีใหม่" : "ยินดีต้อนรับ"}
+                                    </h2>
+                                </div>
 
-                            <div className="space-y-3 pt-2">
-                                <button
-                                    type="submit"
-                                    className="flex w-full items-center justify-center rounded-2xl bg-[#4A4DF1] px-4 py-3.5 text-sm font-semibold text-white shadow-[0_18px_32px_rgba(74,77,241,0.28)] transition duration-200 hover:-translate-y-0.5 hover:bg-[#3d43d8] focus:outline-none focus:ring-4 focus:ring-indigo-200 disabled:cursor-not-allowed disabled:opacity-70"
-                                    disabled={loginMutation.isPending || registerMutation.isPending}
-                                >
-                                    {isRegistering
-                                        ? registerMutation.isPending
-                                            ? "Registering..."
-                                            : "Register"
-                                        : loginMutation.isPending
-                                          ? "Signing in..."
-                                          : "Login"}
-                                </button>
+                                <div className="space-y-5">
+                                    <div className="space-y-2">
+                                        <label htmlFor="username" className="flex items-center gap-1 text-sm font-medium text-slate-700">
+                                            <span>{"ชื่อผู้ใช้"}</span>
+                                            <span className="text-red-500">{"*"}</span>
+                                        </label>
+                                        <input
+                                            id="username"
+                                            type="text"
+                                            className="w-full rounded-2xl border border-slate-200 bg-slate-50/80 px-3.5 py-3.5 text-sm text-slate-900 shadow-[inset_0_1px_2px_rgba(15,23,42,0.04)] outline-none transition duration-200 placeholder:text-slate-400 focus:border-[#4A4DF1] focus:bg-white focus:ring-4 focus:ring-indigo-100"
+                                            value={userName}
+                                            onChange={(event) => setUsername(event.target.value)}
+                                            autoComplete="username"
+                                            placeholder={isRegistering ? "กรอกชื่อผู้ใช้" : "กรอกรหัสพนักงาน"}
+                                            required
+                                        />
+                                    </div>
 
-                                <button
-                                    type="button"
-                                    className="flex w-full items-center justify-center rounded-2xl border border-slate-200 bg-white/80 px-4 py-3.5 text-sm font-semibold text-slate-700 shadow-sm transition duration-200 hover:-translate-y-0.5 hover:border-slate-300 hover:bg-slate-50"
-                                    onClick={() => {
-                                        setIsRegistering((current) => !current);
-                                        setRegisterMessage("");
-                                    }}
-                                >
-                                    {isRegistering ? "กลับเข้าสู่ระบบ" : "สมัครสมาชิก"}
-                                </button>
-                            </div>
+                                    <div className="space-y-2">
+                                        <label htmlFor="password" className="flex items-center gap-1 text-sm font-medium text-slate-700">
+                                            <span>{"รหัสผ่าน"}</span>
+                                            <span className="text-red-500">{"*"}</span>
+                                        </label>
+                                        <input
+                                            id="password"
+                                            name="password"
+                                            type="password"
+                                            className="w-full rounded-2xl border border-slate-200 bg-slate-50/80 px-3.5 py-3.5 text-sm text-slate-900 shadow-[inset_0_1px_2px_rgba(15,23,42,0.04)] outline-none transition duration-200 placeholder:text-slate-400 focus:border-[#4A4DF1] focus:bg-white focus:ring-4 focus:ring-indigo-100"
+                                            value={passWord}
+                                            onChange={(event) => setPassword(event.target.value)}
+                                            autoComplete={isRegistering ? "new-password" : "current-password"}
+                                            placeholder="กรอกรหัสผ่าน"
+                                            required
+                                        />
+                                    </div>
 
-                            {registerMessage && (
-                                <p className="rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-700 shadow-sm">
-                                    {registerMessage}
-                                </p>
-                            )}
+                                    {isRegistering && (
+                                        <div className="space-y-2">
+                                            <label htmlFor="code" className="flex items-center gap-1 text-sm font-medium text-slate-700">
+                                                <span>{"รหัสพนักงาน"}</span>
+                                                <span className="text-red-500">{"*"}</span>
+                                            </label>
+                                            <input
+                                                id="code"
+                                                name="code"
+                                                type="text"
+                                                className="w-full rounded-2xl border border-slate-200 bg-slate-50/80 px-3.5 py-3.5 text-sm text-slate-900 shadow-[inset_0_1px_2px_rgba(15,23,42,0.04)] outline-none transition duration-200 placeholder:text-slate-400 focus:border-[#4A4DF1] focus:bg-white focus:ring-4 focus:ring-indigo-100"
+                                                value={code}
+                                                onChange={(event) => setCode(event.target.value)}
+                                                placeholder="กรอกรหัสยืนยัน"
+                                                required
+                                            />
+                                        </div>
+                                    )}
+                                </div>
 
-                            {registerMutation.isError && (
-                                <p className="rounded-2xl border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-600 shadow-sm">
-                                    {registerMutation.error.response?.data?.message ?? "ไม่สามารถสมัครสมาชิกได้"}
-                                </p>
-                            )}
+                                <div className="space-y-3 pt-2">
+                                    <button
+                                        type="submit"
+                                        className="flex w-full items-center justify-center rounded-2xl bg-[#4A4DF1] px-4 py-3.5 text-sm font-semibold text-white shadow-[0_18px_32px_rgba(74,77,241,0.28)] transition duration-200 hover:-translate-y-0.5 hover:bg-[#3d43d8] focus:outline-none focus:ring-4 focus:ring-indigo-200 disabled:cursor-not-allowed disabled:opacity-70"
+                                        disabled={loginMutation.isPending || registerMutation.isPending}
+                                    >
+                                        {isRegistering
+                                            ? registerMutation.isPending
+                                                ? "Registering..."
+                                                : "Register"
+                                            : loginMutation.isPending
+                                              ? "Signing in..."
+                                              : "Login"}
+                                    </button>
 
-                            {loginMutation.isError && (
-                                <p className="rounded-2xl border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-600 shadow-sm">
-                                    {"รหัสพนักงานหรือรหัสผ่านไม่ถูกต้อง"}
-                                </p>
-                            )}
-                        </form>
+                                    <button
+                                        type="button"
+                                        className="flex w-full items-center justify-center rounded-2xl border border-slate-200 bg-white/80 px-4 py-3.5 text-sm font-semibold text-slate-700 shadow-sm transition duration-200 hover:-translate-y-0.5 hover:border-slate-300 hover:bg-slate-50"
+                                        onClick={() => {
+                                            setIsRegistering((current) => !current);
+                                            setIsForgotPassword(false);
+                                            setRegisterMessage("");
+                                        }}
+                                    >
+                                        {isRegistering ? "กลับเข้าสู่ระบบ" : "สมัครสมาชิก"}
+                                    </button>
+
+                                    {!isRegistering && (
+                                        <button
+                                            type="button"
+                                            className="flex w-full items-center justify-center text-sm font-medium text-[#4A4DF1] transition hover:text-[#3d43d8]"
+                                            onClick={() => {
+                                                setIsForgotPassword(true);
+                                                setIsRegistering(false);
+                                                setForgotPasswordMessage("");
+                                            }}
+                                        >
+                                            ลืมรหัสผ่าน?
+                                        </button>
+                                    )}
+                                </div>
+
+                                {registerMessage && (
+                                    <p className="rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-700 shadow-sm">
+                                        {registerMessage}
+                                    </p>
+                                )}
+
+                                {registerMutation.isError && (
+                                    <p className="rounded-2xl border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-600 shadow-sm">
+                                        {registerMutation.error.response?.data?.message ?? "ไม่สามารถสมัครสมาชิกได้"}
+                                    </p>
+                                )}
+
+                                {loginMutation.isError && (
+                                    <p className="rounded-2xl border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-600 shadow-sm">
+                                        {"รหัสพนักงานหรือรหัสผ่านไม่ถูกต้อง"}
+                                    </p>
+                                )}
+                            </form>
+                        )}
                     </div>
                 </div>
             </div>

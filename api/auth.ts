@@ -39,3 +39,13 @@ export async function getMe() {
 
   return response.data;
 }
+
+export async function forgotPasswordApi(userName: string, code: string) {
+  const response = await api.post("/auth/forgot-password", { userName, code });
+  return response.data;
+}
+
+export async function resetPasswordApi(userName: string, code: string, token: string, newPassword: string) {
+  const response = await api.post("/auth/reset-password", { userName, code, token, newPassword });
+  return response.data;
+}

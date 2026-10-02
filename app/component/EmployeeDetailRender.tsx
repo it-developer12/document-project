@@ -1,21 +1,27 @@
+'use client'
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
     Search
 } from "lucide-react";
-import { Control, Controller, UseFormGetValues, UseFormSetValue } from "react-hook-form";
+import { Control, Controller, UseFormGetValues, UseFormSetValue, useWatch } from "react-hook-form";
 import utilsUser from "@/utils/FindUser"
+import { useCompanyList, useEmployeeList } from "@/hooks/create-form";
+import { useCallback, useEffect } from "react";
+import { useCurrentUser } from "@/hooks/use-current-user";
 // ─── Employee Detail block ────────────────────────────────────────────────────
-
-const COMPANY_OPTIONS = [
-    { label: "บริษัท ซิตี้เฟรชฟรุ๊ต จำกัด (CFF)", value: "cff" },
-    { label: "บริษัท ซีทีเอ็กซ์ โฮลดิ้ง จำกัด (CTX)", value: "ctx" },
-    { label: "บริษัท โนเบิ้ลมาร์เก็ตติ้ง จำกัด (NBM)", value: "nbm" },
-];
 
 export function EmployeeDetailPreview({ field, control, setValue, getValues, mode }: {
     field: FormField, control: Control<any>, setValue: UseFormSetValue<any>;
     getValues: UseFormGetValues<any>, mode: string
 }) {
+    const { data: employeeList } = useEmployeeList();
+    const { data: companyList } = useCompanyList();
+    const { data: currentUser} = useCurrentUser();
+    const employeeCodeValue = useWatch({
+        control,
+        name: "employee_field.employee_code",
+    });
+    const COMPANY_OPTIONS = companyList?.map((c: any) => ({ label: c.name, value: c.code })) ?? [];
     const inputCls: React.CSSProperties = {
         width: "100%",
         padding: "0.375rem 0.625rem",
@@ -39,44 +45,54 @@ export function EmployeeDetailPreview({ field, control, setValue, getValues, mod
         <span style={{ color: "var(--destructive)", marginLeft: "0.2rem" }}>*</span>
     );
 
-    function searchUser() {
-        const employeeCode = getValues(
-            "employee_field.employee_code"
+    const searchUser = useCallback((id: string) => {
+        setValue(
+            "employee_field.employee_code",
+            id
         );
-        const user = utilsUser.FindUser(employeeCode);
+
+        const user = employeeList?.find((u: any) => u.employee_code === id);
 
         if (!user) return;
 
         setValue(
             "employee_field.position",
-            user.position
+            user.position.name
         );
 
         setValue(
             "employee_field.division",
-            user.department_1
+            user.position.division.name
         );
 
         setValue(
             "employee_field.department",
-            user.department_2
+            user.position.department.name
         );
 
         setValue(
             "employee_field.first_name",
-            user.name
+            user.firstName
         );
 
         setValue(
             "employee_field.last_name",
-            user.surname
+            user.lastName
         );
 
         setValue(
             "employee_field.company",
-            user.company
+            user.company.name
         );
-    }
+    }, [employeeList, setValue]);
+
+    useEffect(() => {
+        const employeeCode = currentUser?.user_info.employee_code;
+
+        if (!employeeCode || !employeeList || employeeCodeValue || mode != 'create') return;
+
+        searchUser(employeeCode);
+    }, [currentUser, employeeCodeValue, employeeList, searchUser]);
 
     return (
 
@@ -100,11 +116,11 @@ export function EmployeeDetailPreview({ field, control, setValue, getValues, mod
                                     type="text"
                                     placeholder="รหัสพนักงาน"
                                     style={{ ...inputCls, flex: 1 }}
-                                    disabled = {mode == "view"}
+                                    disabled
                                 />
                             )}
                         />
-                        <button
+                        {/* <button
                             className="flex items-center justify-center px-2.5 rounded-lg shrink-0 transition-opacity hover:opacity-80"
                             style={{ background: "var(--primary)", color: "var(--primary-foreground)" }}
                             tabIndex={-1}
@@ -112,7 +128,7 @@ export function EmployeeDetailPreview({ field, control, setValue, getValues, mod
                             onClick={searchUser}
                         >
                             <Search size={13} />
-                        </button>
+                        </button> */}
                     </div>
                 </div>
 
@@ -237,7 +253,7 @@ export function EmployeeDetailPreview({ field, control, setValue, getValues, mod
                                         <SelectItem key={""} value={""}>
                                             {"บริษัท...."}
                                         </SelectItem>
-                                        {COMPANY_OPTIONS.map((item) => (
+                                        {COMPANY_OPTIONS.map((item: any) => (
                                             <SelectItem key={item.value} value={item.value}>
                                                 {item.label}
                                             </SelectItem>

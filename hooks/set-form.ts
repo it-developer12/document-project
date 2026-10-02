@@ -1,6 +1,6 @@
 "use client";
 
-import { getAllForm } from "@/api/form";
+import { getAllForm, getPublishForm } from "@/api/form";
 import { useFormStore } from "@/store/form.store";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { AxiosError } from "axios";
@@ -25,7 +25,27 @@ export function useGetForms() {
 
         onError: (error: AxiosError<ErrorResponse>) => {
             toast.error(
-                `Failed to get forms: ${error.response?.data?.message ?? error.message}`
+                `เกิดข้อผิดพลาด: ${error.response?.data?.message ?? error.message}`
+            );
+        },
+    });
+}
+
+export function useGetAllPublishForms() {
+    const queryClient = useQueryClient();
+    const setPublish = useFormStore((state) => state.setPublishForm);
+
+    return useMutation({
+        mutationFn: getPublishForm,
+
+        onSuccess: (forms) => {
+            setPublish(forms);
+            queryClient.setQueryData(["publish_form"], forms);
+        },
+
+        onError: (error: AxiosError<ErrorResponse>) => {
+            toast.error(
+                `เกิดข้อผิดพลาด: ${error.response?.data?.message ?? error.message}`
             );
         },
     });

@@ -1,5 +1,5 @@
 'use client'
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import {
     DndContext,
     DragOverlay,
@@ -30,9 +30,12 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import Select, { MultiValue } from 'react-select'
 import { FieldPreview } from "./PreviewRender";
-import { useCreateDrafTemplate, useCreateTemplate } from "@/hooks/create-template";
-import { useCompanyList, useDivisionList, useEmployeeList } from "@/hooks/create-form";
+import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "react-toastify";
+import { CreateTemplatePayload } from "@/api/template";
+import { useFormSchemaWorkflow } from "@/hooks/form-list";
+import { useUpdateDraftTemplate, useUpdateTemplate } from "@/hooks/update-template";
+import { useDivisionList, useCompanyList, useEmployeeList } from "@/hooks/create-form";
 import { Field, FieldLabel } from "@/components/ui/field";
 import { Checkbox } from "@/components/ui/checkbox";
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -501,7 +504,6 @@ function PropertiesPanel({
         fontSize: "0.8rem",
     };
     const hasOptions = ["select", "radio", "checkbox"].includes(field.type);
-    const isEmployeeDetailField = field.type === 'employee_detail'
 
     return (
         <div className="flex flex-col h-full overflow-y-auto" style={{ scrollbarWidth: "none" }}>
@@ -564,7 +566,7 @@ function PropertiesPanel({
                 </div>
 
                 {/* Width */}
-                <div className={`flex flex-col gap-1.5 ${isEmployeeDetailField ? "hidden" : ""}`}>
+                <div className="flex flex-col gap-1.5">
                     <label style={{ fontSize: "0.75rem", fontWeight: 500, color: "var(--muted-foreground)" }}>Width</label>
                     <div className="grid grid-cols-2 gap-2">
                         {(["full", "half"] as const).map((w) => (
@@ -784,8 +786,12 @@ function PreviewModal({ fields, onClose }: { fields: FormField[]; onClose: () =>
 // ─── Main FormBuilder ─────────────────────────────────────────────────────────
 
 export default function Page() {
-    const template = useCreateTemplate();
-    const draft = useCreateDrafTemplate();
+    const useParams = useSearchParams();
+    const schema_id = useParams.get('schema_id');
+    const isDraft = useParams.get('draft');
+    const template = useUpdateTemplate();
+    const draft = useUpdateDraftTemplate();
+    const { data, isLoading, error } = useFormSchemaWorkflow(schema_id || "", isDraft || "false")
     const { data: divisionList } = useDivisionList();
     const { data: companyList } = useCompanyList();
     const { data: employeeList } = useEmployeeList();
@@ -795,6 +801,7 @@ export default function Page() {
     const COMPANY_OPTIONS = companyList?.map((c: any) => ({ label: c.name, value: c.code })) ?? [];
 
     const DEPARTMENT_OPTIONS = divisionList?.map((d: any) => ({ label: d.name, value: d.code })) ?? [];
+    // Sample data
 
     interface EmployeeList {
         employee_code: string;
@@ -844,7 +851,7 @@ export default function Page() {
 
     const ProcessorList: ProcessorOptionType[] = employeeList?.map((e: any) => ({ label: e.fullName, value: e.employee_code, department: e.position.division.code })) ?? [];
 
-    const FinisherList: Options[] = employeeList?.map((e: any) => ({ label: e.fullName, value: e.employee_code, department: e.position.division.code })) ?? [];
+    const FinisherList: Options[] = employeeListOptions
 
     const [formDetail, setFormDetail] = useState({
         name: "",
@@ -877,6 +884,61 @@ export default function Page() {
     // Whether the active drag is hovering over the canvas
     const [isOverCanvas, setIsOverCanvas] = useState(false);
 
+    useEffect(() => {
+        if (!data) return
+        setFormDetail(prev => ({
+            ...prev,
+            name: data.name,
+            department: data.division.code,
+            code: schema_id ?? ""
+        }))
+        const length = data.schemaVersion.length
+        const result = data.schemaVersion[length - 1].workflowDefinitionVersion.workflowStep.flatMap((item: any) => {
+            const key = item.type.toLowerCase();
+
+            return item[key].map(({ employee, level }: any) => ({
+                type: item.type,
+                level: level,
+                ...employee,
+            }));
+        });
+
+        setApprover([])
+        setProcessor([])
+        result.map((employee: any) => {
+            if (employee.type === "APPROVER") {
+                setApprover(prev => ([...prev, { name: employee.firstName, employee_code: employee.employee_code, level: employee.level }]))
+            }
+            if (employee.type === "PROCESSOR") {
+                setProcessor(prev => ([...prev, { employee_code: employee.employee_code, name: employee.firstName }]))
+            }
+            if (employee.type === "FINISHER") {
+                setFinisher({ employee_code: employee.employee_code, name: employee.firstName })
+            }
+        })
+
+        const field =
+            data?.schemaVersion?.[length - 1]?.fields?.map((item: any) => {
+                const option =
+                    typeof item.fields.option === "string"
+                        ? JSON.parse(item.fields.option)
+                        : item.fields.option ?? {};
+
+                return {
+                    id: item.fields.id,
+                    type: item.fields.type,
+                    label: item.fields.label,
+                    placeholder: "",
+                    required: item.required,
+                    helpText: item.fields.helpText,
+                    width: item.width,
+
+                    ...option,
+                };
+            }) ?? [];
+
+        setFields(field)
+    }, [data, schema_id])
 
     const sensors = useSensors(
         useSensor(PointerSensor, { activationConstraint: { distance: 6 } })
@@ -999,7 +1061,7 @@ export default function Page() {
             return EmployeeList.filter(
                 (option: any) => !selectedValues.includes(option.value)
             );
-        } else if (type === "process" || type == "finisher") {
+        } else if (type === "process") {
             const DepartmentList = EmployeeList.filter((em: any) => em.department === formDetail.department)
             const selectedValues = DepartmentList
                 .map((item: any) => item.employee_id);
@@ -1243,84 +1305,56 @@ export default function Page() {
         return fields.map(normalizeField);
     }
 
-    function validate(data: any): boolean {
-        const status = {
-            name: { status: false, msg: "" },
-            division: { status: false, msg: "" },
-            fields: { status: false, msg: "" },
-            processor: { status: false, msg: "" },
-            finisher: { status: false, msg: "" },
-        };
-
-        if (!data.form.name.trim()) {
-            status.name = { status: true, msg: "ยังไม่ได้ตั้งชื่อเอกสาร" };
-        }
-
-        if (!data.form.divisionId) {
-            status.division = { status: true, msg: "ยังไม่ได้เลือกแผนก" };
-        }
-
-        if (data.form.fields.length === 0) {
-            status.fields = { status: true, msg: "เพิ่มฟิลด์อย่างน้อย 1 ฟิลด์" };
-        }
-
-        if (!data.workflow.processor.some((item: any) => item.employee_code)) {
-            status.processor = { status: true, msg: "ต้องเลือกผู้ดำเนินการอย่างน้อย 1 คน" };
-        }
-
-        if (!data.workflow.finisher.employee_code) {
-            status.finisher = { status: true, msg: "ยังไม่ได้เลือกผู้สิ้นสุดเอกสาร" };
-        }
-
-        const errors = Object.values(status).filter((item) => item.status);
-
-        errors.forEach((item) => toast.error(item.msg));
-
-        return errors.length === 0;
-    }
-
     async function saveForm() {
         const newFields = normalizeFields(fields);
 
-        const data = {
+        const payload = {
             form: {
-                name: formDetail.name.trim(),
+                code: schema_id,
                 divisionId: formDetail.department,
-                iso_no: formDetail.iso_no,
                 fields: newFields,
             },
             workflow: {
-                name: formDetail.name.trim(),
-                approver: approver[0].employee_code === "" ? undefined : approver,
+                name: formDetail.name,
+                code: data.schemaVersion[0].workflowDefinitionVersion.workflowDefinition.code,
+                approver: approver,
                 processor: processor,
                 finisher: finisher
             }
         }
 
-        if (!validate(data)) return;
-        template.mutate(data)
+        if (!schema_id) {
+            toast.error('ไม่สามารถแก้ไขรูปแบบเอกสารที่ไม่มีในระบบได้')
+            return
+        }
+        // console.log(payload)
+        template.mutate({ id: schema_id, data: payload })
     }
 
     async function saveDraft() {
         const newFields = normalizeFields(fields);
 
-        const data = {
+        const payload = {
             form: {
-                name: formDetail.name.trim(),
+                code: schema_id,
                 divisionId: formDetail.department,
-                iso_no: formDetail.iso_no,
                 fields: newFields,
             },
             workflow: {
-                name: formDetail.name.trim(),
-                approver: approver[0].employee_code === "" ? undefined : approver,
+                name: formDetail.name,
+                code: data.schemaVersion[0].workflowDefinitionVersion.workflowDefinition.code,
+                approver: approver,
                 processor: processor,
                 finisher: finisher
             }
         }
 
-        if (!validate(data)) return;
-        draft.mutate(data)
+        if (!schema_id) {
+            toast.error('ไม่สามารถแก้ไขรูปแบบเอกสารที่ไม่มีในระบบได้')
+            return
+        }
+        // console.log(payload)
+        draft.mutate({ data: payload })
     }
 
     return (
@@ -1347,18 +1381,19 @@ export default function Page() {
                         </p>
                     </div>
                     <div className="space-y-4 w-full md:w-3/5">
-                        <div className="w-full flex flex-col gap-3 md:flex-row md:items-center">
-                            <div className="flex flex-col gap-2 min-w-48 md:flex-row md:items-center md:gap-2 w-full">
+                        <div className="flex flex-col gap-3 md:flex-row md:items-center">
+                            <div className="flex flex-col gap-2 min-w-0 md:flex-row md:items-center md:gap-2 w-full">
                                 <span className="text-nowrap">{"ชื่อเอกสาร"}</span>
-                                <input type="text" className="pl-2 border py-1 rounded bg-[#F3F4F8] text-sm w-full md:w-40"
+                                <input type="text" disabled className="pl-2 border py-1 rounded bg-[#F3F4F8] text-sm w-full md:w-40"
                                     value={formDetail.name} onChange={e => setFormDetail(prev => ({ ...prev, name: e.target.value }))}
                                 />
                             </div>
-                            <div className="flex flex-col gap-2 min-w-48 md:flex-row md:items-center md:gap-2 w-full">
+                            <div className="flex flex-col gap-2 min-w-0 md:flex-row md:items-center md:gap-2 w-full">
                                 <span className="text-nowrap">{"เอกสารของแผนก"}</span>
                                 <Select
-                                    <{ label: string; value: string }>
+                                    isDisabled={true}
                                     options={DEPARTMENT_OPTIONS}
+                                    value={DEPARTMENT_OPTIONS.find((option: any) => option.value === formDetail.department) ?? null}
                                     onChange={(seleted) => {
                                         if (!seleted) return;
                                         setFormDetail(prev => ({ ...prev, department: seleted.value }));
@@ -1389,7 +1424,7 @@ export default function Page() {
                                     {"เพิ่มผู้อนุมัติ"}
                                 </button>
                                 <div className="flex items-center w-full overflow-x-auto scrollbar-none">
-                                    {approver[0].employee_code != "" && approver.map((app, index) => (
+                                    {approver[0]?.employee_code != "" && approver.map((app, index) => (
                                         <div key={index} className="flex items-center">
                                             <span>{app.name}</span>
                                             {index != approver.length - 1 && <ArrowRight size={14} />}
@@ -1421,7 +1456,7 @@ export default function Page() {
                                     {"เพิ่มผู้ดำเนินการ"}
                                 </button>
                                 <div className="flex items-center w-full overflow-x-auto scrollbar-none">
-                                    {processor[0].employee_code != "" && processor.map((app, index) => (
+                                    {processor[0]?.employee_code != "" && processor.map((app, index) => (
                                         <div className="flex" key={index}>
                                             <span>{app.name}</span>
                                             {index != processor.length - 1 && ", "}
@@ -1458,24 +1493,12 @@ export default function Page() {
                                         placeholder="โปรดเลือกผู้สำเร็จเอกสาร"
                                         className="w-full sm:w-2/5 rounded-lg basic-multi-select"
                                         defaultValue={{ label: "โปรดเลือกผู้สำเร็จเอกสาร", value: "1" }}
-                                        options={getAvailableOptions(0, finisher, FinisherList, "finisher")}
+                                        options={FinisherList.filter(em => em.value !== finisher.employee_code)}
                                         value={FinisherList.find(option => option.value === finisher.employee_code) ?? null}
                                         onChange={(selected) => {
                                             if (!selected) return;
                                             setFinisher({ employee_code: selected.value, name: selected.label });
                                         }}
-                                    />
-                                </div>
-                            </div>
-                            <div className="mt-2">
-                                <div className="flex items-center gap-2">
-                                    <span>{"ISO ref. "}</span>
-                                    <input
-                                        type="text"
-                                        className="w-1/4 p-1.5 pl-2 py-1 border rounded bg-[#F3F4F8] text-sm"
-                                        placeholder="iso ref."
-                                        value={formDetail.iso_no}
-                                        onChange={e => setFormDetail(prev => ({ ...prev, iso_no: e.target.value }))}
                                     />
                                 </div>
                             </div>
@@ -1503,7 +1526,7 @@ export default function Page() {
                                     style={{ background: "var(--primary)", color: "var(--primary-foreground)", fontSize: "0.8rem", fontWeight: 500 }}
                                     onClick={() => saveForm()}
                                 >
-                                    <Save size={14} />  {"Save Form"}
+                                  <Save size={14}/>  {"Save Form"}
                                 </button>
                             </div>
                         </div>
@@ -1616,37 +1639,37 @@ export default function Page() {
             </DragOverlay>
 
             {preview && <PreviewModal fields={fields} onClose={() => setPreview(false)} />}
-            {modalStatus.approve && (
-                <EmployeeModal
-                    onClose={() => {
-                        setApprover((prev) => {
-                            const validApprovers = prev.filter((item) => item.employee_code);
-                            return validApprovers.length > 0 ? validApprovers.map((item, index) => ({
-                                ...item,
-                                level: index + 1,
-                            }))
-                                : [{ level: 1, employee_code: "", name: "" }];
-                        });
-                        setModalStatus((prev) => ({ ...prev, approve: false }));
-                    }}
-                    type="ผู้อนุมัติ"
-                    List={approver}
-                />
-            )}
+            {modalStatus.approve && <EmployeeModal onClose={() => {
+                setApprover(prev => {
+                    const validApprovers: ApproverListType[] = prev.filter(item => item.employee_code !== "");
 
-            {modalStatus.process && (
-                <EmployeeModal
-                    onClose={() => {
-                        setProcessor((prev) => {
-                            const validProcessor = prev.filter((item) => item.employee_code);
-                            return validProcessor.length > 0 ? validProcessor : [{ employee_code: "", name: "" }];
-                        });
-                        setModalStatus((prev) => ({ ...prev, process: false }));
-                    }}
-                    type="ผู้ดำเนินการ"
-                    List={processor}
-                />
-            )}
+                    // Don't remove if only one valid approver remains
+                    if (validApprovers.length <= 1) {
+                        return prev;
+                    }
+
+                    return validApprovers.map((item, index) => ({
+                        ...item,
+                        level: index + 1,
+                    }));
+                });
+                setModalStatus(prev => ({ ...prev, approve: false }))
+            }} type="ผู้อนุมัติ" List={approver} />}
+            {modalStatus.process && <EmployeeModal onClose={() => {
+                setProcessor(prev => {
+                    const validProcessor: EmployeeList[] = prev.filter(item => item.employee_code !== "");
+
+                    // Don't remove if only one valid approver remains
+                    if (validProcessor.length <= 1) {
+                        return prev;
+                    }
+
+                    return validProcessor.map((item, index) => ({
+                        ...item,
+                    }));
+                })
+                setModalStatus(prev => ({ ...prev, process: false }))
+            }} type="ผู้ดำเนินการ" List={processor} />}
         </DndContext>
     );
 }

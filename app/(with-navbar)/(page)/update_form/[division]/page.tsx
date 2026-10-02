@@ -3,19 +3,18 @@ import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { useFormStore } from "@/store/form.store";
 import { useEffect } from "react";
-import { useGetAllPublishForms, useGetForms } from "@/hooks/set-form";
+import { useGetForms } from "@/hooks/set-form";
 import { useParams } from "next/navigation";
 
 export default function Page() {
     const params = useParams<{ division: string }>();
     const division = params?.division;
-    const formMutation = useGetAllPublishForms();
-    const forms = useFormStore((state) => state.publish_form);
+    const formMutation = useGetForms();
+    const forms = useFormStore((state) => state.forms);
     const currentDivision = forms.find((item) => item.division_code === division);
 
-    
     useEffect(() => {
-        formMutation.mutate()
+            formMutation.mutate();
     }, [division]);
     return (
         <div className="bg-slate-50 min-h-screen h-full w-full p-6">
@@ -27,13 +26,13 @@ export default function Page() {
                 </Link>
                 <div className="">
                     <h1 className="text-2xl font-bold">{currentDivision ? currentDivision.division_name : "รายการเอกสาร"}</h1>
-                    <span>{`รูปแบบเอกสารทั้งหมดในแผนก${currentDivision ? currentDivision?.division_name : ""}`}</span>
+                    <span>{`รายการเอกสารของแผนก${currentDivision?.division_name}สำหรับการแก้ไข`}</span>
                 </div>
             </div>
             {currentDivision && currentDivision.forms.map((form, index: number) => (
-                <Link href={`/document_list/${division}/form?schema_id=${form.code}&mode=create`} key={index}>
+                <Link href={`/update_form/${division}/edit?schema_id=${form.code}&draft=${String(form.is_draft)}`} key={index}>
                     <div className="mt-5 bg-white border rounded-xl px-5 py-4 shadow w-full hover:bg-[#e6e6e6] cursor-pointer">
-                        <h4>{form.name ? form.name : "ไม่มีชื่อเอกสาร"}</h4>
+                        <h4>{form.name ? `${form.name}${form.is_draft ? " (ฉบับร่าง)" : ""}` : "ไม่มีชื่อเอกสาร"}</h4>
                     </div>
                 </Link>
             ))}

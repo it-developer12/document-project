@@ -1,168 +1,28 @@
 "use client"
 import { Icon } from '@iconify/react';
 import Link from "next/link";
-import {
-    Stepper,
-    StepperContent,
-    StepperDescription,
-    StepperIndicator,
-    StepperItem,
-    StepperNav,
-    StepperPanel,
-    StepperSeparator,
-    StepperTitle,
-    StepperTrigger,
-} from "@/components/reui/stepper"
-
-import { CheckIcon, ChevronUp, Eye, FileImage, Hash, LoaderCircleIcon, PlusCircle, Search, UploadCloud, X, XIcon } from 'lucide-react'
-import { Activity, useEffect, useMemo, useState } from "react";
+import { Eye, X } from 'lucide-react'
+import { useEffect, useState } from "react";
 import { Control, Controller, useForm } from "react-hook-form";
-import { FieldPreview } from "@/app/component/FormRender";
 import { PriorityBadge } from "@/app/component/PriorityBadge";
-import { DocumentTracking, DocumentTrackingRecord, Workflow, WorkflowActivity } from "./tracking";
+import { DocumentTracking, Workflow } from "./tracking";
 import dayjs from "dayjs";
-import { differenceInDays } from "date-fns";
 import { useGetTracking } from '@/hooks/set-tracking';
 import { useTrackingStore } from '@/store/tracking.store';
 import utc from 'dayjs/plugin/utc';
 import timezone from 'dayjs/plugin/timezone'
 import { useSearchTracking } from '@/hooks/search-tracking';
 import { useSearchTrackingDetail } from '@/hooks/search-tracking-detail';
+import {
+    ActivityHistory,
+    DetailModal as TrackingDetailModal,
+    PreviewModal as TrackingPreviewModal,
+    WorkflowProgress,
+} from './TrackingComponents';
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
 
-const mock = {
-  documentNo: "DOC-IT-20260814-001",
-  status: "PROCESSING",
-  dueDate: "2026-08-20T17:00:00.000Z",
-  createdBy: {
-    firstName: "นครินทร์"
-  },
-  createdAt: "2026-08-14T02:52:49.421Z",
-  revisions: [
-    {
-      snapshot: "[{\"id\":\"37114ac2-abf4-4e5f-8bfc-ae4ff78e9f23\",\"type\":\"employee_detail\",\"label\":\"ข้อมูลพนักงาน\",\"placeholder\":\"\",\"required\":true,\"helpText\":\"\",\"width\":\"full\"},{\"id\":\"82fcb2f7-cf21-4d19-b3cf-d5894da00403\",\"type\":\"text\",\"label\":\"สาเหตุ\",\"placeholder\":\"\",\"required\":true,\"helpText\":\"\",\"width\":\"full\"},{\"id\":\"e6c74fd2-6434-4081-be95-6c0ba16466ba\",\"type\":\"table\",\"label\":\"รายการทรัพย์สิน\",\"placeholder\":\"\",\"required\":false,\"helpText\":\"\",\"width\":\"full\",\"minRows\":1,\"maxRows\":20,\"columns\":[{\"id\":\"col-1\",\"label\":\"รหัสทรัพย์สิน\",\"type\":\"text\",\"width\":1},{\"id\":\"col-2\",\"label\":\"รายการ\",\"type\":\"text\",\"width\":2},{\"id\":\"col-3\",\"label\":\"จำนวน\",\"type\":\"number\",\"width\":1},{\"id\":\"col-4\",\"label\":\"หน่วย\",\"type\":\"text\",\"width\":1},{\"id\":\"col-11\",\"label\":\"สถานที่จัดเก็บ\",\"type\":\"text\",\"width\":1}]}]",
-      formData: "{\"37114ac2-abf4-4e5f-8bfc-ae4ff78e9f23\":{\"employee_code\":\"2169089\",\"position\":\"เจ้าหน้าที่พัฒนาซอฟต์แวร์\",\"division\":\"เทคโนโลยีสารสนเทศ\",\"department\":\"พัฒนาเทคโนโลยีโซลูชั่น\",\"first_name\":\"Mock Name 13\",\"last_name\":\"Mock Surname 13\",\"company\":\"cff\"},\"82fcb2f7-cf21-4d19-b3cf-d5894da00403\":\"เริ่มงานใหม่\",\"e6c74fd2-6434-4081-be95-6c0ba16466ba\":[{\"col-1\":\"WF-20342-342\",\"col-2\":\"โน๊ตบุ๊ค\",\"col-3\":\"1\",\"col-4\":\"เครื่อง\",\"col-11\":\"บางบอนชั้น 2\"}]}"
-    }
-  ],
-  formSchema: {
-    name: "แบบฟอร์มเบิกทรัพย์สิน",
-    division: {
-      name: "Innovation Technology"
-    }
-  },
-  workflowInstance: {
-    executions: [
-      {
-        steps: [
-          {
-            level: 1,
-            status: "COMPLETED",
-            decision: "APPROVE",
-            startedAt: "2026-08-14T02:52:49.427Z",
-            actedAt: "2026-08-14T02:58:04.280Z",
-            employee: {
-              firstName: "ทศวรรษ"
-            }
-          },
-          {
-            level: 2,
-            status: "COMPLETED",
-            decision: "APPROVE",
-            startedAt: "2026-08-14T02:58:04.303Z",
-            actedAt: "2026-08-14T02:58:50.453Z",
-            employee: {
-              firstName: "ประวีณพร"
-            }
-          }
-        ]
-      }
-    ]
-  },
-  processInstances: [
-    {
-      processInstanceTasks: [
-        {
-          description: "ลงโปรแกรมพื้นฐาน",
-          processBy: {
-            firstName: "ธีรวัฒน์"
-          },
-          createAt: "2026-08-14T02:59:38.530Z"
-        },
-        {
-          description: "ตรวจสอบการใช้งาน",
-          processBy: {
-            firstName: "ธีรวัฒน์"
-          },
-          createAt: "2026-08-14T07:58:18.651Z"
-        }
-      ]
-    }
-  ],
-  activities: [
-    {
-      id: "070bbbe1-99c8-4ac5-ac84-bee2ed146534",
-      documentId: "c1c0f5ed-3985-4749-8efd-920729cb885d",
-      type: "SUBMITTED",
-      message: "นำเอกสารเข้าสู่ระบบ",
-      metadata: "",
-      createdById: "c4a70a34-edb8-4ac6-b897-c288df4a8f1f",
-      createdAt: "2026-08-14T02:52:49.435Z",
-      createdBy: {
-        firstName: "นครินทร์"
-      }
-    },
-    {
-      id: "1f3031ce-3efa-4dc2-bf2b-3ef4b5d67199",
-      documentId: "c1c0f5ed-3985-4749-8efd-920729cb885d",
-      type: "APPROVED",
-      message: "อนุมัติเอกสาร",
-      metadata: "",
-      createdById: "d716601b-a050-4796-b8fb-568027241def",
-      createdAt: "2026-08-14T02:58:04.306Z",
-      createdBy: {
-        firstName: "ทศวรรษ"
-      }
-    },
-    {
-      id: "c8d17e27-7552-4ab2-83a2-cc3ee942b5e1",
-      documentId: "c1c0f5ed-3985-4749-8efd-920729cb885d",
-      type: "APPROVED",
-      message: "อนุมัติเอกสาร",
-      metadata: "",
-      createdById: "dfaa6274-95c9-47ab-86e8-0626950b7cd3",
-      createdAt: "2026-08-14T02:58:50.459Z",
-      createdBy: {
-        firstName: "ประวีณพร"
-      }
-    },
-    {
-      id: "0b814d79-9b3c-4b37-953d-55b99b125d3a",
-      documentId: "c1c0f5ed-3985-4749-8efd-920729cb885d",
-      type: "PROCESS_NOTE",
-      message: "ลงโปรแกรมพื้นฐาน",
-      metadata: "",
-      createdById: "f206592e-7045-4121-b0eb-68ebb4f18752",
-      createdAt: "2026-08-14T02:59:38.532Z",
-      createdBy: {
-        firstName: "ธีรวัฒน์"
-      }
-    },
-    {
-      id: "6054f95a-efb3-4939-8113-4f3d4ee0b77c",
-      documentId: "c1c0f5ed-3985-4749-8efd-920729cb885d",
-      type: "PROCESS_NOTE",
-      message: "ตรวจสอบการใช้งาน",
-      metadata: "",
-      createdById: "f206592e-7045-4121-b0eb-68ebb4f18752",
-      createdAt: "2026-08-14T07:58:18.655Z",
-      createdBy: {
-        firstName: "ธีรวัฒน์"
-      }
-    }
-  ]
-}
 
 export default function Page() {
     useGetTracking();
@@ -174,20 +34,12 @@ export default function Page() {
     const [doc, setDoc] = useState(false);
     const [selectedForm, setSelectedForm] = useState<any>(null);
     const [mainStage, setMainStage] = useState<any[]>([]);
-    const [subStage, setSubStage] = useState<any>([]);
-    const [docDetail, setDocDetail] = useState<any>([]);
     const [searchDoc, setSearchDoc] = useState<any>([]);
 
     useEffect(() => {
         setSearchDoc(searchDocument);
     }, [searchDocument, setSearchDoc]);
     const lastestDoc = useTrackingStore((state) => state.LastestDocument)
-    const steps = [
-        { title: "Created", description: "สร้างเอกสาร", value: "created" },
-        { title: "Approve", description: "ตรวจสอบและอนุญาติ", value: "approve" },
-        { title: "Processing", description: "ดำเนินการ", value: "processing" },
-        { title: "Complete", description: "ตรวจสอบและจัดเก็บ", value: "complete" },
-    ]
 
     const [searchState, SetSearchState] = useState("");
     //doc status =  created | draft | approved | rejected | process | completed | cancelled
@@ -196,62 +48,7 @@ export default function Page() {
         open: false,
         stage: ""
     });
-
-    const [TrackingDataState, setTrackingDataState] = useState<DocumentTracking>({
-        document_id: "",
-        schema_id: "",
-        title: "",
-        department: "",
-        type: "",
-        priority: "low",
-        workflow: {
-            status: "in_progress",
-            current_stage: "created",
-            stages: [
-                {
-                    id: "created",
-                    name: "Created",
-                    status: "completed",
-                    started_at: "2025-11-04",
-                    completed_at: "2025-11-04",
-                    activities: []
-                },
-                {
-                    id: "approve",
-                    name: "Approve",
-                    status: "pending",
-                    started_at: "",
-                    completed_at: "",
-                    activities: []
-                },
-                {
-                    id: "processing",
-                    name: "Created",
-                    status: "pending",
-                    started_at: "",
-                    completed_at: "",
-                    activities: []
-                },
-                {
-                    id: "complete",
-                    name: "Complete",
-                    status: "pending",
-                    started_at: "",
-                    completed_at: "",
-                    activities: []
-                }
-
-            ]
-        },
-        "created_by": {
-            id: "",
-            name: ""
-        },
-        "updated_at": "",
-        "due_date": "",
-        "note": ""
-    });
-    const mode = "view";
+    const [commentState, setCommentState] = useState("");
 
     const form = useForm({
         defaultValues: {},
@@ -265,32 +62,6 @@ export default function Page() {
         formState: { errors },
     } = form;
 
-    const getActivityTimeline = (workflow: Workflow) => {
-        const activities = workflow.stages
-            .flatMap(stage =>
-                stage.activities.map(activity => ({
-                    ...activity,
-                    stageId: stage.id,
-                    stageName: stage.name,
-                }))
-            )
-            .sort((a, b) =>
-                dayjs(a.datetime).valueOf() - dayjs(b.datetime).valueOf()
-            );
-
-        return activities.map((activity, index) => {
-            const previous = activities[index - 1];
-
-            return {
-                ...activity,
-                diff:
-                    previous == null
-                        ? null
-                        : dayjs(activity.datetime).diff(dayjs(previous.datetime), "day"),
-            };
-        });
-    };
-
     function search(keyword: string) {
         triggerSearch(keyword);
     }
@@ -301,8 +72,7 @@ export default function Page() {
         await searchDetail.searchAsync(word);
 
         // read fresh store state after mutation
-        const dd = useTrackingStore.getState().SearchDocumentDetail as any;
-
+        const dd = useTrackingStore.getState().SearchDocumentDetail.document as any;
         const activity = [
             {
                 stage: "submit",
@@ -311,13 +81,13 @@ export default function Page() {
             },
             {
                 stage: "approve",
-                status: dd?.status === "WAITING_APPROVAL" ? "IN_PROCESS" : dd?.status === "APPROVER_CANCELLED" ? "CANCELLED" : dd?.status === "APPROVER_REJECTED" ? "REJECTED" : "COMPLETE",
+                status: dd.workflowInstance.executions[0].status === "REJECTED" ? "REJECTED" : dd.workflowInstance.executions[0].status === "CANCELLED" ? "CANCELLED" : dd.workflowInstance.executions[0].status === "RUNNING" ? "IN_PROCESS" : "COMPLETED",
                 activity: (dd?.activities ?? []).filter((item: any) => (item.type ?? "").includes("APPROVE")),
                 sub_stage: dd?.workflowInstance?.executions?.[0]?.steps ?? []
             },
             {
                 stage: "process",
-                status: dd?.status === "PROCESSING" ? "IN_PROCESS" : dd?.status === "PROCESSOR_CANCELLED" ? "CANCELLED" : dd?.status === "PROCESSOR_REJECTED" ? "REJECTED" : "COMPLETE",
+                status: dd?.status === "PROCESSING" ? "IN_PROCESS" : dd.status === "COMPLETED" ? "COMPLETED" : "",
                 activity: (dd?.activities ?? []).filter((item: any) => (item.type ?? "").includes("PROCESS")),
                 sub_stage: dd?.processInstances?.[0]?.processInstanceTasks ?? []
             },
@@ -330,11 +100,11 @@ export default function Page() {
         ];
 
         setMainStage(activity)
-
+        const comment = dd?.workflowInstance?.executions[0]?.steps.find((step: any) => step.decision === "REJECT" || step.decision === "CANCEL")?.comment ?? ""
         const snapshot = dd?.revisions?.[0]?.snapshot ?? '[]';
         const schema = JSON.parse(snapshot);
         setSelectedForm(schema)
-
+        setCommentState(comment)
         const formData = dd?.revisions?.[0]?.formData ?? '{}';
         const answer = JSON.parse(formData)
 
@@ -358,237 +128,20 @@ export default function Page() {
         setDoc(true);
     }
 
-    function PreviewModal({ fields, onClose }: { fields: FormField[]; onClose: () => void }) {
-        return (
-            <div
-                className="fixed inset-0 z-50 flex items-center justify-center p-6"
-                style={{ background: "rgba(0,0,0,0.4)", backdropFilter: "blur(4px)" }}
-                onClick={onClose}
-            >
-                <div
-                    className="flex flex-col w-full max-w-7xl max-h-[90vh] rounded-2xl overflow-hidden shadow-2xl"
-                    style={{ background: "var(--card)", border: "1px solid var(--border)" }}
-                    onClick={(e) => e.stopPropagation()}
-                >
-                    <div className="flex items-center justify-between px-6 py-4 border-b" style={{ borderColor: "var(--border)" }}>
-                        <span style={{ fontWeight: 600, color: "var(--foreground)" }}>{"ข้อมูลเอกสาร"}</span>
-                        <button onClick={onClose} className="hover:cursor-pointer" style={{ color: "var(--muted-foreground)" }}><X size={16} /></button>
-                    </div>
-                    <div className="overflow-y-auto p-6 flex flex-col gap-5" style={{ scrollbarWidth: "none" }}>
-                        {fields == undefined || fields.length == 0 ?
-                            (
-                                <p style={{ color: "var(--muted-foreground)", fontSize: "1rem", textAlign: "center" }}>
-                                    {"ไม่พบข้อมูล"}
-                                </p>
-                            )
-                            :
-                            (
-                                <div className="grid grid-cols-2 gap-4">
-                                    {fields.map((f) => (
-                                        <div
-                                            key={f.id}
-                                            className="flex flex-col gap-1.5"
-                                            style={{ gridColumn: f.width === "full" ? "1 / -1" : undefined }}
-                                        >
-                                            <label style={{ fontSize: "1rem", fontWeight: 500, color: "var(--foreground)" }}>
-                                                {f.label}
-                                                {f.required && <span style={{ color: "var(--destructive)", marginLeft: "0.25rem" }}>*</span>}
-                                            </label>
-                                            <FieldPreview field={f} control={form.control as Control} setValue={form.setValue} getValues={form.getValues} mode={mode} />
-                                            {f.helpText && (
-                                                <p style={{ fontSize: "0.72rem", color: "var(--muted-foreground)" }}>{f.helpText}</p>
-                                            )}
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-                    </div>
-                </div>
-            </div>
-        );
-    }
-
-    function findCurrentStage(status?: string) {
-        if (!status) return 1;
-
-        const stageMap: Record<string, number> = {
-            WAITING_APPROVAL: 2,
-            APPROVER_REJECTED: 2,
-            APPROVER_CANCELLED: 2,
-            PROCESSING: 3,
-            PROCESSOR_REJECTED: 3,
-            PROCESSOR_CANCELLED: 3,
-            COMPLETED: 4,
-            COMPLETE: 4,
-            REJECTED: 4,
-            CANCELLED: 4,
-        };
-
-        return stageMap[status] ?? 1;
-    }
-
-    function DetailModal({ onClose }: { onClose: () => void }) {
-        const { stage } = detail
-        const modal_detail = mainStage.find((stg) => stg.stage === stage)
-        // else {
-        //     return mainStage.find((sta: any) => sta.id === stage)?.activities ?? [];
-        // }
-        const Approver = () => modal_detail.sub_stage.map((step: any, index: number) => {
-            const compareDate = detailDocument.createdAt;
-
-            const startedAt = new Date(step.startedAt).getTime();
-            const actedAt = new Date(step.actedAt).getTime();
-
-            const previousActedAt =
-                index === 0
-                    ? new Date(compareDate).getTime()
-                    : new Date(modal_detail.sub_stage[index - 1].actedAt).getTime();
-
-            const MS_PER_DAY = 1000 * 60 * 60 * 24;
-            const spentDays = (actedAt - startedAt) / MS_PER_DAY;
-            const waitDays = (startedAt - previousActedAt) / MS_PER_DAY;
-
-            return {
-                ...step,
-                // 1. How long this step took (in days). If less than 1 day, set to -1.
-                timeSpent: spentDays < 1 ? -1 : Math.floor(spentDays),
-                // 2. Waiting time before this step started (in days). If less than 1 day, set to -1.
-                timeDiff: waitDays < 1 ? -1 : Math.floor(waitDays),
-            };
-        });
-
-        const Processor = () => modal_detail.sub_stage.map((proc: any, index: number) => {
-            const len = detailDocument.workflowInstance.executions[0].steps.length
-            const processStartedAt = detailDocument.workflowInstance.executions[0].steps[len-1].actedAt
-            const currentTime = new Date(proc.createAt).getTime();
-
-            const previousTime =
-                index === 0
-                    ? new Date(processStartedAt).getTime()
-                    : new Date(modal_detail.sub_stage[index - 1].createAt).getTime();
-
-            const diff = currentTime - previousTime;
-            return {
-                ...proc,
-                timeDiff: Math.floor(diff / 3600000),
-            };
-        })
-
-
-        const findStatus = (status: string, decision: string) => {
-            if (status === "PENDING") {
-                return "รอการอนุมัติ"
-            } else if (status === "COMPLETED") {
-                if (decision === "APPROVE") return "อนุมัติแล้ว"
-                if (decision === "CANCELLED") return "ยกเลิกเอกสาร"
-                if (decision === "REJECTED") return "ตีกลับเอกสาร"
-            } else {
-                return "ยังไม่ถึงขั้นตอน"
-            }
+    function findCurrentStage(data: any) {
+        let stage = 1;
+        if (data.status === "WAITING_APPROVAL") {
+            stage = 2
+        } else if (data.status === "PROCESSING") {
+            stage = 3
+        } else if (data.status === "REJECTED" || data.status === "CANCELLED") {
+            stage = data.workflowInstance.executions[0].status === "REJECTED" || data.workflowInstance.executions[0].status === "CANCELLED" ? 2 : 3
+        } else if (data.status === "COMPLETED") {
+            stage = 4
         }
 
-        const findBgColor = (status: string, decision?: string) => {
-            if (status === "PENDING") {
-                return "bg-[#4A4DF1] text-white"
-            } else if (status === "COMPLETED") {
-                if (decision === "APPROVE") return "bg-green-500 text-white"
-                if (decision === "CANCELLED") return "bg-red-500 text-white"
-                if (decision === "REJECTED") return "bg-black text-white"
-            } else {
-                return "bg-[#e8e8e8]"
-            }
-        }
-        return (
-            <div
-                className="fixed inset-0 z-50 flex items-center justify-center p-6"
-                style={{ background: "rgba(0,0,0,0.4)", backdropFilter: "blur(4px)" }}
-                onClick={onClose}
-            >
-                <div
-                    className="flex flex-col w-full max-w-3xl max-h-[90vh] rounded-2xl overflow-hidden shadow-2xl"
-                    style={{ background: "var(--card)", border: "1px solid var(--border)" }}
-                    onClick={(e) => e.stopPropagation()}
-                >
-                    <div className="flex items-center justify-between px-6 py-4 border-b" style={{ borderColor: "var(--border)" }}>
-                        <span style={{ fontWeight: 600, color: "var(--foreground)" }}>{"ขั้นตอน " + stage}</span>
-                        <button onClick={onClose} className="hover:cursor-pointer" style={{ color: "var(--muted-foreground)" }}><X size={16} /></button>
-                    </div>
-                    <div className="overflow-y-auto p-6 flex flex-col gap-5" style={{ scrollbarWidth: "none" }}>
-                        <div className="flex gap-2 flex-wrap">
-                            <div className="flex gap-2 items-center">
-                                <div className="h-2 w-2 p-1 rounded-full bg-[#4A4DF1]"></div>
-                                <span>{"กำลังรอการดำเนินการ"}</span>
-                            </div>
-                            <div className="flex gap-2 items-center">
-                                <div className="h-2 w-2 p-1 rounded-full bg-[#e8e8e8]"></div>
-                                <span>{"ยังไม่ถึงขั้นตอนการดำเนินการ"}</span>
-                            </div>
-                            <div className="flex gap-2 items-center">
-                                <div className="h-2 w-2 p-1 rounded-full bg-green-500"></div>
-                                <span>{"ดำเนินการเรียบร้อยแล้ว"}</span>
-                            </div>
-                            <div className="flex gap-2 items-center">
-                                <div className="h-2 w-2 p-1 rounded-full bg-black"></div>
-                                <span>{"เอกสารตีกลับ"}</span>
-                            </div>
-                            <div className="flex gap-2 items-center">
-                                <div className="h-2 w-2 p-1 rounded-full bg-red-500"></div>
-                                <span>{"ยกเลิกเอกสาร"}</span>
-                            </div>
-                        </div>
-                        <div className='space-y-2'>
-                            {stage == "approve" ? (
-                                Approver().map((act: any, index: number) => (
-                                    <div key={index} className={`w-full p-3 flex justify-between rounded-2xl ${findBgColor(act.status, act.decision)}`}>
-                                        <div>
-                                            {`${findStatus(act.status, act.decision)} by ${act.employee.firstName}`}
-                                        </div>
-                                        <div>
-                                            {`${act.status === "PENDING" ? "" : act.timeSpent === -1 ? "ใช้เวลาน้อยกว่า 1 วัน" : act.timeSpent + " วัน"}`}
-                                        </div>
-                                    </div>
-                                ))
-                            ) : stage == "process" ? (
-                                Processor().map((pro: any, index: number) => (
-                                    <div key={index} className="w-full bg-green-500 text-white p-3 flex justify-between rounded-2xl">
-                                        <div>
-                                            {`${pro.description} by ${pro.processBy.firstName}`}
-                                        </div>
-                                        <div>
-                                            {`${pro.diff > 0 ? pro.diff + " ชั่วโมง" : "น้อยกว่า 1 ชั่วโมง"}`}
-                                        </div>
-                                    </div>
-                                ))
-                            ) : (
-                                <div className="w-full bg-green-500 text-white p-3 flex justify-between rounded-2xl">
-                                    <div>
-                                        {`${modal_detail.activity[0].message} by ${modal_detail.activity[0].createdBy.firstName}`}
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                </div>
-            </div>
-        );
+        return stage;
     }
-
-    // useEffect(() => {
-    //     const schema = FormDetail.find((form: any) => form.document_id === searchState);
-
-    //     const values =
-    //         (FormSchema.form as any)
-    //             .find((item: any) => item.schema_id === schema?.schema_id)
-    //             ?.form_detail.reduce(
-    //                 (acc: Record<string, any>, field: any) => {
-    //                     acc[field.id] = "";
-    //                     return acc;
-    //                 },
-    //                 {} as Record<string, any>
-    //             ) ?? {};
-
-    //     form.reset(values);
-    // }, [searchState, form]);
 
     return (
         <div className="bg-slate-50 min-h-screen h-full w-full p-6">
@@ -700,12 +253,12 @@ export default function Page() {
                         <div className="flex justify-between">
                             <div>
                                 <div className="flex items-center">
-                                    <span className="">{detailDocument.formSchema.division?.name ?? ""}</span>
+                                    <span className="">{detailDocument.document.formSchema.division?.name ?? ""}</span>
                                     <Icon icon={'mdi:keyboard-arrow-right'} className="" />
-                                    <span className="text-[#3D52D5] font-bold">{" " + detailDocument.documentNo}</span>
+                                    <span className="text-[#3D52D5] font-bold">{" " + detailDocument.document.documentNo}</span>
                                 </div>
                                 <div>
-                                    <span className="text-2xl font-bold">{detailDocument.formSchema.name}</span>
+                                    <span className="text-2xl font-bold">{detailDocument.document.formSchema.name}</span>
                                 </div>
                             </div>
 
@@ -715,33 +268,33 @@ export default function Page() {
                                         <span>{"เจ้าของเอกสาร"}</span>
                                         <div className="flex items-center gap-0.5">
                                             <Icon icon={'iconoir:user'} />
-                                            <span>{detailDocument.createdBy.firstName}</span>
+                                            <span>{detailDocument.document.createdBy.firstName}</span>
                                         </div>
                                     </div>
                                     <div className="px-2">
                                         <span>{"ฝ่าย/แผนก"}</span>
                                         <div className="flex items-center gap-0.5">
                                             <Icon icon={'icon-park-outline:new-computer'} />
-                                            <span>{detailDocument.formSchema.division?.name}</span>
+                                            <span>{detailDocument.document.formSchema.division?.name}</span>
                                         </div>
                                     </div>
                                     <div className="px-2">
                                         <span>{"สร้างเมื่อ"}</span>
                                         <div className="flex items-center gap-0.5">
                                             <Icon icon={'boxicons:calendar'} />
-                                            <span>{dayjs.utc(detailDocument.createdAt).tz("Asia/Bangkok").format("DD-MM-YYYY")}</span>
+                                            <span>{dayjs.utc(detailDocument.document.createdAt).tz("Asia/Bangkok").format("DD-MM-YYYY")}</span>
                                         </div>
                                     </div>
                                     <div className="px-2">
                                         <span>{"วันที่สิ้นสุดเอกสาร"}</span>
                                         <div className="flex items-center gap-0.5">
                                             <Icon icon={'boxicons:calendar'} />
-                                            <span>{dayjs.utc(detailDocument.dueDate).tz("Asia/Bangkok").format("DD-MM-YYYY")}</span>
+                                            <span>{dayjs.utc(detailDocument.document.dueDate).tz("Asia/Bangkok").format("DD-MM-YYYY")}</span>
                                         </div>
                                     </div>
                                 </div>
                                 <div className="flex items-center">
-                                    <PriorityBadge status={"high"} />
+                                    <PriorityBadge status={detailDocument.document.priority} />
                                 </div>
                                 <div>
                                     <button className="p-2 text-white bg-black rounded-lg hover:cursor-pointer flex items-center gap-2" onClick={() => setPreview(true)}>
@@ -753,121 +306,23 @@ export default function Page() {
                         </div>
                     </div>
 
-                    <div className="mt-5 bg-white border rounded-xl px-5 py-4 shadow w-full">
-                        <div>
-                            <span className="font-semibold text-xl">{"Workflow Progress"}</span>
+                    <WorkflowProgress
+                        stages={mainStage}
+                        currentStage={findCurrentStage(detailDocument.document)}
+                        separatorCount={4}
+                        onStageClick={(stage) => setDetail({ open: true, stage })}
+                    />
+                    {(detailDocument.document.status === "CANCELLED" || detailDocument.document.status === "REJECTED") && (
+                        <div className="mt-5 bg-white border rounded-xl px-5 py-4 shadow w-full">
+                            <div className="">
+                                <span className="font-semibold text-xl">{"เหตุผลที่ตีกลับหรือยกเลิกเอกสาร"}</span>
+                                <div className="w-full border rounded-lg">
+                                    <textarea rows={3} value={commentState ?? ""} className="w-full p-2" disabled />
+                                </div>
+                            </div>
                         </div>
-                        <div className="mt-10">
-                            <Stepper
-                                defaultValue={1}
-                                value={findCurrentStage(detailDocument?.status)}
-                                indicators={{
-                                    completed: (
-                                        <CheckIcon className="size-3.5" />
-                                    ),
-                                    loading: (
-                                        <LoaderCircleIcon className="size-3.5 animate-spin" />
-                                    ),
-                                }}
-                                className="w-full space-y-8"
-                            >
-                                <StepperNav>
-                                    {mainStage.map((stage, index) => {
-                                        const stepNumber = index + 1;
-
-                                        const isCompleted = stage.status === "COMPLETED";
-                                        const isLoading = stage.status === "IN_PROCESS";
-                                        const isCancelled = stage.status === "cancelled";
-                                        const isRejected = stage.status === "rejected";
-                                        return (
-                                            <StepperItem
-                                                key={index}
-                                                step={stepNumber}
-                                                completed={isCompleted}
-                                                loading={isLoading}
-                                                className="relative flex-1 items-start"
-                                                onClick={() => setDetail({ open: true, stage: stage.stage })}
-                                            >
-                                                <StepperTrigger className="flex flex-col gap-2.5">
-                                                    <StepperIndicator
-                                                        className={`data-[state=completed]:bg-green-500 data-[state=completed]:text-white data-[state=inactive]:text-gray-500`}
-                                                    >
-                                                        {isCancelled || isRejected ? (
-                                                            <XIcon className={`${isCancelled
-                                                                ? "bg-red-500 text-white"
-                                                                : isRejected
-                                                                    ? "text-white"
-                                                                    : "data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
-                                                                }`} />
-                                                        ) : (
-                                                            stepNumber
-                                                        )}
-                                                    </StepperIndicator>
-
-                                                    <StepperTitle>{stage.stage}</StepperTitle>
-
-                                                    <StepperDescription>
-                                                        {stage.activity.at(-1)?.message ?? ""}
-                                                    </StepperDescription>
-                                                    <StepperDescription>
-                                                        {/* {`${mainStage[index].duration == null ? "" : "ใช้เวลา "}${mainStage[index].duration == null ? "ยังไม่ถึงขั้นตอน" : mainStage[index].duration < 1 ? "น้อยกว่า 1" : mainStage[index].duration}${mainStage[index].duration == null ? "" : " วัน"}`} */}
-                                                    </StepperDescription>
-                                                </StepperTrigger>
-
-                                                {TrackingDataState.workflow.stages.length > index + 1 && (
-                                                    <StepperSeparator
-                                                        className="group-data-[state=completed]/step:bg-green-500 absolute inset-x-0 top-2.5 left-[calc(50%+0.875rem)] m-0 group-data-[orientation=horizontal]/stepper-nav:w-[calc(100%-2rem+0.225rem)] group-data-[orientation=horizontal]/stepper-nav:flex-none"
-                                                    />
-                                                )}
-                                            </StepperItem>
-                                        );
-                                    })}
-                                </StepperNav>
-                            </Stepper>
-                        </div>
-                    </div>
-
-                    <div className="mt-5 bg-white border rounded-xl px-5 py-4 shadow w-full">
-                        <div>
-                            <span className="font-bold text-xl">{"Activity History"}</span>
-                        </div>
-                        <div className="flex items-center justify-start mt-4">
-                            <Stepper
-                                className="flex flex-col justify-center gap-10"
-                                value={detailDocument.activities.length}
-                                orientation="vertical"
-                            >
-                                <StepperNav>
-                                    {detailDocument.activities.map((step: any, index: number) => {
-                                        return (
-                                            <StepperItem
-                                                key={index}
-                                                step={index + 1}
-                                                className="relative items-start not-last:flex-1"
-                                            >
-                                                <StepperTrigger className="items-start gap-2.5 pb-8 px-1.5 mt-2 last:pb-0">
-                                                    <StepperIndicator className="data-[state=completed]:bg-[#4A4DF1] data-[state=active]:bg-[#4A4DF1] data-[state=inactive]:bg-[#4A4DF1] data-[state=completed]:text-white size-3">
-                                                        {''}
-                                                    </StepperIndicator>
-                                                    <div className="mt-0.5 text-left">
-                                                        <StepperTitle><span className="font-semibold">{step.message}</span>{" by " + step.createdBy.firstName}</StepperTitle>
-                                                        <StepperDescription>{step.message}</StepperDescription>
-                                                        <div className="flex gap-2">
-                                                            <StepperDescription>{dayjs.utc(step.createdAt).tz("Asia/Bangkok").format("DD-MM-YYYY")}</StepperDescription>
-                                                            <StepperDescription>{``}</StepperDescription>
-                                                        </div>
-                                                    </div>
-                                                </StepperTrigger>
-                                                {index < detailDocument.activities.length - 1 && (
-                                                    <StepperSeparator className="group-data-[state=completed]/step:bg-[#E2E5EF] group-data-[state=active]/step:bg-[#E2E5EF] group-data-[state=inactive]/step:bg-[#E2E5EF] absolute inset-y-0 top-7 left-3 -order-1 m-0 -translate-x-1/2 group-data-[orientation=vertical]/stepper-nav:h-[calc(100%-2rem)]" />
-                                                )}
-                                            </StepperItem>
-                                        )
-                                    })}
-                                </StepperNav>
-                            </Stepper>
-                        </div>
-                    </div>
+                    )}
+                    <ActivityHistory activities={detailDocument.document.activities} />
                 </div>
             ) : (
                 <div>
@@ -880,19 +335,8 @@ export default function Page() {
                 </div>
             )}
 
-            {(TrackingDataState.workflow.status === "cancelled" || TrackingDataState.workflow.status === "rejected") && (
-                <div className="mt-5 bg-white border rounded-xl px-5 py-4 shadow w-full">
-                    <div className="">
-                        <span className="font-semibold text-xl">{"เหตุผลที่ตีกลับหรือยกเลิกเอกสาร"}</span>
-                        <div className="w-full border rounded-lg">
-                            {/* <textarea rows={3} value={workflowResultActivity?.description ?? ""} className="w-full p-2" disabled /> */}
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {preview && <PreviewModal fields={selectedForm as FormField[]} onClose={() => setPreview(false)} />}
-            {detail.open && <DetailModal onClose={() => setDetail({ open: false, stage: "" })} />}
+            {preview && <TrackingPreviewModal fields={selectedForm as FormField[]} form={form} onClose={() => setPreview(false)} />}
+            {detail.open && <TrackingDetailModal stage={detail.stage} stages={mainStage} document={detailDocument} onClose={() => setDetail({ open: false, stage: "" })} />}
         </div>
     )
 }

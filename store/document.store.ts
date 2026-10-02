@@ -18,24 +18,34 @@ export interface DocumentItem {
     documentNo: string;
     status: string;
     dueDate: string;
+    priority: string;
+    currentRevision: {
+        company: {
+            code: string
+        }
+    },
     formSchema: {
         code: string;
         name: string;
         company: {
-            name: string;
+            code: any;
         };
         division: {
             name: string;
         };
     };
     workflowInstance: {
-        workflowDefinition: {
-            versions: {
-                workflowStep: {
-                    type: string;
-                }[];
+        workflowDefinitionVersion: {
+            workflowStep: {
+                type: string;
             }[];
         };
+        executions: {
+            steps: {
+                type: string;
+                status: string
+            }[]
+        }[]
     };
     createdBy: {
         firstName: string;
@@ -71,20 +81,25 @@ export const useDocumentStore = create<DocumentState>((set) => ({
     setApproveDocuments: (documents) =>
         set({
             approveDocuments: documents.filter((doc) => {
-                const type =
-                    doc.workflowInstance?.workflowDefinition?.versions?.[0]?.workflowStep?.[0]?.type;
-                const status = doc.status
-                return type === "APPROVER" && status === "WAITING_APPROVAL";
+                const type = doc.workflowInstance?.executions[0]?.steps?.map((workflowStep) => (
+                    workflowStep.type
+                ));
+                const isPending = doc.workflowInstance?.executions[0]?.steps.find(
+                    (step) => step.status === "PENDING"
+                );
+
+                return doc.status === "WAITING_APPROVAL" && isPending && (type?.find((t) => t === "APPROVER"));
             }),
         }),
 
     setProcessDocuments: (documents) =>
         set({
             processDocuments: documents.filter((doc) => {
-                const type =
-                    doc.workflowInstance?.workflowDefinition?.versions?.[0]?.workflowStep?.[0]?.type;
+                const type = doc.workflowInstance?.workflowDefinitionVersion?.workflowStep.map((workflowStep) => (
+                    workflowStep.type
+                ));
                 const status = doc.status
-                return (type === "PROCESSOR" || type === "FINISHER") && status === "PROCESSING";
+                return (type?.find((t) => t === "PROCESSOR" || t === "FINISHER")) && status === "PROCESSING";
             }),
         }),
 
@@ -105,5 +120,6 @@ export const useDocumentStore = create<DocumentState>((set) => ({
             documents: [],
             approveDocuments: [],
             processDocuments: [],
+            activitiyDocuments: []
         }),
 }));

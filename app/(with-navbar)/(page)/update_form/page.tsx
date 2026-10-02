@@ -23,7 +23,7 @@ export default function Page() {
             <div className="flex justify-center mt-10">
                 <div className="flex justify-between w-3/4">
                     {forms.map((item, index) => (
-                        <Link href={`/document_list/${item.division_code}`} key={index} className="w-[20%]">
+                        <Link href={`/update_form/${item.division_code}`} key={index} className="w-[20%]">
                             <div className="bg-white border rounded-xl px-5 py-4 shadow flex flex-col items-center gap-2 cursor-pointer hover:bg-[#e6e6e6]">
                                 <Icon icon={"fa6-solid:computer"} className="text-[48px]" />
                                 <span>{item.division_name}</span>

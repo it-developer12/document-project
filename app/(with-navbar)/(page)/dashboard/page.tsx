@@ -22,6 +22,8 @@ import { DataTable } from '@/app/component/DocumentTable';
 import { BrushCleaning } from 'lucide-react';
 import { useDocumentStore } from '@/store/document.store';
 import { useGetDocuments } from '@/hooks/set-document';
+import { useDocumentCount } from '@/hooks/document-list';
+import { useCompanyList, useDivisionList } from '@/hooks/create-form';
 
 type DocStatus = "WAITING_APPROVAL" | "PROCESSING" | "REJECTED" | "CANCELLED" | "COMPLETED";
 type Status = "low" | "medium" | "high";
@@ -58,18 +60,6 @@ const EMPTY_TABLE_STATE: TableState = {
 
 const EMPTY_DOCUMENTS: TableDoc[] = [];
 
-const COMPANY_OPTIONS = [
-    { label: "Cityfresh Fruit", value: "cff" },
-    { label: "Ctx holding", value: "ctx" },
-    { label: "Noble marketing", value: "nbm" },
-];
-
-const DEPARTMENT_OPTIONS = [
-    { label: "Innovation Technology", value: "it" },
-    { label: "Finance", value: "finance" },
-    { label: "B2C", value: "b2c" },
-];
-
 function filterDocuments(documents: TableDoc[], table: TableState) {
     const searchText = table.text.trim().toLowerCase();
 
@@ -86,25 +76,45 @@ function filterDocuments(documents: TableDoc[], table: TableState) {
     });
 }
 
+function getType(workflowInstance: any) {
+    const workflow = workflowInstance?.workflowDefinitionVersion?.workflowStep?.map((step: any) => step.type) ?? []
+    const execution = workflowInstance?.executions[0]?.steps?.map((exe: any) => exe.type) ?? []
+    return [...workflow, ...execution]
+}
+
 export default function Home() {
+    const { data: divisionList } = useDivisionList();
+    const { data: companyList } = useCompanyList();
     useGetDocuments();
+    const count = useDocumentCount();
     const docs = useDocumentStore((state) => state.documents);
-    
+    const appDocs = useDocumentStore((state) => state.approveDocuments)
+    const proDocs = useDocumentStore((state) => state.processDocuments)
+
+    const COMPANY_OPTIONS = companyList?.map((company: any) => ({
+        label: company.name,
+        value: company.code,
+    })) ?? [];
+
+    const DEPARTMENT_OPTIONS = divisionList?.map((division: any) => ({
+        label: division.name,
+        value: division.code,
+    })) ?? [];
+
     const DOCUMENT: TableDoc[] = docs.map((doc) => ({
         id: doc.documentNo,
         title: doc.formSchema.name,
-        priority: "high",
+        priority: doc.priority as Status,
         owner: doc.createdBy.firstName,
-        company: doc.formSchema.company.name,
+        company: doc.currentRevision.company.code,
         department: doc.formSchema.division.name,
         status: doc.status as DocStatus,
         created: doc.createdAt,
         end_date: doc.dueDate,
-        updated: doc.activities[0].createdAt,
-        type: doc.workflowInstance.workflowDefinition.versions[0]?.workflowStep[0] ? [doc.workflowInstance.workflowDefinition.versions[0]?.workflowStep[0]] : [],
+        updated: doc.activities[0]?.createdAt,
+        type: getType(doc.workflowInstance),
         schema_id: doc.formSchema.code
     }))
-    console.log(DOCUMENT)
 
     const CREATETABLE: TableDoc[] = DOCUMENT.filter((doc) => {
         if (doc.type.length < 1) {
@@ -116,7 +126,6 @@ export default function Home() {
             return doc
         }
     })
-    
 
     const [todoTable, setTodoTable] = useState<TableState>(EMPTY_TABLE_STATE);
     const [createTable, setCreateTable] = useState<TableState>(EMPTY_TABLE_STATE);
@@ -153,7 +162,7 @@ export default function Home() {
             <div className='flex justify-between items-center'>
                 <div className="">
                     <h1 className="text-2xl font-bold mb-4">Document Dashboard</h1>
-                    <span>{"Manage and track all organizational documents"}</span>
+                    <span>{"จัดการและติดตามสถานะของเอกสารทั้งหมด"}</span>
                 </div>
                 <Link href={'/document_list'}>
                     <div className='text-white p-2 bg-[#1b1b1b] rounded-md flex justify-between items-center gap-1'>
@@ -198,7 +207,7 @@ export default function Home() {
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectGroup>
-                                        {DEPARTMENT_OPTIONS.map((item) => (
+                                        {DEPARTMENT_OPTIONS.map((item: any) => (
                                             <SelectItem key={item.value} value={item.value}>
                                                 {item.label}
                                             </SelectItem>
@@ -219,7 +228,7 @@ export default function Home() {
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectGroup>
-                                        {COMPANY_OPTIONS.map((item) => (
+                                        {COMPANY_OPTIONS.map((item: any) => (
                                             <SelectItem key={item.value} value={item.value}>
                                                 {item.label}
                                             </SelectItem>
@@ -240,7 +249,7 @@ export default function Home() {
             <div className="mt-6 flex gap-4">
                 <Card className="w-1/4" >
                     <CardHeader>
-                        <CardTitle>{"Totals Documents"}</CardTitle>
+                        <CardTitle>{"เอกสารทั้งหมด"}</CardTitle>
                         <CardAction>
                             <div className="bg-[#d3e8ff] rounded-lg p-2">
                                 <Icon icon="carbon:document" className="text-lg text-[#007bff]" />
@@ -248,12 +257,12 @@ export default function Home() {
                         </CardAction>
                     </CardHeader>
                     <CardContent>
-                        <p className="text-2xl font-bold">{1284}</p>
+                        <p className="text-2xl font-bold">{count.data?.total || 0}</p>
                     </CardContent>
                 </Card>
                 <Card className="w-1/4" >
                     <CardHeader>
-                        <CardTitle>{"Approved Documents"}</CardTitle>
+                        <CardTitle>{"เอกสารที่อนุมัติแล้ว"}</CardTitle>
                         <CardAction>
                             <div className="bg-[#d3ffd9] rounded-lg p-2">
                                 <Icon icon="material-symbols:check-box-outline" className="text-lg text-[#00b318]" />
@@ -261,12 +270,12 @@ export default function Home() {
                         </CardAction>
                     </CardHeader>
                     <CardContent>
-                        <p className="text-2xl font-bold">{834}</p>
+                        <p className="text-2xl font-bold">{count.data?.approved || 0}</p>
                     </CardContent>
                 </Card>
                 <Card className="w-1/4" >
                     <CardHeader>
-                        <CardTitle>{"Processing Documents"}</CardTitle>
+                        <CardTitle>{"เอกสารที่กำลังดำเนินการ"}</CardTitle>
                         <CardAction>
                             <div className="bg-[#fcffd3] rounded-lg p-2">
                                 <Icon icon="tabler:clock" className="text-lg text-[#c8d600]" />
@@ -274,12 +283,12 @@ export default function Home() {
                         </CardAction>
                     </CardHeader>
                     <CardContent>
-                        <p className="text-2xl font-bold">{139}</p>
+                        <p className="text-2xl font-bold">{count.data?.processing || 0}</p>
                     </CardContent>
                 </Card>
                 <Card className="w-1/4" >
                     <CardHeader>
-                        <CardTitle>{"Cancelled Documents"}</CardTitle>
+                        <CardTitle>{"เอกสารที่ถูกยกเลิก"}</CardTitle>
                         <CardAction>
                             <div className="bg-[#ffd3d3] rounded-lg p-2">
                                 <Icon icon="material-symbols:error-outline-rounded" className="text-lg text-[#d60000]" />
@@ -287,7 +296,7 @@ export default function Home() {
                         </CardAction>
                     </CardHeader>
                     <CardContent>
-                        <p className="text-2xl font-bold">{24}</p>
+                        <p className="text-2xl font-bold">{count.data?.cancelled || 0}</p>
                     </CardContent>
                 </Card>
             </div>
@@ -327,7 +336,7 @@ export default function Home() {
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectGroup>
-                                        {DEPARTMENT_OPTIONS.map((item) => (
+                                        {DEPARTMENT_OPTIONS.map((item: any) => (
                                             <SelectItem key={item.value} value={item.value}>
                                                 {item.label}
                                             </SelectItem>
@@ -348,7 +357,7 @@ export default function Home() {
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectGroup>
-                                        {COMPANY_OPTIONS.map((item) => (
+                                        {COMPANY_OPTIONS.map((item: any) => (
                                             <SelectItem key={item.value} value={item.value}>
                                                 {item.label}
                                             </SelectItem>
@@ -402,7 +411,7 @@ export default function Home() {
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectGroup>
-                                        {DEPARTMENT_OPTIONS.map((item) => (
+                                        {DEPARTMENT_OPTIONS.map((item: any) => (
                                             <SelectItem key={item.value} value={item.value}>
                                                 {item.label}
                                             </SelectItem>
@@ -423,7 +432,7 @@ export default function Home() {
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectGroup>
-                                        {COMPANY_OPTIONS.map((item) => (
+                                        {COMPANY_OPTIONS.map((item: any) => (
                                             <SelectItem key={item.value} value={item.value}>
                                                 {item.label}
                                             </SelectItem>

@@ -1,5 +1,5 @@
 'use client';
-import { getAllForm, getFormFields } from "@/api/form";
+import { getAllForm, getFormDetail, getFormFields } from "@/api/form";
 import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { toast } from "react-toastify";
@@ -29,5 +29,24 @@ export function useFormSchema(formId: string) {
         enabled: !!formId,
 
         staleTime: 5 * 60 * 1000,
+    });
+}
+
+export function useFormSchemaWorkflow(formId: string, isDraft: string) {
+    return useQuery({
+        queryKey: ["form-schema-workflow", formId, isDraft],
+
+        queryFn: async () => {
+            if (!formId) {
+                return Promise.reject(new Error("Form ID is required"));
+            }
+            const res = await getFormDetail(formId, isDraft);
+            return res;
+        },
+
+        enabled: !!formId,
+        staleTime: 0,
+        gcTime: 0,
+        refetchOnMount: "always",
     });
 }
