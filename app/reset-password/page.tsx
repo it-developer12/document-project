@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+ import { Suspense, useState, type FormEvent } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
 import { useResetPassword } from "@/hooks/reset-password";
 import { toast } from "react-toastify";
 
-export default function ResetPasswordPage() {
+function ResetPasswordForm() {
     const param = useSearchParams();
     const token = param.get("token");
     const router = useRouter();
@@ -217,5 +217,13 @@ export default function ResetPasswordPage() {
                 </div>
             </div>
         </div>
+    );
+}
+
+export default function ResetPasswordPage() {
+    return (
+        <Suspense fallback={null}>
+            <ResetPasswordForm />
+        </Suspense>
     );
 }
