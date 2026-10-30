@@ -31,7 +31,7 @@ export function useUpdateDocument() {
             toast.success("แก้ไขเอกสารสำเร็จ");
         },
         onError: (error: any) => {
-            toast.error(error?.response?.data?.message || error?.message || "แก้ไขเอกสารไม่สำเร็จ");
+            toast.error(error?.response?.data?.error || error?.response?.data?.message || error?.message || "แก้ไขเอกสารไม่สำเร็จ");
         },
     });
 }

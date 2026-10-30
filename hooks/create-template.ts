@@ -17,6 +17,10 @@ export function useCreateTemplate() {
         onSuccess: () => {
             toast.success('สร้างแบบฟอร์มเอกสารสำเร็จ')
             router.push('/dashboard')
+        },
+        onError: (error: any) => {
+            const message = error.response?.data?.message ?? error.message ?? "เกิดข้อผิดพลาดระหว่างบันทึกแบบฟอร์ม"
+            toast.error(message)
         }
     });
 }

@@ -3,7 +3,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "react-toastify";
 import { useRouter } from "next/navigation";
 
-export function approveMutation() {
+export function useApproveMutation() {
     const router = useRouter();
     const queryClient = useQueryClient();
     return useMutation({

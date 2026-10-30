@@ -23,11 +23,19 @@ import {
 interface DataTableProps<TData, TValue> {
     columns: ColumnDef<TData, TValue>[]
     data: TData[]
+    emptyMessage?: string
+    previousPageLabel?: string
+    nextPageLabel?: string
+    pageSize?: number
 }
 
 function DataTableComponent<TData, TValue>({
     columns,
     data,
+    emptyMessage = "No results.",
+    previousPageLabel = "Previous",
+    nextPageLabel = "Next",
+    pageSize = 10,
 }: DataTableProps<TData, TValue>) {
 
     const table = useReactTable({
@@ -36,6 +44,11 @@ function DataTableComponent<TData, TValue>({
         getCoreRowModel: getCoreRowModel(),
         getSortedRowModel: getSortedRowModel(),
         getPaginationRowModel: getPaginationRowModel(),
+        initialState: {
+            pagination: {
+                pageSize,
+            },
+        },
     })
     // console.log("Cell", table.getRowModel().rows.map((row) => row.getVisibleCells()))
     // const status = ["Draft", "Approved", "Processing", "Completed", "Cancelled", "Pending"];
@@ -88,31 +101,33 @@ function DataTableComponent<TData, TValue>({
                         ) : (
                             <TableRow>
                                 <TableCell colSpan={columns.length} className="h-24 text-center">
-                                    No results.
+                                    {emptyMessage}
                                 </TableCell>
                             </TableRow>
                         )}
                     </TableBody>
                 </Table>
             </div>
-            <div className="flex items-center justify-end space-x-2 p-4">
-                <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => table.previousPage()}
-                    disabled={!table.getCanPreviousPage()}
-                >
-                    Previous
-                </Button>
-                <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => table.nextPage()}
-                    disabled={!table.getCanNextPage()}
-                >
-                    Next
-                </Button>
-            </div>
+            {table.getPageCount() > 1 && (
+                <div className="flex items-center justify-end space-x-2 p-4">
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => table.previousPage()}
+                        disabled={!table.getCanPreviousPage()}
+                    >
+                        {previousPageLabel}
+                    </Button>
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => table.nextPage()}
+                        disabled={!table.getCanNextPage()}
+                    >
+                        {nextPageLabel}
+                    </Button>
+                </div>
+            )}
         </div>
     )
 }

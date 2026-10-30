@@ -27,6 +27,7 @@ export type DocumentColumn = {
   end_date: string
   type: any[];
   schema_id: string;
+  can_edit: boolean;
 }
 type Priority = "low" | "medium" | "high"
 type Status = "WAITING_APPROVAL" | "PROCESSING" | "REJECTED" | "CANCELLED" | "COMPLETED";
@@ -70,6 +71,7 @@ export const columns: ColumnDef<DocumentColumn>[] = [
   {
     accessorKey: "department",
     header: "เอกสารของแผนก",
+    cell: ({ row }) => <span>{`${row.original.department === "-" ? "เอกสารสำหรับทุกแผนก" : row.original.department}`}</span>
   },
   {
     accessorKey: "status",
@@ -85,16 +87,16 @@ export const columns: ColumnDef<DocumentColumn>[] = [
         <span>{stringDate}</span>
     )}
   },
-  {
-    accessorKey: "updated",
-    header: "แก้ไขล่าสุด",
-    cell: ({ row }) => {
-      const stringDate = dayjs.utc(row.original.updated).tz("Asia/Bangkok").format("DD-MM-YYYY")
-      return (
-        <span>{stringDate}</span>
-      )
-    }
-  },
+  // {
+  //   accessorKey: "updated",
+  //   header: "แก้ไขล่าสุด",
+  //   cell: ({ row }) => {
+  //     const stringDate = dayjs.utc(row.original.updated).tz("Asia/Bangkok").format("DD-MM-YYYY")
+  //     return (
+  //       <span>{stringDate}</span>
+  //     )
+  //   }
+  // },
   {
     accessorKey: "end_date",
     header: "วันที่สิ้นสุดเอกสาร",
@@ -115,9 +117,14 @@ export const columns: ColumnDef<DocumentColumn>[] = [
           {/* <Link href={`/document_list/it/form?schema_id=${schema_id}&doc_id=${row.original.id}&mode=view`}>
             <Eye />
           </Link> */}
-          {(row.original.status === "REJECTED" || row.original.status === "DRAFT") && (
-            <Link href={`/document_list/it/form?schema_id=${row.original.schema_id}&doc_id=${row.original.id}&mode=edit`}>
-              <SquarePen />
+          {row.original.can_edit && (row.original.status === "REJECTED" || row.original.status === "DRAFT") && (
+            <Link
+              href={`/document_list/it/form?schema_id=${row.original.schema_id}&doc_id=${row.original.id}&mode=edit`}
+              aria-label={`แก้ไขเอกสาร ${row.original.id}`}
+              title="แก้ไขเอกสาร"
+              className="flex items-center justify-center rounded-md text-slate-600 transition hover:bg-indigo-50 hover:text-indigo-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+            >
+              <SquarePen size={18} aria-hidden="true" />
             </Link>
           )}
         </div>

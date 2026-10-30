@@ -27,5 +27,6 @@ export function useSearchTrackingDetail() {
         search: (code: string) => mutation.mutate(code),
         searchAsync: (code: string) => mutation.mutateAsync(code),
         error: mutation.error,
+        isPending: mutation.isPending,
     };
 }

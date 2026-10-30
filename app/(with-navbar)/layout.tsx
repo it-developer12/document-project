@@ -36,9 +36,9 @@ export default function WithNavbarLayout({
   }
   return (
     <>
-      <main className="min-h-full flex">
+      <main className="flex min-h-full flex-col md:flex-row">
         <Nav />
-        {children}
+        <div className="min-w-0 flex-1">{children}</div>
       </main>
     </>
   );
