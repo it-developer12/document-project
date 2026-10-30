@@ -16,6 +16,7 @@ interface activitiesDocument {
 
 export interface DocumentItem {
     documentNo: string;
+    createdById?: string;
     status: string;
     dueDate: string;
     priority: string;
@@ -48,6 +49,7 @@ export interface DocumentItem {
         }[]
     };
     createdBy: {
+        id?: string;
         firstName: string;
         lastName: string;
     };

@@ -1,8 +1,8 @@
 'use client'
 import { useForm, SubmitHandler, Control, Controller } from "react-hook-form"
-import Image from 'next/image'
 import { FieldPreview } from "@/app/component/FormRender";
-import { ArrowLeft, ChevronDownIcon, CircleCheck, MoveRight } from "lucide-react"
+import { ArrowLeft, ChevronDownIcon } from "lucide-react"
+import { StatusBadge } from "@/app/component/StatusBadge";
 import { Button } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
 import {
@@ -10,30 +10,23 @@ import {
     PopoverContent,
     PopoverTrigger,
 } from "@/components/ui/popover"
-import {
-    Card,
-    CardContent,
-    CardDescription,
-    CardFooter,
-    CardHeader,
-    CardTitle,
-} from "@/components/ui/card"
-import { Suspense, useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import Select from 'react-select'
 import { useRouter, useSearchParams } from "next/navigation";
 import { startOfDay, parseISO } from "date-fns";
 import { th } from "date-fns/locale";
 import Link from "next/link";
-import Signature from "@/public/example_sign.png"
 import { toast } from "react-toastify";
 import Loading from "@/app/component/loading";
-import { approveMutation } from "@/hooks/approve-document";
+import { useApproveMutation } from "@/hooks/approve-document";
 import { useCreateDocument } from "@/hooks/create-document";
 import { useUpdateDocument } from "@/hooks/update-document";
 import { useGetDocuments } from "@/hooks/set-document";
 import { useFormSchema } from "@/hooks/form-list";
 import { useDocumentDetail } from "@/hooks/document-list";
 import { useCompanyList } from "@/hooks/create-form";
+import { useCurrentUser } from "@/hooks/use-current-user";
+import { useExportPDF } from "@/hooks/export-pdf";
 
 type FormSubmission = {
     schema_id: string;
@@ -43,6 +36,28 @@ type FormSubmission = {
     iso_document?: string;
     priority: string;
 };
+
+function formatDocumentDate(value?: string) {
+    if (!value) return "ไม่ระบุ";
+
+    const parsedDate = new Date(value);
+    if (Number.isNaN(parsedDate.getTime())) return "ไม่ระบุ";
+
+    return new Intl.DateTimeFormat("th-TH", {
+        dateStyle: "long",
+        timeStyle: "short",
+        timeZone: "Asia/Bangkok",
+    }).format(parsedDate);
+}
+
+function getApprovalStepLabel(status?: string, decision?: string) {
+    if (status === "PENDING") return "รออนุมัติ";
+    if (status === "SKIPPED") return "ข้ามขั้นตอน";
+    if (decision === "APPROVE") return "อนุมัติแล้ว";
+    if (decision === "REJECT") return "ตีกลับเอกสาร";
+    if (decision === "CANCEL") return "ยกเลิกเอกสาร";
+    return "รอดำเนินการ";
+}
 
 function FormPageContent() {
     const form = useForm({
@@ -88,21 +103,25 @@ function FormPageContent() {
 
     const { data, isLoading, error } = useFormSchema(schema_id || "");
     const { data: dataFromBackend } = useDocumentDetail(doc_id || "");
-    const approveMutate = approveMutation();
+    const { data: currentUser, isPending: isCurrentUserPending } = useCurrentUser();
+    const approveMutate = useApproveMutation();
     const createDocumentMutation = useCreateDocument();
     const updateDocumentMutation = useUpdateDocument();
+    const exportPDFMutation = useExportPDF();
+    const hasRedirectedForEditAccess = useRef(false);
     const isNewVersion = useMemo(() => {
         const currentRevision = dataFromBackend?.currentRevision;
         const currentSchemaVersionId = data?.schemaVersion?.[0]?.id;
 
-        if (dataFromBackend?.status !== "DRAFT" || !currentRevision?.formData || !currentSchemaVersionId) {
+        if ((dataFromBackend?.status !== "DRAFT" && dataFromBackend?.status !== "REJECTED") || !currentRevision?.formData || !currentSchemaVersionId) {
             return false;
         }
 
         const answersFromBackend = JSON.parse(currentRevision.formData);
+
         return answersFromBackend.schema_version_id !== currentSchemaVersionId;
     }, [data, dataFromBackend]);
-
+    console.log(currentUser)
     const data_fields = useMemo(
         () =>
             data?.schemaVersion?.[0]?.fields?.map((item: any) => ({
@@ -119,7 +138,6 @@ function FormPageContent() {
             })) ?? [],
         [data]
     );
-
     const isDocumentMode =
         doc_mode === "edit" || doc_mode === "view" || doc_mode === "approve";
 
@@ -151,6 +169,28 @@ function FormPageContent() {
     useEffect(() => {
         if (!data) return;
         if (!fields.length) return;
+        if (hasRedirectedForEditAccess.current) return;
+        if (doc_mode === "edit") {
+            if (!dataFromBackend || isCurrentUserPending) return;
+            if (dataFromBackend.createdById !== currentUser?.user_info?.id) {
+                hasRedirectedForEditAccess.current = true;
+                toast.error("คุณไม่มีสิทธิ์แก้ไขเอกสารผู้อื่น");
+                router.replace("/dashboard");
+                return;
+            }
+        }
+
+        if (doc_mode === "approve") {
+            if (!dataFromBackend || isCurrentUserPending) return;
+            const isApprover = dataFromBackend.currentRevision.workflowExecution.steps.find((doc: any) => doc.employee.firstName === currentUser?.user_info.firstName)
+            if (!(isApprover && isApprover.status === "PENDING")) {
+                hasRedirectedForEditAccess.current = true;
+                toast.error("คุณไม่มีสิทธิ์อนุมัติเอกสารนี้หรือยังไม่ถึงขั้นตอนของคุณ");
+                router.replace("/dashboard");
+                return;
+            }
+        }
+
         const getDefaultValue = (field: any) => {
             if (field.type === "toggle") return false;
             if (field.type === "checkbox") return [];
@@ -252,20 +292,37 @@ function FormPageContent() {
         setPriorityState(dataFromBackend.priority ?? "");
         setCompany(dataFromBackend?.currentRevision?.company?.code ?? "")
         form.reset(dataDeJSON.answers);
-    }, [doc_id, doc_mode, dataFromBackend, fields, form]);
+    }, [
+        currentUser,
+        data,
+        dataFromBackend,
+        doc_id,
+        doc_mode,
+        fields,
+        form,
+        hasRedirectedForEditAccess,
+        isCurrentUserPending,
+        router,
+    ]);
+
+    useEffect(() => {
+        if (doc_mode === "create" && doc_id) {
+            router.replace("/dashboard");
+        }
+    }, [doc_id, doc_mode, router]);
+
+    useEffect(() => {
+        if (error) {
+            toast.error("ไม่สามารถดึงฟิลด์เอกสารได้");
+            router.push("/document_list");
+        }
+    }, [error, router]);
 
     if (isLoading) {
         return <Loading />
     }
 
-    if (doc_mode === "create" && doc_id) {
-        router.push('dashboard')
-        toast.error('')
-    }
-
     if (error) {
-        toast.error("ไม่สามารถดึงฟิลด์เอกสารได้");
-        router.push("/document_list");
         return null;
     }
 
@@ -406,7 +463,7 @@ function FormPageContent() {
                 toast.error("ไม่พบการตัดสินใจ");
                 return;
             }
-            console.log(decision)
+
             if (decision === "APPROVE") {
                 approveMutate.mutate({
                     document_code: dataFromBackend.documentNo,
@@ -506,18 +563,20 @@ function FormPageContent() {
                     onClick={(e) => e.stopPropagation()}
                 >
                     <div className="flex items-center justify-between border-b p-5">
-                        <h2 className="text-xl font-semibold">เหตุผลในการตีกลับหรือยกเลิกเอกสาร</h2>
+                        <h2 className="text-xl font-semibold">
+                            {pendingDecision === "REJECT" ? "ส่งเอกสารกลับเพื่อแก้ไข" : "ยกเลิกเอกสาร"}
+                        </h2>
                         <button type="button" onClick={onClose} className="text-2xl leading-none" aria-label="ปิด">
                             &times;
                         </button>
                     </div>
                     <div className="flex flex-col gap-2 p-5">
-                        <label htmlFor="approval-comment" className="font-medium">เหตุผล</label>
+                        <label htmlFor="approval-comment" className="font-medium">ความคิดเห็นหรือเหตุผล (ไม่บังคับ)</label>
                         <textarea
                             id="approval-comment"
                             value={comment}
                             onChange={(event) => setComment(event.target.value)}
-                            placeholder="กรอกความคิดเห็น"
+                            placeholder="ระบุรายละเอียดเพิ่มเติมให้ผู้เกี่ยวข้องทราบ"
                             rows={5}
                             className="w-full resize-y rounded-md border p-3 outline-none focus:ring-2 focus:ring-blue-500"
                             autoFocus
@@ -533,7 +592,11 @@ function FormPageContent() {
                             disabled={approveMutate.isPending}
                             className="rounded-md bg-[#4A4DF1] px-4 py-2 text-white disabled:cursor-not-allowed disabled:opacity-50"
                         >
-                            {approveMutate.isPending ? "กำลังส่ง..." : "ยืนยัน"}
+                            {approveMutate.isPending
+                                ? "กำลังส่ง..."
+                                : pendingDecision === "REJECT"
+                                    ? "ยืนยันการส่งกลับ"
+                                    : "ยืนยันการยกเลิก"}
                         </button>
                     </div>
                 </div>
@@ -550,30 +613,117 @@ function FormPageContent() {
             className="bg-slate-50 min-h-screen h-full w-full p-6"
         >
             {(doc_mode == "view" || doc_mode == "approve") && (
-                <div className='flex items-center gap-4 mb-4'>
+                <div className="mb-4 flex items-center gap-4">
                     <Link href={`${doc_mode === "approve" ? '/approve' : '/dashboard'}`} accessKey="it01">
-                        <div className='text-white p-2 bg-[#1b1b1b] rounded-md flex justify-between items-center'>
-                            <span className='text-lg'><ArrowLeft /></span>
-                        </div>
+                        <span className="flex size-10 items-center justify-center rounded-md bg-[#1b1b1b] text-white transition hover:bg-slate-700">
+                            <ArrowLeft className="size-5" />
+                        </span>
                     </Link>
                     <div className="">
-                        <h1 className="text-2xl font-bold">{"ย้อนกลับ"}</h1>
-                        <span>{"ย้อนกลับไปหน้า Dashboard"}</span>
+                        <h1 className="text-lg font-bold">{doc_mode === "approve" ? "กลับไปงานรออนุมัติ" : "กลับไปหน้า Dashboard"}</h1>
+                        <span className="text-sm text-slate-500">{doc_mode === "approve" ? "กลับไปยังรายการเอกสารที่รอการพิจารณา" : "กลับไปดูภาพรวมเอกสาร"}</span>
                     </div>
                 </div>
             )}
+            {(doc_mode === "view" || doc_mode === "approve") && dataFromBackend && (
+                <section className="mb-4 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+                    <div className="flex flex-col gap-3 border-b border-slate-200 bg-slate-50 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+                        <div>
+                            <p className="text-sm font-medium text-indigo-600">
+                                {doc_mode === "approve" ? "กำลังพิจารณาเอกสาร" : "รายละเอียดเอกสาร"}
+                            </p>
+                            <h1 className="mt-1 text-xl font-bold text-slate-900 sm:text-2xl">
+                                {data?.name ?? "เอกสาร"}
+                            </h1>
+                            <p className="mt-1 text-sm text-slate-600">
+                                เลขที่เอกสาร <span className="font-semibold text-slate-900">{doc_id}</span>
+                            </p>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2">
+                            <StatusBadge status={dataFromBackend.status} />
+                            <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-200 px-3 py-1 text-xs font-medium text-slate-700">
+                                {doc_mode === "approve" ? "โหมดพิจารณา" : "โหมดดูเอกสาร"}
+                            </span>
+                        </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4 px-5 py-4 text-sm sm:grid-cols-3 xl:grid-cols-5">
+                        <div>
+                            <p className="text-slate-500">ผู้สร้าง</p>
+                            <p className="mt-1 font-medium text-slate-900">
+                                {dataFromBackend.createdBy?.firstName ?? "ไม่ระบุ"}
+                            </p>
+                        </div>
+                        <div>
+                            <p className="text-slate-500">แผนก</p>
+                            <p className="mt-1 font-medium text-slate-900">
+                                {data?.division?.name ?? "ไม่ระบุ"}
+                            </p>
+                        </div>
+                        <div>
+                            <p className="text-slate-500">บริษัท</p>
+                            <p className="mt-1 font-medium text-slate-900">
+                                {COMPANY_OPTIONS.find((option) => option.value === dataFromBackend.currentRevision?.company?.code)?.label
+                                    ?? dataFromBackend.currentRevision?.company?.code
+                                    ?? "ไม่ระบุ"}
+                            </p>
+                        </div>
+                        <div>
+                            <p className="text-slate-500">ระดับความสำคัญ</p>
+                            <p className="mt-1 font-medium text-slate-900">
+                                {priority.find((item) => item.value === dataFromBackend.priority)?.label ?? "ไม่ระบุ"}
+                            </p>
+                        </div>
+                        <div>
+                            <p className="text-slate-500">วันครบกำหนด</p>
+                            <p className="mt-1 font-medium text-slate-900">
+                                {formatDocumentDate(dataFromBackend.dueDate)}
+                            </p>
+                        </div>
+                    </div>
+                    {doc_mode === "approve" && (
+                        <div className="border-t border-indigo-100 bg-indigo-50 px-5 py-3 text-sm text-indigo-900">
+                            ตรวจสอบรายละเอียดและข้อมูลในเอกสารก่อนเลือกอนุมัติ ส่งกลับเพื่อแก้ไข หรือยกเลิกเอกสาร
+                        </div>
+                    )}
+                </section>
+            )}
             <div className="bg-white border rounded-xl px-5 py-4 shadow w-full" style={{ scrollbarWidth: "none" }}>
-                <div className="text-2xl font-bold">
-                    <span>{data?.name}</span>
-                    {(doc_mode != "create" && doc_id) && (
-                        <>
-                            <span className="font-light">{" เลขที่เอกสาร "}</span>
-                            <span className="font-bold">{doc_id}</span>
-                        </>
+                <div className="flex justify-between items-center">
+                    <div className="text-2xl font-bold">
+                        <span>{data?.name}</span>
+                        {(doc_mode != "create" && doc_id) && (
+                            <>
+                                <span className="font-light">{" เลขที่เอกสาร "}</span>
+                                <span className="font-bold">{doc_id}</span>
+                            </>
+                        )}
+                    </div>
+                    {doc_mode === "view" && doc_id && (
+                        <div className="flex items-center gap-2">
+                            <Button
+                                variant="outline"
+                                type="button"
+                                disabled={exportPDFMutation.isPending}
+                                className="border-indigo-200 text-indigo-700 hover:bg-indigo-50"
+                                onClick={() => exportPDFMutation.mutate({ code: doc_id, disposition: "inline" })}
+                            >
+                                {"Preview"}
+                            </Button>
+                            <Button
+                                variant="default"
+                                type="button"
+                                disabled={exportPDFMutation.isPending}
+                                className="bg-indigo-600 text-white hover:bg-indigo-700"
+                                onClick={() => exportPDFMutation.mutate({ code: doc_id, disposition: "attachment" })}
+                            >
+                                {"Export PDF"}
+                            </Button>
+                        </div>
                     )}
                 </div>
+
                 <div className="mt-4">
-                    <div className="flex justify-between w-full gap-8">
+                    <div className={`flex justify-between w-full gap-8 ${doc_mode === 'create' || doc_mode === 'edit' ? '' : "hidden"}`}>
                         <div className="gap-2 w-full">
                             <div>
                                 <span>
@@ -583,7 +733,12 @@ function FormPageContent() {
                             </div>
                             <Popover>
                                 <PopoverTrigger render={
-                                    <Button variant={"outline"} data-empty={!date} className="w-full justify-between text-left font-normal data-[empty=true]:text-muted-foreground">
+                                    <Button
+                                        variant={"outline"}
+                                        data-empty={!date}
+                                        disabled={doc_mode === "view" || doc_mode === "approve"}
+                                        className="w-full justify-between text-left font-normal data-[empty=true]:text-muted-foreground"
+                                    >
                                         {date ?
                                             new Intl.DateTimeFormat("th-TH", { dateStyle: "long", }).format(date)
                                             :
@@ -639,61 +794,12 @@ function FormPageContent() {
                                         id="company"
                                         options={COMPANY_OPTIONS}
                                         className="w-full"
-                                        onChange={(op) => setCompany(op.value ?? "")}
+                                        onChange={(op: any) => setCompany(op.value ?? "")}
                                     />
                                 </div>
                             </div>
                         </div>
                     </div>
-                    {data.approvalSource != "TEMPLATE" ? approver.map((app, index) => (
-                        <div
-                            key={index}
-                            className={`flex items-center mt-2 gap-2`}
-                        >
-                            <div className="flex gap-2 items-center">
-                                <span>
-                                    ผู้อนุมัติ คนที่ {index + 1}
-                                </span>
-                            </div>
-                            <Select
-                                key={index}
-                                defaultInputValue=""
-                                placeholder="โปรดเลือกผู้อนุญาติเอกสาร"
-                                className="w-1/4 rounded-lg"
-                                options={[{ value: "", label: "โปรดเลือกผู้อนุญาติเอกสาร" }, ...availableOptions]}
-                                value={ApproverLists.find(
-                                    option => option.value === app.name
-                                )}
-                                onChange={(selected) => {
-                                    if (!selected) return;
-
-                                    const newApprover = [...approver];
-                                    newApprover[index].name = selected?.value || "";
-                                    setApprover(newApprover);
-                                }}
-                                isDisabled={doc_mode == "view" || doc_mode === "approve"}
-                            />
-                            {index === approver.length - 1 && (
-                                <div className="flex gap-2">
-                                    <button
-                                        type="button"
-                                        onClick={handleAddApprover}
-                                        className="bg-green-400 text-white px-2 py-0.5 rounded-md hover:cursor-pointer"
-                                    >
-                                        เพิ่ม
-                                    </button>
-
-                                    <button
-                                        type="button"
-                                        onClick={() => handleRemoveApprover(index)}
-                                        className={`bg-red-400 text-white px-2 py-0.5 rounded-md ${index === 0 ? 'hidden' : ''}`}
-                                    >
-                                        ลบ
-                                    </button>
-                                </div>
-                            )}
-                        </div>
-                    )) : <div></div>}
                 </div>
                 <div className="grid grid-cols-2 gap-4 mt-4">
                     {(doc_mode === "create" || isNewVersion ? fields : fieldsFromSnapshot).map((f: any) => (
@@ -746,70 +852,106 @@ function FormPageContent() {
                         )}
                     </div>
                 ) : doc_mode == "approve" ?
-                    (<div className="mt-10">
-                        <div className="flex gap-4 justify-end">
-                            <button className="text-white bg-black px-4 py-2 rounded-md hover:cursor-pointer" type="submit" value="REJECT">{"ตีกลับ"}</button>
-                            <button className="text-white bg-red-500 px-4 py-2 rounded-md hover:cursor-pointer" type="submit" value="CANCEL">{"ยกเลิก"}</button>
-                            <button className="text-white bg-[#4A4DF1] px-4 py-2 rounded-md hover:cursor-pointer" type="submit" value="APPROVE">{"อนุญาติ"}</button>
+                    (<div className="z-10 mt-6 rounded-xl border border-slate-200 bg-white/95 p-4 shadow-lg backdrop-blur">
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                            <p className="text-sm text-slate-600">
+                                เลือกการดำเนินการสำหรับเอกสารนี้
+                            </p>
+                            <div className="flex flex-col-reverse gap-2 sm:flex-row">
+                                <button
+                                    className="rounded-md bg-slate-800 px-4 py-2.5 font-medium text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
+                                    type="submit"
+                                    value="REJECT"
+                                    disabled={approveMutate.isPending}
+                                >
+                                    ส่งกลับเพื่อแก้ไข
+                                </button>
+                                <button
+                                    className="rounded-md bg-red-600 px-4 py-2.5 font-medium text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+                                    type="submit"
+                                    value="CANCEL"
+                                    disabled={approveMutate.isPending}
+                                >
+                                    ยกเลิกเอกสาร
+                                </button>
+                                <button
+                                    className="rounded-md bg-[#4A4DF1] px-4 py-2.5 font-medium text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
+                                    type="submit"
+                                    value="APPROVE"
+                                    disabled={approveMutate.isPending}
+                                >
+                                    {approveMutate.isPending ? "กำลังส่ง..." : "อนุมัติเอกสาร"}
+                                </button>
+                            </div>
                         </div>
                     </div>) :
                     (<div></div>)
                 }
             </div>
             {commentModalOpen && commentModal({ onClose: () => setCommentModalOpen(false) })}
-            {doc_mode == "approve" && (
-                <div className="bg-white border rounded-xl px-5 py-4 shadow w-full mt-4" style={{ scrollbarWidth: "none" }}>
-                    <h1 className="text-2xl font-bold">
-                        {"ผู้ที่อนุมัติแล้ว"}
-                    </h1>
-                    <div className="mt-4 flex gap-6">
-                        {/* {isApproved.map((app: any, index: number) => (
-                            <Card key={index} size="sm" className="w-full max-w-1/3 bg-green-500 text-white shadow transition-all duration-300 ease-out hover:scale-105">
-                                <CardHeader className="flex justify-between items-center">
-                                    <CardTitle className="text-xl font-semibold">{app.approvers[0].name}</CardTitle>
-                                    <div className="flex gap-2 items-center">
-                                        <CircleCheck />
-                                        <span>{"อนุมัติแล้ว"}</span>
-                                    </div>
-                                </CardHeader>
-                                {(index + 1) % 2 == 0 ? (
-                                    <CardContent>
-                                        <div className="p-4 w-full h-36 bg-white rounded">
-                                            <Image src={Signature} alt={"example_signature"} className="w-full h-full object-contain" />
+            {(doc_mode === "view" || doc_mode === "approve") && (
+                <section className="mt-4 rounded-xl border border-slate-200 bg-white px-5 py-4 shadow-sm">
+                    <div className="flex items-start justify-between gap-3">
+                        <div>
+                            <h2 className="text-xl font-bold text-slate-900">ประวัติการอนุมัติ</h2>
+                            <p className="mt-1 text-sm text-slate-500">
+                                {doc_mode === "approve"
+                                    ? "ดูความคืบหน้าของผู้อนุมัติในลำดับต่าง ๆ ก่อนตัดสินใจ"
+                                    : "ตรวจสอบผู้อนุมัติและผลการดำเนินการในแต่ละลำดับ"}
+                            </p>
+                        </div>
+                    </div>
+                    {dataFromBackend?.currentRevision?.workflowExecution?.steps?.length ? (
+                        <ol className="mt-5 space-y-3">
+                            {dataFromBackend.currentRevision.workflowExecution.steps.map((step: any, index: number) => {
+                                const approved = step.decision === "APPROVE";
+                                const rejected = step.decision === "REJECT";
+                                const cancelled = step.decision === "CANCEL";
+                                const skipped = step.status === "SKIPPED"
+                                const completed = approved || rejected || cancelled || skipped;
+                                const colorClass = approved
+                                    ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+                                    : rejected
+                                        ? "border-slate-300 bg-slate-100 text-slate-800"
+                                        : cancelled
+                                            ? "border-red-200 bg-red-50 text-red-800"
+                                            : step.status === "PENDING"
+                                                ? "border-indigo-200 bg-indigo-50 text-indigo-800"
+                                                : step.status === "SKIPPED"
+                                                    ? "border-yellow-200 bg-yellow-50 text-yellow-800"
+                                                    : "border-slate-200 bg-white text-slate-700";
+
+                                return (
+                                    <li key={`${step.level}-${step.employee?.id ?? index}`} className={`rounded-lg border p-4 ${colorClass}`}>
+                                        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                                            <div className="flex items-start gap-3">
+                                                <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-white/80 text-sm font-bold">
+                                                    {step.level ?? index + 1}
+                                                </span>
+                                                <div>
+                                                    <p className="font-semibold">
+                                                        {step.employee?.firstName ?? "ไม่ระบุผู้อนุมัติ"}
+                                                    </p>
+                                                    <p className="mt-0.5 text-sm">{getApprovalStepLabel(step.status, step.decision)}</p>
+                                                </div>
+                                            </div>
+                                            <div className="pl-11 text-sm sm:pl-0 sm:text-right">
+                                                {completed && step.actedAt && (
+                                                    <p>{formatDocumentDate(step.actedAt)}</p>
+                                                )}
+                                                {step.comment && <p className="mt-1 whitespace-pre-wrap">{step.comment}</p>}
+                                            </div>
                                         </div>
-                                    </CardContent>
-                                ) : (
-                                    <CardContent>
-                                    </CardContent>
-                                )}
-                            </Card>
-                        ))} */}
-                    </div>
-                </div>
-            )}
-            {(doc_mode == "view") && (
-                <div className="bg-white border rounded-xl px-5 py-4 shadow w-full mt-4">
-                    <div>
-                        <span className="font-bold text-xl">{"สายอนุมัติของเอกสาร"}</span>
-                    </div>
-                    <div className="flex space-x-4 mt-4">
-                        {dataFromBackend?.currentRevision?.workflowExecution?.steps.map((app: any, index: number) => {
-                            return (
-                                <div key={index} className="flex items-center space-x-2">
-                                    <div className="space-x-2 bg-[#fef3c7] rounded-2xl px-2 py-1">
-                                        <span>{`ลำดับที่ ` + app.level}</span>
-                                        <span>{app.employee.firstName}</span>
-                                    </div>
-                                    <div className="">
-                                        <div className={`${index != dataFromBackend?.currentRevision?.workflowExecution?.steps.length - 1 && dataFromBackend?.currentRevision?.workflowExecution?.steps.length > 1 ? "" : "hidden"}`}>
-                                            <MoveRight className=""/>
-                                        </div>
-                                    </div>
-                                </div>
-                            )
-                        })}
-                    </div>
-                </div>
+                                    </li>
+                                );
+                            })}
+                        </ol>
+                    ) : (
+                        <p className="mt-4 rounded-lg bg-slate-50 px-4 py-6 text-center text-sm text-slate-500">
+                            ยังไม่มีข้อมูลประวัติการอนุมัติ
+                        </p>
+                    )}
+                </section>
             )}
         </form>
     )

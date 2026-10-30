@@ -1,6 +1,7 @@
 type User = {
     user_name: string;
     user_info_id: string;
+    signature: string | null;
     id: string;
     user_info: {
         id: string;
@@ -9,10 +10,10 @@ type User = {
         title: "MR" | "MS" | "MRS";
         firstName: string;
         lastName: string;
-        firstNameEn: string | null;
-        lastNameEn: string | null;
+        firstNameEn: string;
+        lastNameEn: string;
         email: string | null;
-        role: "USER" | "ADMIN" | "APPROVER";
+        role: "USER" | "ADMIN" | "SUPER_ADMIN";
         status: boolean;
         createdAt: Date;
         updatedAt: Date;

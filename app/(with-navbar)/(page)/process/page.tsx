@@ -1,26 +1,17 @@
 "use client"
-import { columns } from "@/app/component/ApproveColumn";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Icon } from '@iconify/react';
 import { ArrowLeft, BrushCleaning } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { DataTable } from "@/app/component/DocumentTable";
 import { ProcessColumns } from "@/app/component/ProcessColumns";
 import { DetailModal } from "@/app/component/DetailModal";
-import { Workflow, WorkflowActivity } from "./process";
-import dayjs from "dayjs";
 import { useDocumentStore } from "@/store/document.store";
 import { useGetDocuments } from "@/hooks/set-document";
-import { processMutation } from "@/hooks/add-process-document";
-import { finishMutation } from "@/hooks/finish-document";
+import { useProcessMutation } from "@/hooks/add-process-document";
+import { useFinishMutation } from "@/hooks/finish-document";
 import { useCompanyList, useDivisionList } from "@/hooks/create-form";
-
-const COMPANY = [
-    { label: "Cityfresh Fruit", value: "cff" },
-    { label: "Ctx holding", value: "ctx" },
-    { label: "Noble marketing", value: "nbm" },
-]
 
 export default function Page() {
     const { data: divisionList } = useDivisionList();
@@ -45,7 +36,6 @@ export default function Page() {
         text: string;
         department: string;
         company: string;
-        document_list: TableDoc[];
     }
 
     const [detail, setDetail] = useState({
@@ -55,9 +45,9 @@ export default function Page() {
 
     const [message, setMessage] = useState("")
 
-    const { isLoading } = useGetDocuments();
-    const processMutate = processMutation(setDetail);
-    const finishMutate = finishMutation(setDetail);
+    const { isLoading, isError, refetch } = useGetDocuments();
+    const processMutate = useProcessMutation(setDetail);
+    const finishMutate = useFinishMutation(setDetail);
     const docs = useDocumentStore((state) => state.processDocuments);
     const activities = useDocumentStore((state) => state.activitiyDocuments)
     
@@ -71,11 +61,11 @@ export default function Page() {
         status: doc.status as DocStatus,
         created: doc.createdAt,
         end_date: doc.dueDate,
-        updated: doc.activities[0].createdAt,
+        updated: doc.activities[0]?.createdAt ?? "",
         type: doc.workflowInstance?.workflowDefinitionVersion?.workflowStep[0]?.type
     }))
 
-    const DEPARTMENT_OPTIONS = divisionList?.map((d: any) => ({ label: d.name, value: d.code })) ?? [];
+    const DEPARTMENT_OPTIONS = divisionList?.map((d: any) => ({ label: d.name, value: d.name })) ?? [];
     const COMPANY_OPTIONS = companyList?.map((c: any) => ({ label: c.name, value: c.code })) ?? [];
 
     const [DocumentTable, setDocumentTable] = useState<TableState>({
@@ -83,18 +73,27 @@ export default function Page() {
         text: "",
         department: "",
         company: "",
-        document_list: []
     });
 
     function handleSearch() {
-        const filtered = DOCUMENT.filter(doc => {
-            const matchesText = !DocumentTable.text || doc.title.toLowerCase().includes(DocumentTable.text.toLowerCase()) || doc.id.toLowerCase().includes(DocumentTable.text.toLowerCase());
-            const matchesDepartment = !DocumentTable.department || doc.department.toLowerCase() === DocumentTable.department.toLowerCase();
-            const matchesCompany = !DocumentTable.company || doc.company === DocumentTable.company;
-            return matchesText && matchesDepartment && matchesCompany;
-        });
-        setDocumentTable(prev => ({ ...prev, document_list: filtered, status: true }));
+        setDocumentTable((previous) => ({ ...previous, status: true }));
     }
+
+    const visibleDocuments = DocumentTable.status
+        ? DOCUMENT.filter((doc) => {
+            const searchText = DocumentTable.text.trim().toLowerCase();
+            const matchesText =
+                !searchText ||
+                doc.title.toLowerCase().includes(searchText) ||
+                doc.id.toLowerCase().includes(searchText);
+            const matchesDepartment =
+                !DocumentTable.department ||
+                doc.department.toLowerCase() === DocumentTable.department.toLowerCase();
+            const matchesCompany = !DocumentTable.company || doc.company === DocumentTable.company;
+
+            return matchesText && matchesDepartment && matchesCompany;
+        })
+        : DOCUMENT;
 
     // const getActivityTimeline = (workflow: Workflow) => {
     //     const activities = workflow.stages
@@ -124,8 +123,8 @@ export default function Page() {
 
 
     return (
-        <div className="bg-slate-50 min-h-screen h-full w-full p-6">
-            <div className='flex items-center gap-4'>
+        <div className="bg-slate-50 min-h-screen h-full w-full p-4 sm:p-6">
+            <div className='flex flex-col gap-4 sm:flex-row sm:items-center'>
                 <Link href={'/document_list'} accessKey="it01">
                     <div className='text-white p-2 bg-[#1b1b1b] rounded-md flex justify-between items-center gap-1'>
                         <span className='text-lg'><ArrowLeft /></span>
@@ -139,39 +138,42 @@ export default function Page() {
 
             <div className="flex flex-col rounded-xl border overflow-hidden mt-6" style={{ background: "var(--card)", borderColor: "var(--border)" }}>
                 {/* Table toolbar */}
-                <div className="flex items-center justify-between px-5 py-4 border-b" style={{ borderColor: "var(--border)" }}>
-                    <h2 style={{ color: "var(--foreground)" }}>{"เอกสารทั้งหมด"}</h2>
-                    <div className="flex justify-end items-center gap-2 w-3/4">
+                <div className="flex flex-col gap-3 border-b px-4 py-4 sm:px-5 lg:flex-row lg:items-center lg:justify-between" style={{ borderColor: "var(--border)" }}>
+                    <h2 style={{ color: "var(--foreground)" }}>เอกสารทั้งหมด ({DOCUMENT.length})</h2>
+                    <div className={`grid w-full grid-cols-1 gap-2 sm:grid-cols-2 lg:w-3/4 ${DocumentTable.status ? "lg:grid-cols-[auto_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_auto]" : "lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_auto]"}`}>
                         {DocumentTable.status && (
-                            <button className='border rounded p-1.5 flex items-center hover:cursor-pointer' onClick={() => setDocumentTable({
+                            <button aria-label="ล้างตัวกรอง" className='flex items-center justify-center rounded border p-1.5 hover:cursor-pointer' onClick={() => setDocumentTable({
                                 status: false,
                                 text: "",
                                 department: "",
                                 company: "",
-                                document_list: []
                             })}>
                                 <BrushCleaning size={"20px"} />
                             </button>
                         )}
                         <div
-                            className="flex items-center gap-2 px-3 py-2 rounded-lg border w-1/4"
+                            className="flex min-w-0 items-center gap-2 rounded-lg border px-3 py-2"
                             style={{ borderColor: "var(--border)", background: "var(--input-background)" }}
                         >
                             <Icon icon="tabler:search" className="text-[14px]" style={{ color: "var(--muted-foreground)" }} />
                             <input
-                                placeholder="Search documents…"
-                                className="bg-transparent outline-none w-48"
+                                aria-label="ค้นหาเอกสาร"
+                                placeholder="ค้นหาเอกสาร..."
+                                className="w-full min-w-0 bg-transparent outline-none"
                                 style={{ fontSize: "0.8rem", color: "var(--foreground)" }}
                                 value={DocumentTable.text}
                                 onChange={(e) => setDocumentTable(prev => ({ ...prev, text: e.target.value }))}
+                                onKeyDown={(event) => {
+                                    if (event.key === "Enter") handleSearch();
+                                }}
                             />
                         </div>
 
-                        <div className='w-1/4 flex gap-10'>
+                        <div className="min-w-0">
                             <Select
                                 items={DEPARTMENT_OPTIONS}
                                 value={DocumentTable.department}
-                                onValueChange={(seleted: any) => setDocumentTable(prev => ({ ...prev, department: seleted }))}
+                                onValueChange={(selected: string | null) => setDocumentTable(prev => ({ ...prev, department: selected ?? "" }))}
                             >
                                 <SelectTrigger className="w-full">
                                     <SelectValue placeholder="แผนก" />
@@ -188,11 +190,11 @@ export default function Page() {
                             </Select>
                         </div>
 
-                        <div className='w-1/4 flex gap-10'>
+                        <div className="min-w-0">
                             <Select
                                 items={COMPANY_OPTIONS}
                                 value={DocumentTable.company}
-                                onValueChange={(seleted: any) => setDocumentTable(prev => ({ ...prev, company: seleted }))}
+                                onValueChange={(selected: string | null) => setDocumentTable(prev => ({ ...prev, company: selected ?? "" }))}
                             >
                                 <SelectTrigger className="w-full">
                                     <SelectValue placeholder="บริษัท" />
@@ -209,12 +211,27 @@ export default function Page() {
                             </Select>
                         </div>
                         <div>
-                            <button onClick={() => handleSearch()} className='bg-[#4A4DF1] text-white px-2 py-1 rounded-md hover:cursor-pointer'>{"ค้นหา"}</button>
+                            <button type="button" onClick={handleSearch} className="h-10 w-full rounded-md bg-[#4A4DF1] px-4 text-sm font-medium text-white hover:cursor-pointer hover:bg-indigo-700 lg:w-auto">ค้นหา</button>
                         </div>
                     </div>
                 </div>
                 <div className=''>
-                    <DataTable columns={ProcessColumns(setDetail)} data={DocumentTable.status ? DocumentTable.document_list : DOCUMENT} />
+                    {isLoading ? (
+                        <div className="p-6 text-center" role="status">กำลังโหลดเอกสาร...</div>
+                    ) : isError ? (
+                        <div className="flex flex-col items-center gap-3 p-6 text-center" role="alert">
+                            <p>ไม่สามารถโหลดเอกสารได้</p>
+                            <button type="button" onClick={() => refetch()} className="rounded-md bg-[#4A4DF1] px-4 py-2 text-sm font-medium text-white">ลองอีกครั้ง</button>
+                        </div>
+                    ) : (
+                        <DataTable
+                            columns={ProcessColumns(setDetail)}
+                            data={visibleDocuments}
+                            emptyMessage={DocumentTable.status ? "ไม่พบเอกสารที่ตรงกับตัวกรอง" : "ไม่พบเอกสารที่กำลังดำเนินการ"}
+                            previousPageLabel="ก่อนหน้า"
+                            nextPageLabel="ถัดไป"
+                        />
+                    )}
                 </div>
             </div>
 
@@ -231,6 +248,9 @@ export default function Page() {
                     activities={activities}
                     processMutate={processMutate}
                     finishMutate={finishMutate}
+                    currentPage={"Process"}
+                    requireProcessConfirmation
+                    showFinishAction={false}
                 />
             )}
         </div>

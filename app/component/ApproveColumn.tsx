@@ -32,7 +32,7 @@ type Status = "WAITING_APPROVAL" | "PROCESSING" | "REJECTED" | "CANCELLED" | "CO
 export const columns: ColumnDef<DocumentColumn>[] = [
     {
         accessorKey: "id",
-        header: "Document ID",
+        header: "เลขที่เอกสาร",
         cell: ({ row }) => {
             return (
                 <Link href={`/document_list/it/form?schema_id=${row.original.schema_id}&doc_id=${row.original.id}&mode=approve`}>
@@ -81,6 +81,7 @@ export const columns: ColumnDef<DocumentColumn>[] = [
     {
         accessorKey: "department",
         header: "เอกสารของแผนก",
+        cell: ({ row }) => <span>{`${row.original.department === "-" ? "เอกสารสำหรับทุกแผนก" : row.original.department}`}</span>
     },
     {
         accessorKey: "status",
@@ -91,7 +92,8 @@ export const columns: ColumnDef<DocumentColumn>[] = [
         accessorKey: "created",
         header: "วันที่สร้างเอกสาร",
         cell: ({ row }) => {
-            const stringDate = dayjs.utc(row.original.created).tz("Asia/Bangkok").format("DD-MM-YYYY")
+            const date = dayjs.utc(row.original.created).tz("Asia/Bangkok");
+            const stringDate = date.isValid() ? date.format("DD-MM-YYYY") : "-";
             return (
                 <span>{stringDate}</span>
             )
@@ -101,7 +103,8 @@ export const columns: ColumnDef<DocumentColumn>[] = [
         accessorKey: "updated",
         header: "แก้ไขล่าสุด",
         cell: ({ row }) => {
-            const stringDate = dayjs.utc(row.original.updated).tz("Asia/Bangkok").format("DD-MM-YYYY")
+            const date = dayjs.utc(row.original.updated).tz("Asia/Bangkok");
+            const stringDate = date.isValid() ? date.format("DD-MM-YYYY") : "-";
             return (
                 <span>{stringDate}</span>
             )
@@ -111,24 +114,10 @@ export const columns: ColumnDef<DocumentColumn>[] = [
         accessorKey: "end_date",
         header: "วันที่สิ้นสุดเอกสาร",
         cell: ({ row }) => {
-            const stringDate = dayjs.utc(row.original.end_date).tz("Asia/Bangkok").format("DD-MM-YYYY")
+            const date = dayjs.utc(row.original.end_date).tz("Asia/Bangkok");
+            const stringDate = date.isValid() ? date.format("DD-MM-YYYY") : "-";
             return (
                 <span>{stringDate}</span>
-            )
-        }
-    },
-    {
-        accessorKey: "view_or_edit",
-        header: "ผู้ที่อนุมัติแล้ว",
-        cell: ({ row }) => {
-            return (
-                <div className="items-center flex text-nowrap overflow-x-scroll w-40 scrollbar-none text-overflow-hidden gap-1">
-                    {/* {isApproved.length > 0 && isApproved.map((approver: any, index: number) => (
-                        <div className="rounded-full p-0.5 px-1 bg-green-400 text-white" key={index}>
-                            <span>{approver.approvers[0].name}</span>
-                        </div>
-                    ))} */}
-                </div>
             )
         }
     }
