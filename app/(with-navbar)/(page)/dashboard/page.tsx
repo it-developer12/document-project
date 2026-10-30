@@ -16,7 +16,7 @@ import {
     SelectValue,
 } from "@/components/ui/select"
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { columns } from '@/app/component/DocumentColumn';
 import { DataTable } from '@/app/component/DocumentTable';
 import { BrushCleaning } from 'lucide-react';
@@ -24,8 +24,9 @@ import { useDocumentStore } from '@/store/document.store';
 import { useGetDocuments } from '@/hooks/set-document';
 import { useDocumentCount } from '@/hooks/document-list';
 import { useCompanyList, useDivisionList } from '@/hooks/create-form';
+import { useCurrentUser } from '@/hooks/use-current-user';
 
-type DocStatus = "WAITING_APPROVAL" | "PROCESSING" | "REJECTED" | "CANCELLED" | "COMPLETED";
+type DocStatus = "WAITING_APPROVAL" | "PROCESSING" | "REJECTED" | "CANCELLED" | "COMPLETED" | "DRAFT";
 type Status = "low" | "medium" | "high";
 type TableDoc = {
     id: string;
@@ -40,6 +41,8 @@ type TableDoc = {
     end_date: string;
     type: any[];
     schema_id: string;
+    created_by: string;
+    can_edit: boolean;
 }
 
 interface TableState {
@@ -57,8 +60,6 @@ const EMPTY_TABLE_STATE: TableState = {
     company: "",
     document_list: [],
 };
-
-const EMPTY_DOCUMENTS: TableDoc[] = [];
 
 function filterDocuments(documents: TableDoc[], table: TableState) {
     const searchText = table.text.trim().toLowerCase();
@@ -85,6 +86,7 @@ function getType(workflowInstance: any) {
 export default function Home() {
     const { data: divisionList } = useDivisionList();
     const { data: companyList } = useCompanyList();
+    const { data: currentUser } = useCurrentUser();
     useGetDocuments();
     const count = useDocumentCount();
     const docs = useDocumentStore((state) => state.documents);
@@ -98,9 +100,12 @@ export default function Home() {
 
     const DEPARTMENT_OPTIONS = divisionList?.map((division: any) => ({
         label: division.name,
-        value: division.code,
+        value: division.name,
     })) ?? [];
 
+    const currentUserFullName = currentUser
+        ? `${currentUser.user_info.firstName} ${currentUser.user_info.lastName}`.trim()
+        : "";
     const DOCUMENT: TableDoc[] = docs.map((doc) => ({
         id: doc.documentNo,
         title: doc.formSchema.name,
@@ -113,90 +118,153 @@ export default function Home() {
         end_date: doc.dueDate,
         updated: doc.activities[0]?.createdAt,
         type: getType(doc.workflowInstance),
-        schema_id: doc.formSchema.code
+        schema_id: doc.formSchema.code,
+        created_by: doc.createdBy.firstName + " " + doc.createdBy.lastName,
+        can_edit: (doc.createdById ?? doc.createdBy.id)
+            ? (doc.createdById ?? doc.createdBy.id) === currentUser?.user_info.id
+            : currentUserFullName !== "" &&
+            doc.createdBy.firstName + " " + doc.createdBy.lastName === currentUserFullName,
     }))
 
-    const CREATETABLE: TableDoc[] = DOCUMENT.filter((doc) => {
-        if (doc.type.length < 1) {
-            return doc
-        }
-    })
-    const TODOTABLE: TableDoc[] = DOCUMENT.filter((doc) => {
-        if (doc.type.length > 0) {
-            return doc
-        }
-    })
+    const CREATETABLE: TableDoc[] = DOCUMENT.filter(
+        (doc) => currentUserFullName !== "" && doc.created_by === currentUserFullName,
+    );
+    const todoDocumentIds = new Set(
+        DOCUMENT.filter((doc) => {
+            if (doc.type.length > 0 && doc.status !== "COMPLETED") {
+                return doc
+            }
+        }).map((doc) => doc.id),
+    );
+    const TODOTABLE = DOCUMENT.filter((doc) => todoDocumentIds.has(doc.id));
+    const finishDocuments = DOCUMENT.filter(
+        (doc) => doc.type.includes("FINISHER") && doc.status === "PROCESSING",
+    );
+    const excludedDocumentIds = new Set(
+        [...CREATETABLE, ...TODOTABLE].map((doc) => doc.id),
+    );
+    const ALLDOCUMENT: TableDoc[] = DOCUMENT.filter(
+        (doc) => !excludedDocumentIds.has(doc.id),
+    );
 
     const [todoTable, setTodoTable] = useState<TableState>(EMPTY_TABLE_STATE);
     const [createTable, setCreateTable] = useState<TableState>(EMPTY_TABLE_STATE);
     const [documentTable, setDocumentTable] = useState<TableState>(EMPTY_TABLE_STATE);
 
-    function handleSearch(name: string) {
-        if (name === "todo") {
-            setTodoTable((prev) => ({
-                ...prev,
-                document_list: filterDocuments(DOCUMENT, prev),
-                status: true,
-            }));
-            return;
-        }
+    function handleSearch(name: "todo" | "create" | "document") {
+        const tableState = name === "todo" ? todoTable : name === "create" ? createTable : documentTable;
+        const sourceDocuments = name === "todo" ? TODOTABLE : name === "create" ? CREATETABLE : ALLDOCUMENT;
+        const setTableState = name === "todo" ? setTodoTable : name === "create" ? setCreateTable : setDocumentTable;
 
-        if (name === "create") {
-            setCreateTable((prev) => ({
-                ...prev,
-                document_list: filterDocuments(DOCUMENT, prev),
-                status: true,
-            }));
-            return;
-        }
-
-        setDocumentTable((prev) => ({
-            ...prev,
-            document_list: filterDocuments(DOCUMENT, prev),
+        setTableState({
+            ...tableState,
+            document_list: filterDocuments(sourceDocuments, tableState),
             status: true,
-        }));
+        });
     }
 
     return (
-        <div className="bg-slate-50 min-h-screen h-full w-full p-6">
-            <div className='flex justify-between items-center'>
+        <div className="min-h-screen w-full bg-slate-50 p-4 sm:p-6">
+            <div className="mb-6 flex flex-col justify-between gap-4 lg:flex-row lg:items-center">
                 <div className="">
-                    <h1 className="text-2xl font-bold mb-4">Document Dashboard</h1>
-                    <span>{"จัดการและติดตามสถานะของเอกสารทั้งหมด"}</span>
+                    <p className="mb-1 text-sm font-medium text-indigo-600">ศูนย์รวมเอกสาร</p>
+                    <h1 className="text-2xl font-bold text-slate-900 sm:text-3xl">ภาพรวมเอกสาร</h1>
+                    <p className="mt-2 text-sm text-slate-600">
+                        ดูงานที่ต้องดำเนินการ เอกสารที่คุณสร้าง และเอกสารที่คุณมีสิทธิ์เข้าถึง
+                        <span className="mt-1 block text-xs text-slate-500">เลือกเลขที่เอกสารในตารางเพื่อเปิดดูรายละเอียด</span>
+                    </p>
                 </div>
-                <Link href={'/document_list'}>
-                    <div className='text-white p-2 bg-[#1b1b1b] rounded-md flex justify-between items-center gap-1'>
-                        <Icon icon={"ic:baseline-plus"} className='text-lg' />
-                        <span>{"สร้างเอกสารใหม่"}</span>
-                    </div>
-                </Link>
+                <div className={`grid w-full gap-2 lg:w-auto ${currentUser?.user_info.role === "ADMIN" ? "sm:grid-cols-2" : "sm:grid-cols-1"}`}>
+                    <Link
+                        href="/document_list"
+                        className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-[#4A4DF1] px-4 py-2.5 font-medium text-white shadow-sm transition hover:bg-indigo-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-700"
+                    >
+                        <Icon icon="ic:baseline-plus" className="text-lg" aria-hidden="true" />
+                        <span>สร้างเอกสารใหม่</span>
+                    </Link>
+                    {currentUser?.user_info.role === "ADMIN" && (
+                        <Link
+                            href="/create"
+                            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-slate-300 bg-white px-4 py-2.5 font-medium text-slate-800 transition hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-700"
+                        >
+                            <Icon icon="material-symbols:edit-document-outline" className="text-lg" aria-hidden="true" />
+                            <span>สร้างแบบฟอร์มใหม่</span>
+                        </Link>
+                    )}
+                </div>
             </div>
 
-            <div className="flex flex-col rounded-xl border overflow-hidden mt-6" style={{ background: "var(--card)", borderColor: "var(--border)" }}>
+            <div className="flex flex-col overflow-hidden rounded-xl border" style={{ background: "var(--card)", borderColor: "var(--border)" }}>
+                <div className="border-b p-4 sm:p-5" style={{ borderColor: "var(--border)" }}>
+                    <div className="flex flex-wrap items-center gap-2">
+                        <h2 className="font-bold" style={{ color: "var(--foreground)" }}>งานที่ต้องดำเนินการ</h2>
+                        <span className="rounded-full bg-indigo-100 px-2.5 py-0.5 text-xs font-semibold text-indigo-700">{TODOTABLE.length}</span>
+                    </div>
+                    <p className="mt-1 text-sm text-slate-500">เลือกประเภทงานเพื่อไปยังรายการที่ต้องจัดการ</p>
+                    <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                        <Link
+                            href="/approve"
+                            className="flex min-h-20 items-center justify-between gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 transition hover:bg-amber-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-700"
+                        >
+                            <span>
+                                <span className="block font-semibold text-amber-950">รออนุมัติ</span>
+                                <span className="mt-1 block text-xs text-amber-800">ดูรายการอนุมัติ</span>
+                            </span>
+                            <span className="rounded-full bg-amber-200 px-2.5 py-1 text-sm font-bold text-amber-950">{appDocs.length}</span>
+                        </Link>
+                        <Link
+                            href="/process"
+                            className="flex min-h-20 items-center justify-between gap-3 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 transition hover:bg-blue-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-700"
+                        >
+                            <span>
+                                <span className="block font-semibold text-blue-950">กำลังดำเนินการ</span>
+                                <span className="mt-1 block text-xs text-blue-800">ดูรายการดำเนินการ</span>
+                            </span>
+                            <span className="rounded-full bg-blue-200 px-2.5 py-1 text-sm font-bold text-blue-950">{proDocs.length}</span>
+                        </Link>
+                        <Link
+                            href="/complete"
+                            className="flex min-h-20 items-center justify-between gap-3 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 transition hover:bg-emerald-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700"
+                        >
+                            <span>
+                                <span className="block font-semibold text-emerald-950">รอปิดจบเอกสาร</span>
+                                <span className="mt-1 block text-xs text-emerald-800">ดูรายการปิดจบ</span>
+                            </span>
+                            <span className="rounded-full bg-emerald-200 px-2.5 py-1 text-sm font-bold text-emerald-950">{finishDocuments.length}</span>
+                        </Link>
+                    </div>
+                </div>
                 {/* Table toolbar */}
-                <div className="flex items-center justify-between px-5 py-4 border-b" style={{ borderColor: "var(--border)" }}>
-                    <h2 style={{ color: "var(--foreground)" }} className='font-bold'>{"เอกสารที่คุณมีความเกี่ยวข้อง"}</h2>
-                    <div className="flex justify-end items-center gap-2 w-3/4">
+                <div className="flex flex-col gap-3 border-b px-4 py-4 sm:px-5 lg:flex-row lg:items-center lg:justify-between" style={{ borderColor: "var(--border)" }}>
+                    <h3 style={{ color: "var(--foreground)" }}>ค้นหาในงานที่ต้องดำเนินการ</h3>
+                    <div className={`grid w-full grid-cols-1 gap-2 sm:grid-cols-2 lg:w-3/4 ${todoTable.status ? "lg:grid-cols-[auto_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_auto]" : "lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_auto]"}`}>
                         {todoTable.status && (
-                            <button className='border rounded p-1.5 flex items-center hover:cursor-pointer' onClick={() => setTodoTable(EMPTY_TABLE_STATE)}>
+                            <button aria-label="ล้างตัวกรอง" className='flex items-center justify-center rounded border p-1.5 hover:cursor-pointer' onClick={() => setTodoTable({
+                                status: false,
+                                text: "",
+                                department: "",
+                                company: "",
+                                document_list: TODOTABLE
+                            })}>
                                 <BrushCleaning size={"20px"} />
                             </button>
                         )}
                         <div
-                            className="flex items-center gap-2 px-3 py-2 rounded-lg border w-1/4"
+                            className="flex min-w-0 items-center gap-2 rounded-lg border px-3 py-2"
                             style={{ borderColor: "var(--border)", background: "var(--input-background)" }}
                         >
                             <Icon icon="tabler:search" className="text-[14px]" style={{ color: "var(--muted-foreground)" }} />
                             <input
-                                placeholder="Search documents…"
-                                className="bg-transparent outline-none w-48"
+                                aria-label="ค้นหาเอกสาร"
+                                placeholder="ค้นหาเอกสาร..."
+                                className="w-full min-w-0 bg-transparent outline-none"
                                 style={{ fontSize: "0.8rem", color: "var(--foreground)" }}
                                 value={todoTable.text}
                                 onChange={(e) => setTodoTable(prev => ({ ...prev, text: e.target.value }))}
                             />
                         </div>
 
-                        <div className='w-1/4 flex gap-10'>
+                        <div className="min-w-0">
                             <Select
                                 items={DEPARTMENT_OPTIONS}
                                 value={todoTable.department}
@@ -217,7 +285,7 @@ export default function Home() {
                             </Select>
                         </div>
 
-                        <div className='w-1/4 flex gap-10'>
+                        <div className="min-w-0">
                             <Select
                                 items={COMPANY_OPTIONS}
                                 value={todoTable.company}
@@ -238,16 +306,16 @@ export default function Home() {
                             </Select>
                         </div>
                         <div>
-                            <button onClick={() => handleSearch("todo")} className='bg-[#4A4DF1] text-white px-2 py-1 rounded-md hover:cursor-pointer'>{"ค้นหา"}</button>
+                            <button type="button" onClick={() => handleSearch("todo")} className="h-10 w-full rounded-md bg-[#4A4DF1] px-4 text-sm font-medium text-white hover:cursor-pointer hover:bg-indigo-700 lg:w-auto">ค้นหา</button>
                         </div>
                     </div>
                 </div>
                 <div className=''>
-                    <DataTable columns={columns} data={todoTable.status ? todoTable.document_list : TODOTABLE} />
+                    <DataTable columns={columns} data={todoTable.status ? todoTable.document_list : TODOTABLE} pageSize={5} />
                 </div>
             </div>
-            <div className="mt-6 flex gap-4">
-                <Card className="w-1/4" >
+            <div className="my-6 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                <Card>
                     <CardHeader>
                         <CardTitle>{"เอกสารทั้งหมด"}</CardTitle>
                         <CardAction>
@@ -260,7 +328,7 @@ export default function Home() {
                         <p className="text-2xl font-bold">{count.data?.total || 0}</p>
                     </CardContent>
                 </Card>
-                <Card className="w-1/4" >
+                <Card>
                     <CardHeader>
                         <CardTitle>{"เอกสารที่อนุมัติแล้ว"}</CardTitle>
                         <CardAction>
@@ -273,12 +341,12 @@ export default function Home() {
                         <p className="text-2xl font-bold">{count.data?.approved || 0}</p>
                     </CardContent>
                 </Card>
-                <Card className="w-1/4" >
+                <Card>
                     <CardHeader>
                         <CardTitle>{"เอกสารที่กำลังดำเนินการ"}</CardTitle>
                         <CardAction>
                             <div className="bg-[#fcffd3] rounded-lg p-2">
-                                <Icon icon="tabler:clock" className="text-lg text-[#c8d600]" />
+                                <Icon icon="tabler:clock" className="text-lg text-[#9eaa00]" />
                             </div>
                         </CardAction>
                     </CardHeader>
@@ -286,7 +354,7 @@ export default function Home() {
                         <p className="text-2xl font-bold">{count.data?.processing || 0}</p>
                     </CardContent>
                 </Card>
-                <Card className="w-1/4" >
+                <Card>
                     <CardHeader>
                         <CardTitle>{"เอกสารที่ถูกยกเลิก"}</CardTitle>
                         <CardAction>
@@ -301,31 +369,44 @@ export default function Home() {
                 </Card>
             </div>
 
-            <div className="flex flex-col rounded-xl border overflow-hidden mt-6" style={{ background: "var(--card)", borderColor: "var(--border)" }}>
+            <div className="flex flex-col overflow-hidden rounded-xl border" style={{ background: "var(--card)", borderColor: "var(--border)" }}>
                 {/* Table toolbar */}
-                <div className="flex items-center justify-between px-5 py-4 border-b" style={{ borderColor: "var(--border)" }}>
-                    <h2 style={{ color: "var(--foreground)" }} className='font-bold'>{"เอกสารที่สร้าง"}</h2>
-                    <div className="flex justify-end items-center gap-2 w-3/4">
+                <div className="flex flex-col gap-3 border-b px-4 py-4 sm:px-5 lg:flex-row lg:items-center lg:justify-between" style={{ borderColor: "var(--border)" }}>
+                    <div>
+                        <div className="flex items-center gap-2">
+                            <h2 style={{ color: "var(--foreground)" }} className="font-bold">เอกสารที่คุณสร้าง</h2>
+                            <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-semibold text-emerald-700">{CREATETABLE.length}</span>
+                        </div>
+                        <p className="mt-1 text-sm text-slate-500">เอกสารที่สร้างโดยบัญชีของคุณ</p>
+                    </div>
+                    <div className={`grid w-full grid-cols-1 gap-2 sm:grid-cols-2 lg:w-3/4 ${createTable.status ? "lg:grid-cols-[auto_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_auto]" : "lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_auto]"}`}>
                         {createTable.status && (
-                            <button className='border rounded p-1.5 flex items-center hover:cursor-pointer' onClick={() => setCreateTable(EMPTY_TABLE_STATE)}>
+                            <button aria-label="ล้างตัวกรอง" className='flex items-center justify-center rounded border p-1.5 hover:cursor-pointer' onClick={() => setCreateTable({
+                                status: false,
+                                text: "",
+                                department: "",
+                                company: "",
+                                document_list: CREATETABLE
+                            })}>
                                 <BrushCleaning size={"20px"} />
                             </button>
                         )}
                         <div
-                            className="flex items-center gap-2 px-3 py-2 rounded-lg border w-1/4"
+                            className="flex min-w-0 items-center gap-2 rounded-lg border px-3 py-2"
                             style={{ borderColor: "var(--border)", background: "var(--input-background)" }}
                         >
                             <Icon icon="tabler:search" className="text-[14px]" style={{ color: "var(--muted-foreground)" }} />
                             <input
-                                placeholder="Search documents…"
-                                className="bg-transparent outline-none w-48"
+                                aria-label="ค้นหาเอกสาร"
+                                placeholder="ค้นหาเอกสาร..."
+                                className="w-full min-w-0 bg-transparent outline-none"
                                 style={{ fontSize: "0.8rem", color: "var(--foreground)" }}
                                 value={createTable.text}
                                 onChange={(e) => setCreateTable(prev => ({ ...prev, text: e.target.value }))}
                             />
                         </div>
 
-                        <div className='w-1/4 flex gap-10'>
+                        <div className="min-w-0">
                             <Select
                                 items={DEPARTMENT_OPTIONS}
                                 value={createTable.department}
@@ -346,7 +427,7 @@ export default function Home() {
                             </Select>
                         </div>
 
-                        <div className='w-1/4 flex gap-10'>
+                        <div className="min-w-0">
                             <Select
                                 items={COMPANY_OPTIONS}
                                 value={createTable.company}
@@ -367,40 +448,53 @@ export default function Home() {
                             </Select>
                         </div>
                         <div>
-                            <button onClick={() => handleSearch("create")} className='bg-[#4A4DF1] text-white px-2 py-1 rounded-md hover:cursor-pointer'>{"ค้นหา"}</button>
+                            <button type="button" onClick={() => handleSearch("create")} className="h-10 w-full rounded-md bg-[#4A4DF1] px-4 text-sm font-medium text-white hover:cursor-pointer hover:bg-indigo-700 lg:w-auto">ค้นหา</button>
                         </div>
                     </div>
                 </div>
                 <div className=''>
-                    <DataTable columns={columns} data={createTable.status ? createTable.document_list : CREATETABLE} />
+                    <DataTable columns={columns} data={createTable.status ? createTable.document_list : CREATETABLE} pageSize={8} />
                 </div>
             </div>
 
-            <div className="flex flex-col rounded-xl border overflow-hidden mt-6" style={{ background: "var(--card)", borderColor: "var(--border)" }}>
+            <div className="mt-6 flex flex-col overflow-hidden rounded-xl border" style={{ background: "var(--card)", borderColor: "var(--border)" }}>
                 {/* Table toolbar */}
-                <div className="flex items-center justify-between px-5 py-4 border-b" style={{ borderColor: "var(--border)" }}>
-                    <h2 style={{ color: "var(--foreground)" }} className='font-bold'>{"เอกสารทั้งหมด"}</h2>
-                    <div className="flex justify-end items-center gap-2 w-3/4">
+                <div className="flex flex-col gap-3 border-b px-4 py-4 sm:px-5 lg:flex-row lg:items-center lg:justify-between" style={{ borderColor: "var(--border)" }}>
+                    <div>
+                        <div className="flex items-center gap-2">
+                            <h2 style={{ color: "var(--foreground)" }} className="font-bold">เอกสารอื่นที่คุณมีสิทธิ์ดู</h2>
+                            <span className="rounded-full bg-sky-100 px-2.5 py-0.5 text-xs font-semibold text-sky-700">{ALLDOCUMENT.length}</span>
+                        </div>
+                        <p className="mt-1 text-sm text-slate-500">เอกสารที่เข้าถึงได้ นอกเหนือจากงานและเอกสารที่คุณสร้าง</p>
+                    </div>
+                    <div className={`grid w-full grid-cols-1 gap-2 sm:grid-cols-2 lg:w-3/4 ${documentTable.status ? "lg:grid-cols-[auto_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_auto]" : "lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_auto]"}`}>
                         {documentTable.status && (
-                            <button className='border rounded p-1.5 flex items-center hover:cursor-pointer' onClick={() => setDocumentTable(EMPTY_TABLE_STATE)}>
+                            <button aria-label="ล้างตัวกรอง" className='flex items-center justify-center rounded border p-1.5 hover:cursor-pointer' onClick={() => setDocumentTable({
+                                status: false,
+                                text: "",
+                                department: "",
+                                company: "",
+                                document_list: ALLDOCUMENT
+                            })}>
                                 <BrushCleaning size={"20px"} />
                             </button>
                         )}
                         <div
-                            className="flex items-center gap-2 px-3 py-2 rounded-lg border w-1/4"
+                            className="flex min-w-0 items-center gap-2 rounded-lg border px-3 py-2"
                             style={{ borderColor: "var(--border)", background: "var(--input-background)" }}
                         >
                             <Icon icon="tabler:search" className="text-[14px]" style={{ color: "var(--muted-foreground)" }} />
                             <input
-                                placeholder="Search documents…"
-                                className="bg-transparent outline-none w-48"
+                                aria-label="ค้นหาเอกสาร"
+                                placeholder="ค้นหาเอกสาร..."
+                                className="w-full min-w-0 bg-transparent outline-none"
                                 style={{ fontSize: "0.8rem", color: "var(--foreground)" }}
                                 value={documentTable.text}
                                 onChange={(e) => setDocumentTable(prev => ({ ...prev, text: e.target.value }))}
                             />
                         </div>
 
-                        <div className='w-1/4 flex gap-10'>
+                        <div className="min-w-0">
                             <Select
                                 items={DEPARTMENT_OPTIONS}
                                 value={documentTable.department}
@@ -421,7 +515,7 @@ export default function Home() {
                             </Select>
                         </div>
 
-                        <div className='w-1/4 flex gap-10'>
+                        <div className="min-w-0">
                             <Select
                                 items={COMPANY_OPTIONS}
                                 value={documentTable.company}
@@ -442,12 +536,12 @@ export default function Home() {
                             </Select>
                         </div>
                         <div>
-                            <button onClick={() => handleSearch("document")} className='bg-[#4A4DF1] text-white px-2 py-1 rounded-md hover:cursor-pointer'>{"ค้นหา"}</button>
+                            <button type="button" onClick={() => handleSearch("todo")} className="h-10 w-full rounded-md bg-[#4A4DF1] px-4 text-sm font-medium text-white hover:cursor-pointer hover:bg-indigo-700 lg:w-auto">ค้นหา</button>
                         </div>
                     </div>
                 </div>
                 <div className=''>
-                    <DataTable columns={columns} data={documentTable.status ? documentTable.document_list : EMPTY_DOCUMENTS} />
+                    <DataTable columns={columns} data={documentTable.status ? documentTable.document_list : ALLDOCUMENT} pageSize={10} />
                 </div>
             </div>
         </div>

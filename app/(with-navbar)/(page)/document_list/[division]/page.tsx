@@ -13,7 +13,7 @@ export default function Page() {
     const forms = useFormStore((state) => state.publish_form);
     const currentDivision = forms.find((item) => item.division_code === division);
 
-    
+
     useEffect(() => {
         formMutation.mutate()
     }, [division]);
@@ -26,8 +26,8 @@ export default function Page() {
                     </div>
                 </Link>
                 <div className="">
-                    <h1 className="text-2xl font-bold">{currentDivision ? currentDivision.division_name : "รายการเอกสาร"}</h1>
-                    <span>{`รูปแบบเอกสารทั้งหมดในแผนก${currentDivision ? currentDivision?.division_name : ""}`}</span>
+                    <h1 className="text-2xl font-bold">{currentDivision ? currentDivision.division_name === "-" ? "เอกสารสำหรับทุกแผนก" : currentDivision.division_name : "รายการเอกสาร"}</h1>
+                    <span>{`รูปแบบเอกสารทั้งหมด${currentDivision?.division_name === "-" ? "" : "ในแผนก"}${currentDivision ? currentDivision?.division_name === "-" ? "" : currentDivision.division_name : ""}`}</span>
                 </div>
             </div>
             {currentDivision && currentDivision.forms.map((form, index: number) => (

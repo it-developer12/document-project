@@ -2,7 +2,7 @@ import { completeDocument } from "@/api/document";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "react-toastify";
 
-export function finishMutation(
+export function useFinishMutation(
     setDetail: React.Dispatch<React.SetStateAction<{ open: boolean; document_id: string }>>
 ) {
     const queryClient = useQueryClient();

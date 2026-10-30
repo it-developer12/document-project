@@ -37,5 +37,6 @@ export function useSearchTracking() {
         search: (keyword: string) => mutation.mutate(keyword),
         searchAsync: (keyword: string) => mutation.mutateAsync(keyword),
         error: mutation.error,
+        isPending: mutation.isPending,
     };
 }

@@ -130,3 +130,7 @@
     @apply font-sans;
   }
 }
+
+.font-thai {
+  font-family: var(--font-ibm-plex), sans-serif !important;
+}

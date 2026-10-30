@@ -13,6 +13,7 @@ export interface RegisterRequest {
   userName: string;
   passWord: string;
   code: string;
+  division_code: string;
 }
 
 export async function loginApi(

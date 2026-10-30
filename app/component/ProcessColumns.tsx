@@ -32,7 +32,7 @@ export const ProcessColumns = (
 ): ColumnDef<DocumentColumn>[] => [
         {
             accessorKey: "id",
-            header: "Document ID",
+            header: "เลขที่เอกสาร",
             cell: ({ row }) => {
 
                 return (
@@ -85,6 +85,7 @@ export const ProcessColumns = (
         {
             accessorKey: "department",
             header: "เอกสารของแผนก",
+            cell: ({ row }) => <span>{`${row.original.department === "-" ? "เอกสารสำหรับทุกแผนก" : row.original.department}`}</span>
         },
         {
             accessorKey: "status",
@@ -95,7 +96,8 @@ export const ProcessColumns = (
             accessorKey: "created",
             header: "วันที่สร้างเอกสาร",
             cell: ({ row }) => {
-                const stringDate = dayjs.utc(row.original.created).tz("Asia/Bangkok").format("DD-MM-YYYY")
+                const date = dayjs.utc(row.original.created).tz("Asia/Bangkok");
+                const stringDate = date.isValid() ? date.format("DD-MM-YYYY") : "-";
                 return (
                     <span>{stringDate}</span>
                 )
@@ -105,7 +107,8 @@ export const ProcessColumns = (
             accessorKey: "updated",
             header: "แก้ไขล่าสุด",
             cell: ({ row }) => {
-                const stringDate = dayjs.utc(row.original.updated).tz("Asia/Bangkok").format("DD-MM-YYYY")
+                const date = dayjs.utc(row.original.updated).tz("Asia/Bangkok");
+                const stringDate = date.isValid() ? date.format("DD-MM-YYYY") : "-";
                 return (
                     <span>{stringDate}</span>
                 )
@@ -115,7 +118,8 @@ export const ProcessColumns = (
             accessorKey: "end_date",
             header: "วันที่สิ้นสุดเอกสาร",
             cell: ({ row }) => {
-                const stringDate = dayjs.utc(row.original.end_date).tz("Asia/Bangkok").format("DD-MM-YYYY")
+                const date = dayjs.utc(row.original.end_date).tz("Asia/Bangkok");
+                const stringDate = date.isValid() ? date.format("DD-MM-YYYY") : "-";
                 return (
                     <span>{stringDate}</span>
                 )

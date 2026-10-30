@@ -7,6 +7,7 @@ import { useLogin } from "@/hooks/user-login";
 import { useRegister } from "@/hooks/user-register";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { useForgotPassword } from "@/hooks/forget-password";
+import { useDivisionList } from "@/hooks/create-form";
 
 export default function Home() {
     const [isRegistering, setIsRegistering] = useState(false);
@@ -16,11 +17,17 @@ export default function Home() {
     const loginMutation = useLogin();
     const registerMutation = useRegister(setIsRegistering);
     const forgotPasswordMutation = useForgotPassword();
+    const {
+        data: divisions,
+        isPending: isLoadingDivisions,
+        isError: isDivisionError,
+    } = useDivisionList(isRegistering);
     const { data: currentUser, isPending: isCheckingAuth, isError: authCheckFailed } = useCurrentUser();
 
     const [userName, setUsername] = useState("");
     const [passWord, setPassword] = useState("");
     const [code, setCode] = useState("");
+    const [divisionCode, setDivisionCode] = useState("");
     const [forgotUserName, setForgotUserName] = useState("");
     const [forgotEmployeeCode, setForgotEmployeeCode] = useState("");
     const [registerMessage, setRegisterMessage] = useState("");
@@ -41,6 +48,7 @@ export default function Home() {
                     userName,
                     passWord,
                     code,
+                    division_code: divisionCode,
                 },
                 {
                     onSuccess: () => {
@@ -48,6 +56,7 @@ export default function Home() {
                         setRegisterMessage("สมัครสมาชิกสำเร็จ กรุณาเข้าสู่ระบบ");
                         setPassword("");
                         setCode("");
+                        setDivisionCode("");
                     }
                 },
             );
@@ -243,22 +252,58 @@ export default function Home() {
                                     </div>
 
                                     {isRegistering && (
-                                        <div className="space-y-2">
-                                            <label htmlFor="code" className="flex items-center gap-1 text-sm font-medium text-slate-700">
-                                                <span>{"รหัสพนักงาน"}</span>
-                                                <span className="text-red-500">{"*"}</span>
-                                            </label>
-                                            <input
-                                                id="code"
-                                                name="code"
-                                                type="text"
-                                                className="w-full rounded-2xl border border-slate-200 bg-slate-50/80 px-3.5 py-3.5 text-sm text-slate-900 shadow-[inset_0_1px_2px_rgba(15,23,42,0.04)] outline-none transition duration-200 placeholder:text-slate-400 focus:border-[#4A4DF1] focus:bg-white focus:ring-4 focus:ring-indigo-100"
-                                                value={code}
-                                                onChange={(event) => setCode(event.target.value)}
-                                                placeholder="กรอกรหัสยืนยัน"
-                                                required
-                                            />
-                                        </div>
+                                        <>
+                                            <div className="space-y-2">
+                                                <label htmlFor="code" className="flex items-center gap-1 text-sm font-medium text-slate-700">
+                                                    <span>{"รหัสพนักงาน"}</span>
+                                                    <span className="text-red-500">{"*"}</span>
+                                                </label>
+                                                <input
+                                                    id="code"
+                                                    name="code"
+                                                    type="text"
+                                                    className="w-full rounded-2xl border border-slate-200 bg-slate-50/80 px-3.5 py-3.5 text-sm text-slate-900 shadow-[inset_0_1px_2px_rgba(15,23,42,0.04)] outline-none transition duration-200 placeholder:text-slate-400 focus:border-[#4A4DF1] focus:bg-white focus:ring-4 focus:ring-indigo-100"
+                                                    value={code}
+                                                    onChange={(event) => setCode(event.target.value)}
+                                                    placeholder="กรอกรหัสยืนยัน"
+                                                    required
+                                                />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label htmlFor="division" className="flex items-center gap-1 text-sm font-medium text-slate-700">
+                                                    <span>ฝ่าย</span>
+                                                    <span className="text-red-500">{"*"}</span>
+                                                </label>
+                                                <select
+                                                    id="division"
+                                                    name="division_code"
+                                                    className="w-full rounded-2xl border border-slate-200 bg-slate-50/80 px-3.5 py-3.5 text-sm text-slate-900 shadow-[inset_0_1px_2px_rgba(15,23,42,0.04)] outline-none transition duration-200 focus:border-[#4A4DF1] focus:bg-white focus:ring-4 focus:ring-indigo-100 disabled:cursor-not-allowed disabled:opacity-60"
+                                                    value={divisionCode}
+                                                    onChange={(event) => setDivisionCode(event.target.value)}
+                                                    required
+                                                    disabled={isLoadingDivisions || isDivisionError}
+                                                >
+                                                    <option value="" disabled>
+                                                        {isLoadingDivisions ? "กำลังโหลดฝ่าย..." : "เลือกฝ่าย"}
+                                                    </option>
+                                                    {divisions?.map((division) => (
+                                                        <option key={division.code} value={division.code}>
+                                                            {division.name}
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                                {isDivisionError && (
+                                                    <p className="text-sm text-red-600" role="alert">
+                                                        โหลดรายการฝ่ายไม่สำเร็จ กรุณารีเฟรชหน้าแล้วลองอีกครั้ง
+                                                    </p>
+                                                )}
+                                                {!isLoadingDivisions && !isDivisionError && !divisions?.length && (
+                                                    <p className="text-sm text-amber-700" role="status">
+                                                        ยังไม่มีรายการฝ่ายให้เลือก
+                                                    </p>
+                                                )}
+                                            </div>
+                                        </>
                                     )}
                                 </div>
 
@@ -266,7 +311,11 @@ export default function Home() {
                                     <button
                                         type="submit"
                                         className="flex w-full items-center justify-center rounded-2xl bg-[#4A4DF1] px-4 py-3.5 text-sm font-semibold text-white shadow-[0_18px_32px_rgba(74,77,241,0.28)] transition duration-200 hover:-translate-y-0.5 hover:bg-[#3d43d8] focus:outline-none focus:ring-4 focus:ring-indigo-200 disabled:cursor-not-allowed disabled:opacity-70"
-                                        disabled={loginMutation.isPending || registerMutation.isPending}
+                                        disabled={
+                                            loginMutation.isPending ||
+                                            registerMutation.isPending ||
+                                            (isRegistering && (isLoadingDivisions || isDivisionError || !divisionCode))
+                                        }
                                     >
                                         {isRegistering
                                             ? registerMutation.isPending
@@ -284,6 +333,7 @@ export default function Home() {
                                             setIsRegistering((current) => !current);
                                             setIsForgotPassword(false);
                                             setRegisterMessage("");
+                                            setDivisionCode("");
                                         }}
                                     >
                                         {isRegistering ? "กลับเข้าสู่ระบบ" : "สมัครสมาชิก"}
