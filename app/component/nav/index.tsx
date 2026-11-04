@@ -51,7 +51,7 @@ const navItems: NavItem[] = [
     href: "/document",
     label: "จัดการแบบฟอร์ม",
     icon: "fluent-mdl2:document-set",
-    role: ["ADMIN"],
+    role: ["ADMIN", "SUPER_ADMIN"],
     children: [
       { href: "/create", label: "สร้างแบบฟอร์ม", description: "กำหนดแบบฟอร์มและขั้นตอนการอนุมัติ", icon: "gridicons:create" },
       { href: "/update_form", label: "แก้ไขแบบฟอร์ม", description: "ปรับปรุงแบบฟอร์มที่มีอยู่", icon: "material-symbols:edit-document-outline" },
@@ -63,7 +63,7 @@ const navItems: NavItem[] = [
     href: "/admin",
     label: "จัดการระบบ",
     icon: "pajamas:admin",
-    role: ["ADMIN"],
+    role: ["SUPER_ADMIN"],
     children: [
       { href: "/users", label: "จัดการผู้ใช้งาน", description: "เพิ่มและแก้ไขบัญชีผู้ใช้งาน", icon: "bx:user" },
       { href: "/position", label: "จัดการตำแหน่ง", description: "กำหนดตำแหน่งงานในองค์กร", icon: "carbon:building" },
@@ -94,7 +94,6 @@ export default function Nav() {
     ...process.map((doc) => doc.documentNo),
   ]).size;
   const userRole = useAuthStore((state) => state.user?.user_info.role);
-
   function toggleItem(href: string) {
     setExpandedNavigation((current) => {
       const currentItems = current.pathname === pathname ? current.hrefs : [];
@@ -287,7 +286,12 @@ export default function Nav() {
       (item) => !item.role || Boolean(userRole && item.role.includes(userRole)),
     );
     const adminItems = visibleItems.filter(
-      (item) => item.role?.length === 1 && item.role[0] === "ADMIN",
+      (item) => {
+        if(!item.role) {
+          return false;
+        }
+        return item.role[0] === "ADMIN" || item.role[0] === "SUPER_ADMIN";
+      },
     );
     const mainItems = visibleItems.filter((item) => !adminItems.includes(item));
 

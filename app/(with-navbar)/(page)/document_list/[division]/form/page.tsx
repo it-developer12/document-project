@@ -1,7 +1,7 @@
 'use client'
 import { useForm, SubmitHandler, Control, Controller } from "react-hook-form"
 import { FieldPreview } from "@/app/component/FormRender";
-import { ArrowLeft, ChevronDownIcon } from "lucide-react"
+import { ArrowLeft, ChevronDownIcon, Copy } from "lucide-react"
 import { StatusBadge } from "@/app/component/StatusBadge";
 import { Button } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/popover"
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import Select from 'react-select'
-import { useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { startOfDay, parseISO } from "date-fns";
 import { th } from "date-fns/locale";
 import Link from "next/link";
@@ -37,13 +37,19 @@ type FormSubmission = {
     priority: string;
 };
 
-function formatDocumentDate(value?: string) {
+function formatDocumentDate(value?: string, style: "short" | "long" = "long") {
     if (!value) return "ไม่ระบุ";
 
     const parsedDate = new Date(value);
     if (Number.isNaN(parsedDate.getTime())) return "ไม่ระบุ";
 
-    return new Intl.DateTimeFormat("th-TH", {
+    if (style === "short") {
+        return new Intl.DateTimeFormat("th-TH", {
+        dateStyle: "long",
+        timeZone: "Asia/Bangkok",
+    }).format(parsedDate);
+    } 
+    return  new Intl.DateTimeFormat("th-TH", {
         dateStyle: "long",
         timeStyle: "short",
         timeZone: "Asia/Bangkok",
@@ -75,8 +81,10 @@ function FormPageContent() {
     const useParams = useSearchParams();
     const schema_id = useParams.get('schema_id');
     const doc_id = useParams.get('doc_id');
+    const copy_from = useParams.get('copy_from');
     const doc_mode = useParams.get('mode');
     const router = useRouter();
+    const pathname = usePathname();
     const [date, setDate] = useState<Date>();
     const { data: companyList } = useCompanyList();
     const [priorityState, setPriorityState] = useState("");
@@ -102,7 +110,11 @@ function FormPageContent() {
     ]
 
     const { data, isLoading, error } = useFormSchema(schema_id || "");
-    const { data: dataFromBackend } = useDocumentDetail(doc_id || "");
+    const {
+        data: dataFromBackend,
+        isPending: isDocumentPending,
+        isError: isDocumentError,
+    } = useDocumentDetail(copy_from || doc_id || "");
     const { data: currentUser, isPending: isCurrentUserPending } = useCurrentUser();
     const approveMutate = useApproveMutation();
     const createDocumentMutation = useCreateDocument();
@@ -121,7 +133,24 @@ function FormPageContent() {
 
         return answersFromBackend.schema_version_id !== currentSchemaVersionId;
     }, [data, dataFromBackend]);
-    console.log(currentUser)
+    const isLatestSchemaVersion = useMemo(() => {
+        const currentRevision = dataFromBackend?.currentRevision;
+        const currentSchemaVersionId = data?.schemaVersion?.[0]?.id;
+
+        if (!currentRevision?.formData || !currentSchemaVersionId) {
+            return false;
+        }
+
+        const answersFromBackend = JSON.parse(currentRevision.formData);
+        return answersFromBackend.schema_version_id === currentSchemaVersionId;
+    }, [data, dataFromBackend]);
+    const isDocumentOwner =
+        dataFromBackend?.createdById === currentUser?.user_info?.id;
+    const isCopySourceEligible = isDocumentOwner && isLatestSchemaVersion;
+    const canCopyDocument =
+        doc_mode === "view" &&
+        Boolean(doc_id && schema_id) &&
+        isCopySourceEligible;
     const data_fields = useMemo(
         () =>
             data?.schemaVersion?.[0]?.fields?.map((item: any) => ({
@@ -140,6 +169,7 @@ function FormPageContent() {
     );
     const isDocumentMode =
         doc_mode === "edit" || doc_mode === "view" || doc_mode === "approve";
+    const isCopyingDocument = doc_mode === "create" && Boolean(copy_from);
 
     const fieldsFromSnapshot = useMemo(() => {
         if (!isDocumentMode || !dataFromBackend?.currentRevision?.snapshot) {
@@ -216,7 +246,13 @@ function FormPageContent() {
         });
         // form.reset(values);
 
-        if (!isDocumentMode || !doc_id || !dataFromBackend?.currentRevision) {
+        if (
+            (isCopyingDocument &&
+                (isCurrentUserPending || !isCopySourceEligible)) ||
+            (!isDocumentMode && !isCopyingDocument) ||
+            !(doc_id || copy_from) ||
+            !dataFromBackend?.currentRevision
+        ) {
             return;
         }
 
@@ -238,6 +274,11 @@ function FormPageContent() {
         }
 
         fileFields.forEach((fileField: any) => {
+            if (isCopyingDocument) {
+                result[fileField.id] = fileField.multiple ? [] : null;
+                return;
+            }
+
             const fileValue = result[fileField.id];
             if (!fileValue) return;
 
@@ -298,10 +339,13 @@ function FormPageContent() {
         dataFromBackend,
         doc_id,
         doc_mode,
+        copy_from,
         fields,
         form,
         hasRedirectedForEditAccess,
         isCurrentUserPending,
+        isCopyingDocument,
+        isCopySourceEligible,
         router,
     ]);
 
@@ -318,8 +362,37 @@ function FormPageContent() {
         }
     }, [error, router]);
 
-    if (isLoading) {
+    if (
+        isLoading ||
+        (isCopyingDocument && (isDocumentPending || isCurrentUserPending))
+    ) {
         return <Loading />
+    }
+
+    if (isCopyingDocument && isDocumentError) {
+        return (
+            <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-slate-50 p-6 text-center">
+                <p className="text-slate-700">Could not load the document to copy.</p>
+                <Button type="button" variant="outline" onClick={() => router.replace("/dashboard")}>
+                    Back to dashboard
+                </Button>
+            </div>
+        );
+    }
+
+    if (isCopyingDocument && dataFromBackend && !isCopySourceEligible) {
+        return (
+            <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-slate-50 p-6 text-center">
+                <p className="text-slate-700">
+                    {isDocumentOwner
+                        ? "Only documents using the latest form version can be copied."
+                        : "Only the document owner can copy this document."}
+                </p>
+                <Button type="button" variant="outline" onClick={() => router.replace("/dashboard")}>
+                    Back to dashboard
+                </Button>
+            </div>
+        );
     }
 
     if (error) {
@@ -539,6 +612,17 @@ function FormPageContent() {
         router.push(route)
     }
 
+    function copyDocument() {
+        if (!canCopyDocument || !doc_id || !schema_id) return;
+
+        const params = new URLSearchParams({
+            schema_id,
+            mode: "create",
+            copy_from: doc_id,
+        });
+        router.push(`${pathname}?${params.toString()}`);
+    }
+
     function submitApproval() {
         if (!dataFromBackend || !pendingDecision) return;
 
@@ -676,7 +760,7 @@ function FormPageContent() {
                         <div>
                             <p className="text-slate-500">วันครบกำหนด</p>
                             <p className="mt-1 font-medium text-slate-900">
-                                {formatDocumentDate(dataFromBackend.dueDate)}
+                                {formatDocumentDate(dataFromBackend.dueDate, "short")}
                             </p>
                         </div>
                     </div>
@@ -698,7 +782,7 @@ function FormPageContent() {
                             </>
                         )}
                     </div>
-                    {doc_mode === "view" && doc_id && (
+                    {doc_mode === "view" && doc_id && schema_id && (
                         <div className="flex items-center gap-2">
                             <Button
                                 variant="outline"
@@ -707,7 +791,7 @@ function FormPageContent() {
                                 className="border-indigo-200 text-indigo-700 hover:bg-indigo-50"
                                 onClick={() => exportPDFMutation.mutate({ code: doc_id, disposition: "inline" })}
                             >
-                                {"Preview"}
+                                {"ดูตัวอย่าง PDF"}
                             </Button>
                             <Button
                                 variant="default"
@@ -716,8 +800,19 @@ function FormPageContent() {
                                 className="bg-indigo-600 text-white hover:bg-indigo-700"
                                 onClick={() => exportPDFMutation.mutate({ code: doc_id, disposition: "attachment" })}
                             >
-                                {"Export PDF"}
+                                {"ดาวน์โหลด PDF"}
                             </Button>
+                            {canCopyDocument && (
+                                <Button
+                                    variant="outline"
+                                    type="button"
+                                    className="border-emerald-200 text-emerald-700 hover:bg-emerald-50"
+                                    onClick={copyDocument}
+                                >
+                                    <Copy aria-hidden="true" className="mr-2 size-4" />
+                                    {"คัดลอกเป็นเอกสารใหม่"}
+                                </Button>
+                            )}
                         </div>
                     )}
                 </div>

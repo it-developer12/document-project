@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { AxiosError } from "axios";
+import { toast } from "react-toastify";
 import { useDocumentStore } from "@/store/document.store";
 import { getDocumentList } from "@/api/document";
 
@@ -34,10 +35,12 @@ export function useGetDocuments() {
     useEffect(() => {
         if (query.error) {
             const error = query.error as AxiosError<ErrorResponse>;
-            console.log(
-                "Failed to get documents:",
-                error.response?.data?.message ?? error.message,
-            );
+            const message =
+                error.response?.data?.message ??
+                error.message ??
+                "เกิดข้อผิดพลาดในการโหลดเอกสาร";
+            console.error("Failed to load documents:", message);
+            toast.error(message);
         }
     }, [query.error]);
 

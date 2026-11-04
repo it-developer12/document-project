@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { AxiosError } from "axios";
 import { useTrackingStore } from "@/store/tracking.store";
 import { getLastestDocument } from "@/api/document";
+import { toast } from "react-toastify";
 
 
 type ErrorResponse = {
@@ -28,10 +29,12 @@ export function useGetTracking() {
     useEffect(() => {
         if (query.error) {
             const error = query.error as AxiosError<ErrorResponse>;
-            console.log(
-                "Failed to get documents:",
-                error.response?.data?.message ?? error.message,
-            );
+            const message =
+                error.response?.data?.message ??
+                error.message ??
+                "เกิดข้อผิดพลาดในการโหลดเอกสาร";
+            console.error("Failed to load documents:", message);
+            toast.error(message);
         }
     }, [query.error]);
 

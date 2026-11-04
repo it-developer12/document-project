@@ -12,7 +12,7 @@ export default function AdminLayout({
 }>) {
   const router = useRouter();
   const user = useAuthStore((state) => state.user);
-  const isAdmin = user?.user_info.role === "ADMIN";
+  const isAdmin = user?.user_info.role === "ADMIN" || user?.user_info.role === "SUPER_ADMIN";
 
   useEffect(() => {
     if (user && !isAdmin) {
