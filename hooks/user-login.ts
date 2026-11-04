@@ -6,6 +6,7 @@ import { AxiosError } from "axios";
 
 import { getMe, loginApi, type LoginRequest } from "@/api/auth";
 import { useAuthStore } from "@/store/auth.store";
+import { toast } from "react-toastify";
 
 type LoginErrorResponse = {
   message?: string;
@@ -29,10 +30,9 @@ export function useLogin() {
     },
 
     onError: (error: AxiosError<LoginErrorResponse>) => {
-      console.log(
-        "Login failed:",
-        error.response?.data?.message ?? error.message,
-      );
+      const message = error.response?.data?.message || error.message || "เกิดข้อผิดพลาดในการเข้าสู่ระบบ";
+      console.error("Login failed:", message);
+      toast.error(message);
     },
   });
 }

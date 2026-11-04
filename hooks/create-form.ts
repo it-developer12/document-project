@@ -13,10 +13,11 @@ export function useDivisionList(enabled = true) {
 	});
 }
 
-export function useCompanyList() {
+export function useCompanyList(enabled = true) {
     return useQuery({
         queryKey: ["company"],
         queryFn: getCompanyList,
+        enabled,
         retry: false,
         staleTime: 30 * 60000,
     });
@@ -40,10 +41,11 @@ export function useDepartmentList() {
     });
 }
 
-export function usePositionList() {
+export function usePositionList(enabled = true) {
     return useQuery({
         queryKey: ["position"],
         queryFn: getPositionList,
+        enabled,
         retry: false,
         staleTime: 30 * 60000,
     });
