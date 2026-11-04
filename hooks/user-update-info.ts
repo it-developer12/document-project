@@ -3,7 +3,11 @@
 import { AxiosError } from "axios";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "react-toastify";
-import { updateUser, type UpdateUserPayload } from "@/api/user";
+import {
+  updateUser,
+  updateUserByAdmin,
+  type UpdateUserPayload,
+} from "@/api/user";
 
 type UpdateUserVariables = {
   userId: string;
@@ -24,6 +28,28 @@ export function useUpdateUserInfo() {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["me"] }),
         queryClient.invalidateQueries({ queryKey: ["auth", "me"] }),
+      ]);
+      toast.success("อัปเดตข้อมูลผู้ใช้สำเร็จ");
+    },
+    onError: (error: AxiosError<UpdateUserError>) => {
+      toast.error(
+        error.response?.data?.message ??
+          error.message ??
+          "Could not update user information.",
+      );
+    },
+  });
+}
+
+export function useUpdateUserInfoByAdmin() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ userId, userData }: UpdateUserVariables) =>
+      updateUserByAdmin(userId, userData),
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["all-employees"] }),
       ]);
       toast.success("อัปเดตข้อมูลผู้ใช้สำเร็จ");
     },

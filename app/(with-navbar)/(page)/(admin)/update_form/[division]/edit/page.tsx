@@ -1140,7 +1140,6 @@ export default function Page() {
     }
 
     function EmployeeModal({ onClose, type, List }: { onClose: () => void, type: string, List: any }) {
-        console.log(formDetail)
         return (
             <div
                 className="fixed inset-0 z-50 flex items-center justify-center p-6"

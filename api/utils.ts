@@ -32,9 +32,18 @@ export type EmployeeRecord = {
     fullName: string;
     firstName: string;
     lastName: string;
+    title?: "MR" | "MS" | "MRS" | null;
+    firstNameEn?: string;
+    lastNameEn?: string;
+    email?: string | null;
     role: string;
+    status: boolean;
+    assign_to_employee?: {
+        employee_code: string;
+    } | null;
     position: PositionRecord;
     company: {
+        code?: string;
         name: string;
     };
 };

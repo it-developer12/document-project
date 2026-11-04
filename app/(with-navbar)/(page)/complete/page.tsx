@@ -57,7 +57,6 @@ export default function Page() {
     const [message, setMessage] = useState("");
     const processMutate = useProcessMutation(setDetail);
     const finishMutate = useFinishMutation(setDetail);
-    console.log(docs)
     const processingDocuments: TableDocument[] = docs
         .map((doc) => ({
             id: doc.documentNo,
