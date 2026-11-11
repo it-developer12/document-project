@@ -1,6 +1,10 @@
 'use client';
 import { getAllForm } from "@/api/form";
-import { updateDraftTemplate, updateTemplate } from "@/api/template";
+import {
+    deactivateTemplate,
+    updateDraftTemplate,
+    updateTemplate,
+} from "@/api/template";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { toast } from "react-toastify";
@@ -46,5 +50,27 @@ export function useUpdateDraftTemplate() {
             toast.success('อัพเดทฉบับร่างแบบฟอร์มเอกสารสำเร็จ');
             router.push('/dashboard')
         }
+    });
+}
+
+export function useDeactivateTemplate() {
+    const queryClient = useQueryClient();
+    const setForms = useFormStore((state) => state.setForms);
+
+    return useMutation({
+        mutationFn: (code: string) => deactivateTemplate(code),
+        onSuccess: async (result) => {
+            toast.success(result.message);
+            try {
+                const forms = await getAllForm();
+                queryClient.setQueryData(["form"], forms);
+                setForms(forms);
+            } catch (error: any) {
+                toast.error(error?.response?.data?.message || error?.message || "ไม่สามารถโหลดรายการแบบฟอร์มล่าสุดได้");
+            }
+        },
+        onError: (error: any) => {
+            toast.error(error?.response?.data?.message || error?.message || "ไม่สามารถปิดใช้งานแบบฟอร์มเอกสารได้");
+        },
     });
 }

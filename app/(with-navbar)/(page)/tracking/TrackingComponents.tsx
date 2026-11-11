@@ -17,6 +17,7 @@ import {
 
 type TrackingStage = {
     stage: string
+    label: string
     status: string
     activity: any[]
     sub_stage?: any[]
@@ -74,8 +75,11 @@ export function WorkflowProgress({ stages, currentStage, separatorCount, onStage
                                         <StepperIndicator className="data-[state=completed]:bg-green-500 data-[state=completed]:text-white data-[state=inactive]:text-gray-500">
                                             {isCancelled || isRejected ? <XIcon className={isCancelled ? "bg-red-500 text-white" : "bg-black text-white"} /> : stepNumber}
                                         </StepperIndicator>
-                                        <StepperTitle>{stage.stage}</StepperTitle>
-                                        <StepperDescription>{stage.activity.at(-1)?.message ?? ""}</StepperDescription>
+                                        <StepperTitle>{stage.label}</StepperTitle>
+                                        <StepperDescription>
+                                            {stage.activity.at(-1)?.message
+                                                ?? (stage.stage === "editor" ? "รอผู้ดำเนินการกรอกข้อมูล" : "")}
+                                        </StepperDescription>
                                     </StepperTrigger>
                                     {separatorCount > index + 1 && <StepperSeparator className="group-data-[state=completed]/step:bg-green-500 absolute inset-x-0 top-2.5 left-[calc(50%+0.875rem)] m-0 group-data-[orientation=horizontal]/stepper-nav:w-[calc(100%-2rem+0.225rem)] group-data-[orientation=horizontal]/stepper-nav:flex-none" />}
                                 </StepperItem>
@@ -98,30 +102,30 @@ export function ActivityHistory({ activities }: { activities: any[] }) {
                 </p>
             </div>
             {activities.length ? (
-            <div className="mt-4 flex items-center justify-start">
-                <Stepper className="flex flex-col justify-center gap-10" value={activities.length} orientation="vertical">
-                    <StepperNav>
-                        {activities.map((step, index) => (
-                            <StepperItem key={index} step={index + 1} className="relative items-start not-last:flex-1">
-                                <StepperTrigger className="items-start gap-2.5 pb-8 px-1.5 mt-2 last:pb-0">
-                                    <StepperIndicator className="data-[state=completed]:bg-[#4A4DF1] data-[state=active]:bg-[#4A4DF1] data-[state=inactive]:bg-[#4A4DF1] data-[state=completed]:text-white size-3">{""}</StepperIndicator>
-                                    <div className="mt-0.5 text-left">
-                                        <StepperTitle><span className="font-semibold">{step.message}</span>{" โดย " + (step.createdBy?.firstName ?? "ไม่ระบุ")}</StepperTitle>
-                                        <div className="flex gap-2">
-                                            <StepperDescription>
-                                                {dayjs(step.createdAt).isValid()
-                                                    ? dayjs.utc(step.createdAt).tz("Asia/Bangkok").format("DD-MM-YYYY เวลา HH:mm")
-                                                    : "ไม่ระบุวันที่"}
-                                            </StepperDescription>
+                <div className="mt-4 flex items-center justify-start">
+                    <Stepper className="flex flex-col justify-center gap-10" value={activities.length} orientation="vertical">
+                        <StepperNav>
+                            {activities.map((step, index) => (
+                                <StepperItem key={index} step={index + 1} className="relative items-start not-last:flex-1">
+                                    <StepperTrigger className="items-start gap-2.5 pb-8 px-1.5 mt-2 last:pb-0">
+                                        <StepperIndicator className="data-[state=completed]:bg-[#4A4DF1] data-[state=active]:bg-[#4A4DF1] data-[state=inactive]:bg-[#4A4DF1] data-[state=completed]:text-white size-3">{""}</StepperIndicator>
+                                        <div className="mt-0.5 text-left">
+                                            <StepperTitle><span className="font-semibold">{step.message}</span>{" โดย " + (step.createdBy?.firstName ?? "ไม่ระบุ")}</StepperTitle>
+                                            <div className="flex gap-2">
+                                                <StepperDescription>
+                                                    {dayjs(step.createdAt).isValid()
+                                                        ? dayjs.utc(step.createdAt).tz("Asia/Bangkok").format("DD-MM-YYYY เวลา HH:mm")
+                                                        : "ไม่ระบุวันที่"}
+                                                </StepperDescription>
+                                            </div>
                                         </div>
-                                    </div>
-                                </StepperTrigger>
-                                {index < activities.length - 1 && <StepperSeparator className="group-data-[state=completed]/step:bg-[#E2E5EF] group-data-[state=active]/step:bg-[#E2E5EF] group-data-[state=inactive]/step:bg-[#E2E5EF] absolute inset-y-0 top-7 left-3 -order-1 m-0 -translate-x-1/2 group-data-[orientation=vertical]/stepper-nav:h-[calc(100%-2rem)]" />}
-                            </StepperItem>
-                        ))}
-                    </StepperNav>
-                </Stepper>
-            </div>
+                                    </StepperTrigger>
+                                    {index < activities.length - 1 && <StepperSeparator className="group-data-[state=completed]/step:bg-[#E2E5EF] group-data-[state=active]/step:bg-[#E2E5EF] group-data-[state=inactive]/step:bg-[#E2E5EF] absolute inset-y-0 top-7 left-3 -order-1 m-0 -translate-x-1/2 group-data-[orientation=vertical]/stepper-nav:h-[calc(100%-2rem)]" />}
+                                </StepperItem>
+                            ))}
+                        </StepperNav>
+                    </Stepper>
+                </div>
             ) : (
                 <div className="mt-5 flex flex-col items-center rounded-xl border border-dashed border-slate-300 bg-slate-50 px-6 py-9 text-center">
                     <span className="flex size-11 items-center justify-center rounded-full bg-white text-slate-400 shadow-sm">
@@ -137,9 +141,8 @@ export function ActivityHistory({ activities }: { activities: any[] }) {
 
 export function DetailModal({ stage, stages, document: detailDocument, onClose }: { stage: string; stages: TrackingStage[]; document: DetailDocument; onClose: () => void }) {
     const modalDetail = stages.find((item) => item.stage === stage)
-
     if (!modalDetail) return null
-    const isEveryone = detailDocument?.document?.workflowInstance?.workflowDefinitionVersion?.processorType
+    const isEveryone = detailDocument?.document?.workflowInstance?.workflowDefinitionVersion?.processorType === "ALL_IN_DIVISION"
     const approverRows = (modalDetail.sub_stage ?? []).map((step, index, rows) => {
         const startedAt = new Date(step.startedAt).getTime()
         const actedAt = new Date(step.actedAt).getTime()
@@ -182,75 +185,91 @@ export function DetailModal({ stage, stages, document: detailDocument, onClose }
                 <div className="overflow-y-auto p-6 flex flex-col gap-5" style={{ scrollbarWidth: "none" }}>
                     <div className="flex gap-2 flex-wrap"><span className="text-[#4A4DF1]">● กำลังรอการดำเนินการ</span><span className="text-gray-400">● ยังไม่ถึงขั้นตอนการดำเนินการ</span><span className="text-green-500">● ดำเนินการเรียบร้อยแล้ว</span><span className="text-black">● เอกสารตีกลับ</span><span className="text-red-500">● ยกเลิกเอกสาร</span></div>
                     <div className="space-y-2">
-                        {stage === "approve" ?
-                            approverRowsByLevel.map(({ level, approvers, representative }) =>
-                                <div key={level} className={`w-full p-3 flex justify-between rounded-2xl ${statusClass(representative.status, representative.decision)}`}>
-                                    <span>
-                                        {statusText(representative.status, representative.decision)} โดย{" "}
-                                        {approvers.map((approver) => approver.employee.firstName).join(" หรือ ")}
-                                    </span>
-                                    <span>{representative.status === "PENDING"
-                                        ?
-                                        ""
-                                        :
-                                        representative.timeSpent !== -1 && (representative.status !== "WAITING")
+                        {stage === "editor" ? detailDocument.editor.map((em: any, idx: number) => (
+                            <div key={idx} className={`w-full rounded-2xl p-3 text-white ${detailDocument.document.status === "WAITING_EDITOR"
+                                ? "bg-blue-500"
+                                : detailDocument.document.status === "EDITOR_REJECTED"
+                                    ? "bg-black"
+                                    : "bg-green-500"
+                                }`}>
+                                <span>
+                                    {detailDocument.document.status === "WAITING_EDITOR"
+                                        ? "กำลังรอการดำเนินการ โดย " + em.editor[0]?.employee?.firstName
+                                        : detailDocument.document.status === "EDITOR_REJECTED"
+                                            ? "ถูกตีกลับโดยผู้กรอกข้อมูล " + em.editor[0]?.employee?.firstName
+                                            : "ผู้ดำเนินการกรอกข้อมูลแล้ว โดย " + em.editor[0]?.employee?.firstName}
+                                </span>
+                            </div>
+                        ))
+                            : stage === "approve" ?
+                                approverRowsByLevel.map(({ level, approvers, representative }) =>
+                                    <div key={level} className={`w-full p-3 flex justify-between rounded-2xl ${statusClass(representative.status, representative.decision)}`}>
+                                        <span>
+                                            {statusText(representative.status, representative.decision)} โดย{" "}
+                                            {approvers.map((approver) => approver.employee.firstName).join(" หรือ ")}
+                                        </span>
+                                        <span>{representative.status === "PENDING"
                                             ?
-                                            `${representative.timeSpent} วัน`
+                                            ""
                                             :
-                                            representative.timeSpent === -1 && (representative.status !== "WAITING") && (representative.status !== "SKIPPED")
+                                            representative.timeSpent !== -1 && (representative.status !== "WAITING")
                                                 ?
-                                                "ใช้เวลาน้อยกว่า 1 วัน"
+                                                `${representative.timeSpent} วัน`
                                                 :
-                                                ""}</span>
-                                </div>)
-                            :
-                            stage === "process"
-                                ?
-                                <>
-                                    {isEveryone ?
-                                        <div className={`w-full text-white p-3 flex justify-between rounded-2xl ${detailDocument.document.status === "PROCESSING" ? "bg-blue-500" : detailDocument.document.status === "COMPLETED" ? "bg-green-500" : "bg-gray-400"}`}>
-                                            <span>{detailDocument.document.status === "PROCESSING" ? "กำลังดำเนินการ" : "ผู้ดำเนินการ"} {"โดย"} {"ทุกคนในแผนก"}</span>
+                                                representative.timeSpent === -1 && (representative.status !== "WAITING") && (representative.status !== "SKIPPED")
+                                                    ?
+                                                    "ใช้เวลาน้อยกว่า 1 วัน"
+                                                    :
+                                                    ""}</span>
+                                    </div>)
+                                :
+                                stage === "process"
+                                    ?
+                                    <>
+                                        {isEveryone ?
+                                            <div className={`w-full text-white p-3 flex justify-between rounded-2xl ${detailDocument.document.status === "PROCESSING" ? "bg-blue-500" : detailDocument.document.status === "COMPLETED" ? "bg-green-500" : "bg-gray-400"}`}>
+                                                <span>{detailDocument.document.status === "PROCESSING" ? "กำลังดำเนินการ" : "ผู้ดำเนินการ"} {"โดย"} {"ทุกคนในแผนก"}</span>
+                                            </div>
+                                            :
+                                            detailDocument.processor.map((pro: any, idx: number) =>
+                                                <div key={idx} className={`w-full text-white p-3 flex justify-between rounded-2xl ${detailDocument.document.status === "PROCESSING" ? "bg-blue-500" : detailDocument.document.status === "COMPLETED" ? "bg-green-500" : "bg-gray-400"}`}>
+                                                    <span>{detailDocument.document.status === "PROCESSING" ? "กำลังดำเนินการ" : "ผู้ดำเนินการ"} {"โดย"} {pro.processor[0].employee.firstName}</span>
+                                                </div>
+                                            )
+                                        }
+                                        <div className="flex justify-center">
+                                            <hr className="w-11/12 border-2 border-gray-400 rounded-full" />
+                                        </div>
+                                        {processRows.map((item, index) =>
+                                            <div key={index} className="w-full bg-green-500 text-white p-3 flex justify-between rounded-2xl">
+                                                <span>{item.description} {"โดย"} {item.processBy.firstName}</span>
+                                                <span>{item.diff > 0
+                                                    ?
+                                                    `${item.diff} ชั่วโมง`
+                                                    :
+                                                    "น้อยกว่า 1 ชั่วโมง"}</span>
+                                            </div>
+                                        )}
+                                    </>
+                                    :
+                                    stage === "submit"
+                                        ?
+                                        <div className="w-full bg-green-500 text-white p-3 flex justify-between rounded-2xl">
+                                            <span>{modalDetail.activity[0]?.message} {"โดย"} {modalDetail.activity[0]?.createdBy?.firstName}</span>
                                         </div>
                                         :
-                                        detailDocument.processor.map((pro: any, idx: number) =>
-                                            <div key={idx} className={`w-full text-white p-3 flex justify-between rounded-2xl ${detailDocument.document.status === "PROCESSING" ? "bg-blue-500" : detailDocument.document.status === "COMPLETED" ? "bg-green-500" : "bg-gray-400"}`}>
-                                                <span>{detailDocument.document.status === "PROCESSING" ? "กำลังดำเนินการ" : "ผู้ดำเนินการ"} {"โดย"} {pro.processor[0].employee.firstName}</span>
+                                        stage === "complete" && detailDocument.document.status === "COMPLETED" ? (
+                                            <div className="w-full bg-green-500 text-white p-3 flex justify-between rounded-2xl">
+                                                <span>
+                                                    เอกสารเสร็จสิ้นโดย {" "}
+                                                    {modalDetail.activity[0]?.createdBy?.firstName ?? "ไม่พบชื่อผู้สิ้นสุดเอกสาร"}
+                                                </span>
+                                            </div>
+                                        ) : (
+                                            <div className={`w-full text-white bg-gray-400 p-3 flex justify-between rounded-2xl`}>
+                                                <span>{"ปิดจบเอกสาร"} {"โดย"} {detailDocument.finisher[0].finisher[0].employee.firstName}</span>
                                             </div>
                                         )
-                                    }
-                                    <div className="flex justify-center">
-                                        <hr className="w-11/12 border-2 border-gray-400 rounded-full" />
-                                    </div>
-                                    {processRows.map((item, index) =>
-                                        <div key={index} className="w-full bg-green-500 text-white p-3 flex justify-between rounded-2xl">
-                                            <span>{item.description} {"โดย"} {item.processBy.firstName}</span>
-                                            <span>{item.diff > 0
-                                                ?
-                                                `${item.diff} ชั่วโมง`
-                                                :
-                                                "น้อยกว่า 1 ชั่วโมง"}</span>
-                                        </div>
-                                    )}
-                                </>
-                                :
-                                stage === "submit"
-                                    ?
-                                    <div className="w-full bg-green-500 text-white p-3 flex justify-between rounded-2xl">
-                                        <span>{modalDetail.activity[0]?.message} {"โดย"} {modalDetail.activity[0]?.createdBy?.firstName}</span>
-                                    </div>
-                                    :
-                                    stage === "complete" && detailDocument.document.status === "COMPLETED" ? (
-                                        <div className="w-full bg-green-500 text-white p-3 flex justify-between rounded-2xl">
-                                            <span>
-                                                เอกสารเสร็จสิ้นโดย {" "}
-                                                {modalDetail.activity[0]?.createdBy?.firstName ?? "ไม่พบชื่อผู้สิ้นสุดเอกสาร"}
-                                            </span>
-                                        </div>
-                                    ) : (
-                                        <div className={`w-full text-white bg-gray-400 p-3 flex justify-between rounded-2xl`}>
-                                            <span>{"ปิดจบเอกสาร"} {"โดย"} {detailDocument.finisher[0].finisher[0].employee.firstName}</span>
-                                        </div>
-                                    )
                         }
                     </div>
                 </div>

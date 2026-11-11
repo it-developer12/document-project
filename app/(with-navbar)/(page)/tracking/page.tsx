@@ -23,15 +23,17 @@ dayjs.extend(utc);
 dayjs.extend(timezone);
 
 type TrackedDocumentStatus =
+    | "WAITING_EDITOR"
     | "WAITING_APPROVAL"
     | "PROCESSING"
     | "REJECTED"
     | "CANCELLED"
+    | "USER_CANCELLED"
     | "COMPLETED"
     | "DRAFT";
 
 function isTrackedDocumentStatus(status: string): status is TrackedDocumentStatus {
-    return ["WAITING_APPROVAL", "PROCESSING", "REJECTED", "CANCELLED", "COMPLETED", "DRAFT"].includes(status);
+    return ["WAITING_EDITOR", "WAITING_APPROVAL", "PROCESSING", "REJECTED", "CANCELLED", "USER_CANCELLED", "COMPLETED", "DRAFT"].includes(status);
 }
 
 export default function Page() {
@@ -73,6 +75,20 @@ export default function Page() {
         triggerSearch(target);
     }
 
+    function findStageStatus(stage:string, status: string) {
+        if (stage === "editor") {
+            if (status === "WAITING_EDITOR") {
+                return "IN_PROCESS"
+            } else if (status !== "WAITING_EDITOR" && status !== "CANCELLED" && status !== "EDITOR_REJECTED" ) {
+                return "COMPLETED"
+            } else if (status === "EDITOR_REJECTED"){
+                return "REJECTED"
+            } else {
+                return ""
+            }
+        }
+    }
+
     async function findDoc(documentId: string = searchState) {
         const word = documentId.trim();
         if (!word) return;
@@ -93,32 +109,43 @@ export default function Page() {
             return;
         }
         const execution = dd.workflowInstance?.executions?.[0];
+        const isUserCancelled = dd.status === "USER_CANCELLED";
         const activity = [
             {
                 stage: "submit",
-                status: "COMPLETE",
+                label: "ส่งเอกสารเข้าสู่ระบบ",
+                status: isUserCancelled ? "CANCELLED" : "COMPLETED",
                 activity: (dd?.activities ?? []).filter((item: any) => (item.type ?? "").includes("SUBMIT"))
             },
             {
+                stage: "editor",
+                label: "ใส่ข้อมูลเพิ่มเติมโดยผู้แก้ไข",
+                status: isUserCancelled ? "" : findStageStatus("editor", dd.status),
+                activity: (dd?.activities ?? []).filter((item: any) => (item.type ?? "").includes("EDITOR")),
+                sub_stage: []
+            },
+            {
                 stage: "approve",
-                status: execution?.status === "REJECTED" ? "REJECTED" : execution?.status === "CANCELLED" ? "CANCELLED" : execution?.status === "RUNNING" ? "IN_PROCESS" : execution ? "COMPLETED" : "",
+                label: "อนุมัติเอกสาร",
+                status: isUserCancelled ? "" : execution?.status === "REJECTED" ? "REJECTED" : execution?.status === "CANCELLED" ? "CANCELLED" : execution?.status === "RUNNING" ? "IN_PROCESS" : execution?.status === "WAITING"  ? "" : "COMPLETED",
                 activity: (dd?.activities ?? []).filter((item: any) => (item.type ?? "").includes("APPROVE")),
                 sub_stage: execution?.steps ?? []
             },
             {
                 stage: "process",
-                status: dd?.status === "PROCESSING" ? "IN_PROCESS" : dd?.status === "COMPLETED" ? "COMPLETED" : "",
+                label: "ดำเนินการตามเอกสาร",
+                status: isUserCancelled ? "" : dd?.status === "PROCESSING" ? "IN_PROCESS" : dd?.status === "COMPLETED" ? "COMPLETED" : "",
                 activity: (dd?.activities ?? []).filter((item: any) => (item.type ?? "").includes("PROCESS")),
                 sub_stage: dd?.processInstances?.[0]?.processInstanceTasks ?? []
             },
             {
                 stage: "complete",
-                status: dd?.status === "COMPLETED" ? "COMPLETE" : "",
+                label: "เสร็จสิ้น",
+                status: isUserCancelled ? "" : dd?.status === "COMPLETED" ? "COMPLETE" : "",
                 activity: (dd?.activities ?? []).filter((item: any) => (item.type ?? "").includes("COMPLETE")),
                 sub_stage: []
             },
         ];
-
         setMainStage(activity)
         const comment = execution?.steps?.find((step: any) => step.decision === "REJECT" || step.decision === "CANCEL")?.comment ?? ""
         const snapshot = dd?.revisions?.[0]?.snapshot ?? '[]';
@@ -160,14 +187,18 @@ export default function Page() {
 
     function findCurrentStage(data: any) {
         let stage = 1;
-        if (data.status === "WAITING_APPROVAL") {
+        if (data.status === "WAITING_EDITOR") {
             stage = 2
-        } else if (data.status === "PROCESSING") {
+        } else if (data.status === "WAITING_APPROVAL") {
             stage = 3
-        } else if (data.status === "REJECTED" || data.status === "CANCELLED") {
-            stage = data.workflowInstance?.executions?.[0]?.status === "REJECTED" || data.workflowInstance?.executions?.[0]?.status === "CANCELLED" ? 2 : 3
-        } else if (data.status === "COMPLETED") {
+        } else if (data.status === "PROCESSING") {
             stage = 4
+        } else if (data.status === "REJECTED" || data.status === "EDITOR_REJECTED") {
+            stage = data.workflowInstance?.executions?.[0]?.status === "REJECTED" ? 3 : 2
+        } else if (data.status === "CANCELLED") {
+            data.workflowInstance?.executions?.[0]?.status === "CANCELLED" ? 3 : 4
+        } else if (data.status === "COMPLETED") {
+            stage = 5
         }
 
         return stage;
@@ -409,7 +440,7 @@ export default function Page() {
                     <WorkflowProgress
                         stages={mainStage}
                         currentStage={findCurrentStage(detailDocument.document)}
-                        separatorCount={4}
+                        separatorCount={5}
                         onStageClick={(stage) => setDetail({ open: true, stage })}
                     />
                     {(detailDocument.document.status === "CANCELLED" || detailDocument.document.status === "REJECTED") && (

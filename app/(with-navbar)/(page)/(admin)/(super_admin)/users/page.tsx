@@ -656,7 +656,7 @@ export default function Page() {
                 <label className="grid gap-2 text-sm font-medium text-slate-700">
                   {"Email"}
                   <Input
-                    type="email"
+                    type="text"
                     value={employeeEditDraft.email}
                     onChange={(event) =>
                       setEmployeeEditDraft((draft) =>

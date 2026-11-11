@@ -1,7 +1,7 @@
 'use client'
 import { useForm, SubmitHandler, Control, Controller } from "react-hook-form"
 import { FieldPreview } from "@/app/component/FormRender";
-import { ArrowLeft, ChevronDownIcon, Copy } from "lucide-react"
+import { ArrowLeft, ChevronDownIcon, Clock3, Copy, Info } from "lucide-react"
 import { StatusBadge } from "@/app/component/StatusBadge";
 import { Button } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
@@ -19,6 +19,8 @@ import Link from "next/link";
 import { toast } from "react-toastify";
 import Loading from "@/app/component/loading";
 import { useApproveMutation } from "@/hooks/approve-document";
+import { useCancelByRequester } from "@/hooks/cancel-by-requester";
+import { useEditorDocumentAction } from "@/hooks/editor-document-action";
 import { useCreateDocument } from "@/hooks/create-document";
 import { useUpdateDocument } from "@/hooks/update-document";
 import { useGetDocuments } from "@/hooks/set-document";
@@ -97,12 +99,6 @@ function FormPageContent() {
     ]);
 
     const COMPANY_OPTIONS = companyList?.map((c: any) => ({ label: c.name as string, value: c.code as string })) ?? [];
-    const ApproverLists = [
-        { value: "2168160", label: "Approver 1" }, //2168160
-        { value: "2153002", label: "Approver 2" }, //2153002
-        { value: "2159001", label: "Approver 3" }, //2159001
-        { value: "2254002", label: "Approver 4" }, //2254002
-    ];
     const priority = [
         { value: "low", label: "น้อย" },
         { value: "medium", label: "ปานกลาง" },
@@ -110,6 +106,8 @@ function FormPageContent() {
     ]
 
     const { data, isLoading, error } = useFormSchema(schema_id || "");
+    const schemaVersions = data?.schemaVersion ?? [];
+    const latestSchemaVersion = schemaVersions[schemaVersions.length - 1];
     const {
         data: dataFromBackend,
         isPending: isDocumentPending,
@@ -117,13 +115,24 @@ function FormPageContent() {
     } = useDocumentDetail(copy_from || doc_id || "");
     const { data: currentUser, isPending: isCurrentUserPending } = useCurrentUser();
     const approveMutate = useApproveMutation();
+    const cancelByRequesterMutation = useCancelByRequester();
+    const editorActionMutation = useEditorDocumentAction();
     const createDocumentMutation = useCreateDocument();
     const updateDocumentMutation = useUpdateDocument();
     const exportPDFMutation = useExportPDF();
     const hasRedirectedForEditAccess = useRef(false);
+    const isCurrentEditor = Boolean(
+        currentUser?.user_info?.id &&
+        dataFromBackend?.workflowInstance?.workflowDefinitionVersion?.workflowStep?.some(
+            (step: any) => step.editor?.some(
+                (assignment: any) => assignment.employee?.id === currentUser.user_info.id,
+            ),
+        ),
+    );
+    const canEditEditorFields = doc_mode === "editor" && isCurrentEditor;
     const isNewVersion = useMemo(() => {
         const currentRevision = dataFromBackend?.currentRevision;
-        const currentSchemaVersionId = data?.schemaVersion?.[0]?.id;
+        const currentSchemaVersionId = latestSchemaVersion?.id;
 
         if ((dataFromBackend?.status !== "DRAFT" && dataFromBackend?.status !== "REJECTED") || !currentRevision?.formData || !currentSchemaVersionId) {
             return false;
@@ -132,10 +141,10 @@ function FormPageContent() {
         const answersFromBackend = JSON.parse(currentRevision.formData);
 
         return answersFromBackend.schema_version_id !== currentSchemaVersionId;
-    }, [data, dataFromBackend]);
+    }, [latestSchemaVersion, dataFromBackend]);
     const isLatestSchemaVersion = useMemo(() => {
         const currentRevision = dataFromBackend?.currentRevision;
-        const currentSchemaVersionId = data?.schemaVersion?.[0]?.id;
+        const currentSchemaVersionId = latestSchemaVersion?.id;
 
         if (!currentRevision?.formData || !currentSchemaVersionId) {
             return false;
@@ -143,9 +152,20 @@ function FormPageContent() {
 
         const answersFromBackend = JSON.parse(currentRevision.formData);
         return answersFromBackend.schema_version_id === currentSchemaVersionId;
-    }, [data, dataFromBackend]);
+    }, [latestSchemaVersion, dataFromBackend]);
     const isDocumentOwner =
         dataFromBackend?.createdById === currentUser?.user_info?.id;
+    const workflowSteps =
+        dataFromBackend?.workflowInstance?.workflowDefinitionVersion?.workflowStep;
+    const canCancelAsRequester =
+        doc_mode === "view" &&
+        Boolean(doc_id) &&
+        isDocumentOwner &&
+        Array.isArray(workflowSteps) &&
+        ((workflowSteps.length === 0 &&
+            dataFromBackend?.status === "WAITING_APPROVAL") ||
+            (workflowSteps.length !== 0 &&
+                dataFromBackend?.status === "WAITING_EDITOR"));
     const isCopySourceEligible = isDocumentOwner && isLatestSchemaVersion;
     const canCopyDocument =
         doc_mode === "view" &&
@@ -153,22 +173,29 @@ function FormPageContent() {
         isCopySourceEligible;
     const data_fields = useMemo(
         () =>
-            data?.schemaVersion?.[0]?.fields?.map((item: any) => ({
-                id: item.fields.id,
-                type: item.fields.type,
-                label: item.fields.label,
-                placeholder: "",
-                required: item.required,
-                helpText: item.fields.helpText,
-                width: item.width,
-                option: typeof item.fields.option === "string"
+            latestSchemaVersion?.fields?.map((item: any) => {
+                const option = typeof item.fields.option === "string"
                     ? JSON.parse(item.fields.option)
-                    : item.fields.option
-            })) ?? [],
-        [data]
+                    : item.fields.option;
+
+                return {
+                    id: item.fields.id,
+                    type: item.fields.type,
+                    label: item.fields.label,
+                    placeholder: "",
+                    required: item.required,
+                    helpText: item.fields.helpText,
+                    width: item.width,
+                    zone: item.zone === "EDITOR" || option?.zone === "EDITOR" || option?.zone === "editor_field"
+                        ? "editor_field"
+                        : "requester_field",
+                    option,
+                };
+            }) ?? [],
+        [latestSchemaVersion]
     );
     const isDocumentMode =
-        doc_mode === "edit" || doc_mode === "view" || doc_mode === "approve";
+        doc_mode === "edit" || doc_mode === "view" || doc_mode === "approve" || doc_mode === "editor";
     const isCopyingDocument = doc_mode === "create" && Boolean(copy_from);
 
     const fieldsFromSnapshot = useMemo(() => {
@@ -181,21 +208,33 @@ function FormPageContent() {
 
     const fields = useMemo(
         () => {
-            const sourceFields = fieldsFromSnapshot.length > 0 && !isNewVersion
+            const shouldUseLatestSchema =
+                doc_mode === "create" || doc_mode === "edit";
+            const sourceFields = !shouldUseLatestSchema &&
+                fieldsFromSnapshot.length > 0 &&
+                !isNewVersion
                 ? fieldsFromSnapshot
                 : data_fields;
 
             return sourceFields.map((field: any) => {
-                if (field.option) {
-                    const { option, ...rest } = field;
-                    return { ...rest, ...(option ?? {}) };
-                }
-                return field;
+                const { option, ...rest } = field;
+                const normalizedField = option
+                    ? { ...rest, ...option }
+                    : field;
+                const isEditorField =
+                    field.zone === "EDITOR" ||
+                    field.zone === "editor_field" ||
+                    option?.zone === "EDITOR" ||
+                    option?.zone === "editor_field";
+
+                return {
+                    ...normalizedField,
+                    zone: isEditorField ? "editor_field" : "requester_field",
+                };
             });
         },
-        [data_fields, fieldsFromSnapshot, isNewVersion]
+        [data_fields, doc_mode, fieldsFromSnapshot, isNewVersion]
     );
-
     useEffect(() => {
         if (!data) return;
         if (!fields.length) return;
@@ -261,16 +300,55 @@ function FormPageContent() {
         const answersFromBackend = JSON.parse(currentRevision.formData);
 
         const employeeField = fieldsFromBackend.find(
-            (field: any) => field.type === "employee_detail"
+            (field: any) =>
+                field.type === "employee_detail" &&
+                (!isCopyingDocument ||
+                    fields.some(
+                        (currentField: any) =>
+                            currentField.id === field.id &&
+                            currentField.zone === "requester_field",
+                    )),
         );
 
-        const fileFields = fieldsFromBackend.filter((field: any) => field.type === "file");
+        const fieldsForAnswers = doc_mode === "edit" ? fields : fieldsFromBackend;
+        const fileFields = fieldsForAnswers.filter(
+            (field: any) =>
+                field.type === "file" &&
+                (!isCopyingDocument ||
+                    fields.some(
+                        (currentField: any) =>
+                            currentField.id === field.id &&
+                            currentField.zone === "requester_field",
+                    )),
+        );
 
         const result = { ...answersFromBackend };
 
         if (employeeField && employeeField.id in result) {
             result.employee_field = result[employeeField.id];
             delete result[employeeField.id];
+        }
+
+        if (isCopyingDocument) {
+            const requesterFieldIds = new Set(
+                fields
+                    .filter((field: any) => field.zone === "requester_field")
+                    .map((field: any) => field.id),
+            );
+            const hasRequesterEmployeeField = fields.some(
+                (field: any) =>
+                    field.type === "employee_detail" &&
+                    field.zone === "requester_field",
+            );
+
+            Object.keys(result).forEach((fieldId) => {
+                if (fieldId !== "employee_field" && !requesterFieldIds.has(fieldId)) {
+                    delete result[fieldId];
+                }
+            });
+            if (!hasRequesterEmployeeField) {
+                delete result.employee_field;
+            }
         }
 
         fileFields.forEach((fileField: any) => {
@@ -313,26 +391,46 @@ function FormPageContent() {
             }
         });
 
-        const values_snapshot =
-            fieldsFromBackend.map((field: any) => field.id).reduce(
-                (acc: any, id: any) => {
-                    acc[id] = "";
-                    return acc;
-                },
-                {} as Record<string, any>
-            ) ?? {};
-
-        form.reset(values_snapshot);
-
-        const dataDeJSON = {
-            fields: fieldsFromBackend,
-            answers: result,
-        };
-
         setDate(new Date(dataFromBackend.dueDate))
         setPriorityState(dataFromBackend.priority ?? "");
         setCompany(dataFromBackend?.currentRevision?.company?.code ?? "")
-        form.reset(dataDeJSON.answers);
+
+        if (doc_mode === "edit") {
+            const latestFieldIds = new Set(fields.map((field: any) => field.id));
+            const hasEmployeeField = fields.some(
+                (field: any) => field.type === "employee_detail",
+            );
+            Object.keys(result).forEach((fieldId) => {
+                if (
+                    fieldId !== "employee_field" &&
+                    fieldId !== "schema_version_id" &&
+                    !latestFieldIds.has(fieldId)
+                ) {
+                    delete result[fieldId];
+                }
+            });
+            if (!hasEmployeeField) {
+                delete result.employee_field;
+            }
+
+            const latestFieldDefaults = fields.reduce(
+                (values: Record<string, any>, field: any) => {
+                    values[field.id] = getDefaultValue(field);
+                    return values;
+                },
+                {},
+            );
+            form.reset({ ...latestFieldDefaults, ...result });
+        } else {
+            const values_snapshot = fieldsFromBackend.reduce(
+                (values: Record<string, any>, field: any) => {
+                    values[field.id] = getDefaultValue(field);
+                    return values;
+                },
+                {},
+            );
+            form.reset({ ...values_snapshot, ...result });
+        }
     }, [
         currentUser,
         data,
@@ -399,7 +497,10 @@ function FormPageContent() {
         return null;
     }
 
-    function validateData(data: Record<string, any>): boolean {
+    function validateData(
+        data: Record<string, any>,
+        options: { zone?: FormFieldZone; validateMetadata?: boolean } = {},
+    ): boolean {
         const errors: string[] = [];
 
         const isEmpty = (value: any): boolean => {
@@ -429,6 +530,8 @@ function FormPageContent() {
         };
 
         fields.forEach((field: any) => {
+            if (isCopyingDocument && field.zone === "editor_field") return;
+            if (options.zone && field.zone !== options.zone) return;
             if (!field.required) return;
 
             const value =
@@ -461,15 +564,15 @@ function FormPageContent() {
             }
         });
 
-        if (!priorityState) {
+        if (options.validateMetadata !== false && !priorityState) {
             errors.push("ยังไม่ได้เลือกระดับความสำคัญ");
         }
 
-        if (!date) {
+        if (options.validateMetadata !== false && !date) {
             errors.push("ยังไม่ได้กรอกวันที่สิ้นสุดเอกสาร");
         }
 
-        if (!company) {
+        if (options.validateMetadata !== false && !company) {
             errors.push("ยังไม่ได้เลือกบริษัทที่ดำเนินการ");
         }
 
@@ -549,21 +652,80 @@ function FormPageContent() {
                 setCommentModalOpen(true);
             }
 
-        } else if (doc_mode === "create" || doc_mode === "edit") {
-            if (!validateData(formdata)) return;
+        } else if (doc_mode === "editor") {
+            if (!canEditEditorFields || !doc_id) {
+                toast.error("คุณไม่มีสิทธิ์ส่งข้อมูลในส่วนผู้กรอกข้อมูล");
+                return;
+            }
+            if (decision === "REJECT") {
+                setPendingDecision("REJECT");
+                setComment("");
+                setCommentModalOpen(true);
+                return;
+            }
+            if (decision !== "SAVE" && decision !== "SUBMIT") return;
+
+            if (decision === "SUBMIT" &&
+                !validateData(formdata, { zone: "editor_field", validateMetadata: false })) return;
 
             const employeeField = fields.find((field: any) => field.type === "employee_detail");
+            if (employeeField && employee_field) {
+                formdata[employeeField.id] = employee_field;
+                delete formdata.employee_field;
+            }
+
+            formdata.schema_version_id = data.schemaVersion[0].id;
+            const formDataPayload = new FormData();
+            formDataPayload.append("document_code", doc_id);
+            formDataPayload.append("action", decision);
+            formDataPayload.append("snapshot", JSON.stringify(fields));
+            formDataPayload.append("answers", JSON.stringify(cleanAnswerData(formdata)));
+
+            Object.values(formdata).forEach((value) => {
+                if (value instanceof File) {
+                    formDataPayload.append("files", value);
+                } else if (Array.isArray(value) && value.every((file) => file instanceof File)) {
+                    value.forEach((file) => formDataPayload.append("files", file));
+                }
+            });
+
+            editorActionMutation.mutate(formDataPayload);
+        } else if (doc_mode === "create" || doc_mode === "edit") {
+            if (!latestSchemaVersion) {
+                toast.error("ไม่พบเวอร์ชันล่าสุดของแบบฟอร์ม");
+                return;
+            }
+            if (!validateData(formdata)) return;
+
+            const employeeField = fields.find(
+                (field: any) =>
+                    field.type === "employee_detail" &&
+                    (!isCopyingDocument || field.zone === "requester_field"),
+            );
             if (employeeField && employee_field) {
                 formdata[employeeField.id] = formdata.employee_field;
                 delete formdata.employee_field;
             }
 
-            formdata.schema_version_id = data.schemaVersion[0].id
+            formdata.schema_version_id = latestSchemaVersion.id
             const formDataPayload = new FormData();
             const is_publish = decision === "draft" ? false : true
             formDataPayload.append("schema_id", data.id);
             formDataPayload.append("snapshot", JSON.stringify(fields));
-            formDataPayload.append("answers", JSON.stringify(cleanAnswerData(formdata)));
+            const requesterFieldIds = new Set(
+                fields
+                    .filter((field: any) => field.zone === "requester_field")
+                    .map((field: any) => field.id),
+            );
+            const answerData = cleanAnswerData(formdata);
+            if (isCopyingDocument) {
+                Object.keys(answerData).forEach((fieldId) => {
+                    if (fieldId !== "schema_version_id" && !requesterFieldIds.has(fieldId)) {
+                        delete answerData[fieldId];
+                    }
+                });
+            }
+            formDataPayload.append("answers", JSON.stringify(answerData));
             formDataPayload.append("due_date", date ? date.toISOString() : "");
             formDataPayload.append("priority", priorityState);
             formDataPayload.append("is_publish", String(is_publish));
@@ -571,6 +733,7 @@ function FormPageContent() {
 
             // add actual file field(s)
             Object.entries(formdata).forEach(([key, value]) => {
+                if (isCopyingDocument && !requesterFieldIds.has(key)) return;
                 if (value instanceof File) {
                     formDataPayload.append('files', value);
                 } else if (Array.isArray(value) && value.every((v) => v instanceof File)) {
@@ -590,24 +753,6 @@ function FormPageContent() {
 
     };
 
-    const handleRemoveApprover = (index: number) => {
-        setApprover(
-            approver.filter((_, i) => i !== index)
-        );
-    };
-
-    const handleAddApprover = () => {
-        setApprover([
-            ...approver,
-            { name: "" }
-        ]);
-    };
-
-    const availableOptions = ApproverLists.filter(
-        option =>
-            !approver.some(app => app.name === option.value)
-    );
-
     function changePage(route: string) {
         router.push(route)
     }
@@ -625,6 +770,30 @@ function FormPageContent() {
 
     function submitApproval() {
         if (!dataFromBackend || !pendingDecision) return;
+
+        if (pendingDecision === "CANCEL" && doc_mode === "view") {
+            if (!canCancelAsRequester || !doc_id) {
+                toast.error("คุณไม่มีสิทธิ์ยกเลิกเอกสารนี้");
+                return;
+            }
+            cancelByRequesterMutation.mutate(doc_id);
+            setCommentModalOpen(false);
+            return;
+        }
+
+        if (doc_mode === "editor") {
+            if (!canEditEditorFields || pendingDecision !== "REJECT") {
+                toast.error("คุณไม่มีสิทธิ์ดำเนินการกับส่วนผู้กรอกข้อมูล");
+                return;
+            }
+            editorActionMutation.mutate({
+                document_code: dataFromBackend.documentNo,
+                action: "REJECT",
+                comment,
+            });
+            setCommentModalOpen(false);
+            return;
+        }
 
         approveMutate.mutate({
             document_code: dataFromBackend.documentNo,
@@ -673,10 +842,16 @@ function FormPageContent() {
                         <button
                             type="button"
                             onClick={submitApproval}
-                            disabled={approveMutate.isPending}
+                            disabled={
+                                approveMutate.isPending ||
+                                cancelByRequesterMutation.isPending ||
+                                editorActionMutation.isPending
+                            }
                             className="rounded-md bg-[#4A4DF1] px-4 py-2 text-white disabled:cursor-not-allowed disabled:opacity-50"
                         >
-                            {approveMutate.isPending
+                            {cancelByRequesterMutation.isPending
+                                ? "กำลังยกเลิก..."
+                                : approveMutate.isPending
                                 ? "กำลังส่ง..."
                                 : pendingDecision === "REJECT"
                                     ? "ยืนยันการส่งกลับ"
@@ -696,7 +871,7 @@ function FormPageContent() {
             })}
             className="bg-slate-50 min-h-screen h-full w-full p-6"
         >
-            {(doc_mode == "view" || doc_mode == "approve") && (
+            {(doc_mode == "view" || doc_mode == "approve" || doc_mode === "editor") && (
                 <div className="mb-4 flex items-center gap-4">
                     <Link href={`${doc_mode === "approve" ? '/approve' : '/dashboard'}`} accessKey="it01">
                         <span className="flex size-10 items-center justify-center rounded-md bg-[#1b1b1b] text-white transition hover:bg-slate-700">
@@ -709,7 +884,7 @@ function FormPageContent() {
                     </div>
                 </div>
             )}
-            {(doc_mode === "view" || doc_mode === "approve") && dataFromBackend && (
+            {(doc_mode === "view" || doc_mode === "approve" || doc_mode === "editor") && dataFromBackend && (
                 <section className="mb-4 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
                     <div className="flex flex-col gap-3 border-b border-slate-200 bg-slate-50 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
                         <div>
@@ -782,7 +957,7 @@ function FormPageContent() {
                             </>
                         )}
                     </div>
-                    {doc_mode === "view" && doc_id && schema_id && (
+                    {doc_mode === "view" && doc_id && dataFromBackend?.status === "COMPLETED" && schema_id && (
                         <div className="flex items-center gap-2">
                             <Button
                                 variant="outline"
@@ -814,6 +989,19 @@ function FormPageContent() {
                                 </Button>
                             )}
                         </div>
+                    )}
+                    {canCancelAsRequester && (
+                        <Button
+                            variant="destructive"
+                            type="button"
+                            onClick={() => {
+                                setPendingDecision("CANCEL");
+                                setComment("");
+                                setCommentModalOpen(true);
+                            }}
+                        >
+                            {"ยกเลิกเอกสาร"}
+                        </Button>
                     )}
                 </div>
 
@@ -857,9 +1045,26 @@ function FormPageContent() {
                         </div>
                         <div className="w-full">
                             <div className="w-full">
-                                <div className="w-full flex">
+                                <div className="group relative w-full flex items-center">
                                     <span>{"ระดับความสำคัญ"}</span>
                                     <span className="text-red-500">{" *"}</span>
+                                    <button
+                                        type="button"
+                                        aria-label="ข้อมูลระดับความสำคัญ"
+                                        aria-describedby="priority-info"
+                                        className="ml-1 inline-flex size-5 items-center justify-center rounded-full text-slate-400 transition hover:text-indigo-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+                                    >
+                                        <Info aria-hidden="true" className="size-4" />
+                                    </button>
+                                    <span
+                                        id="priority-info"
+                                        role="tooltip"
+                                        className="invisible absolute right-0 top-0 z-20 mt-1 rounded-md border border-indigo-100 bg-indigo-50 px-3 py-2 text-xs text-indigo-800 opacity-0 shadow-lg transition-opacity group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100"
+                                    >
+                                        <p>{"น้อย คือ ทุกคนในบริษัทสามารถเห็นเอกสาร"}</p>
+                                        <p>{"ปานกลาง คือ เฉพาะฝ่ายที่เป็นเจ้าของเอกสารสามารถเห็นเอกสาร"}</p>
+                                        <p>{"สูง คือ เฉพาะผู้บริหารสามารถเห็นเอกสาร"}</p>
+                                    </span>
                                 </div>
                                 <div className="w-full flex">
                                     <Select
@@ -896,23 +1101,75 @@ function FormPageContent() {
                         </div>
                     </div>
                 </div>
-                <div className="grid grid-cols-2 gap-4 mt-4">
-                    {(doc_mode === "create" || isNewVersion ? fields : fieldsFromSnapshot).map((f: any) => (
-                        <div
-                            key={f.id}
-                            className="flex flex-col gap-1.5"
-                            style={{ gridColumn: f.width === "full" ? "1 / -1" : undefined }}
-                        >
-                            <label style={{ fontSize: "1rem", fontWeight: 500, color: "var(--foreground)" }}>
-                                {f.label}
-                                {f.required && <span style={{ color: "var(--destructive)", marginLeft: "0.25rem" }}>*</span>}
-                            </label>
-                            <FieldPreview field={f as FormField} control={form.control as Control} setValue={setValue} getValues={getValues} mode={doc_mode === "approve" || doc_mode === "view" ? "view" : doc_mode ?? "edit"} />
-                            {f.helpText && (
-                                <p style={{ fontSize: "1rem", color: "var(--muted-foreground)" }}>{f.helpText}</p>
-                            )}
-                        </div>
-                    ))}
+                <div className="mt-4 space-y-4">
+                    {(["requester_field", "editor_field"] as const).map((zone) => {
+                        const zoneFields = fields.filter((field: any) => field.zone === zone);
+                        if (zoneFields.length === 0) return null;
+
+                        const isRequester = zone === "requester_field";
+
+                        return (
+                            <section
+                                key={zone}
+                                className={isRequester
+                                    ? "rounded-xl border border-slate-200 bg-white p-4 sm:p-5"
+                                    : "rounded-xl border border-amber-300 border-l-4 bg-amber-50/70 p-4 shadow-sm sm:p-5"}
+                            >
+                                <div className={`mb-4 border-b pb-3 ${isRequester ? "border-slate-100" : "border-amber-200"}`}>
+                                    <div className="flex flex-wrap items-center gap-2">
+                                        {!isRequester && (
+                                            <span className="flex size-8 items-center justify-center rounded-lg bg-amber-100 text-amber-800">
+                                                <Clock3 size={17} aria-hidden="true" />
+                                            </span>
+                                        )}
+                                        <h2 className={`text-base font-semibold ${isRequester ? "text-slate-900" : "text-amber-950"}`}>
+                                            {isRequester ? "ข้อมูลผู้ร้องขอ" : "ข้อมูลสำหรับผู้ดำเนินการภายหลัง"}
+                                        </h2>
+                                        {!isRequester && (
+                                            <span className="rounded-full border border-amber-300 bg-white/80 px-2.5 py-1 text-xs font-semibold text-amber-800">
+                                                กรอกหลังส่งคำร้อง
+                                            </span>
+                                        )}
+                                    </div>
+                                    <p className={`mt-1 text-sm ${isRequester ? "text-slate-500" : "text-amber-900/80"}`}>
+                                        {isRequester
+                                            ? "ข้อมูลที่ผู้ร้องขอกรอกในเอกสาร"
+                                            : "ส่วนนี้แยกจากข้อมูลผู้ร้องขอ และให้ผู้รับผิดชอบกรอกภายหลัง"}
+                                    </p>
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    {zoneFields.map((f: any) => (
+                                        <div
+                                            key={f.id}
+                                            className="flex flex-col gap-1.5"
+                                            style={{ gridColumn: f.width === "full" ? "1 / -1" : undefined }}
+                                        >
+                                            <label style={{ fontSize: "1rem", fontWeight: 500, color: "var(--foreground)" }}>
+                                                {f.label}
+                                                {f.required && <span style={{ color: "var(--destructive)", marginLeft: "0.25rem" }}>*</span>}
+                                            </label>
+                                            <FieldPreview
+                                                field={f as FormField}
+                                                control={form.control as Control}
+                                                setValue={setValue}
+                                                getValues={getValues}
+                                                mode={f.zone === "editor_field"
+                                                    ? canEditEditorFields ? "edit" : "view"
+                                                    : doc_mode === "editor"
+                                                        ? "view"
+                                                        : doc_mode === "approve" || doc_mode === "view"
+                                                            ? "view"
+                                                            : doc_mode ?? "edit"}
+                                            />
+                                            {f.helpText && (
+                                                <p style={{ fontSize: "1rem", color: "var(--muted-foreground)" }}>{f.helpText}</p>
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                            </section>
+                        );
+                    })}
                 </div>
                 {doc_mode == "create" || doc_mode == "edit" ? (
                     <div>
@@ -946,6 +1203,53 @@ function FormPageContent() {
                             </div>
                         )}
                     </div>
+                ) : doc_mode === "editor" ? (
+                    canEditEditorFields ? (
+                        <div className="z-10 mt-6 rounded-xl border border-amber-200 bg-amber-50/80 p-4 shadow-sm">
+                            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                <p className="text-sm text-amber-950">
+                                    ตรวจสอบและกรอกข้อมูลในส่วนผู้ดำเนินการก่อนส่งต่อเอกสาร
+                                </p>
+                                <div className="flex flex-col-reverse gap-2 sm:flex-row">
+                                    <button
+                                        className="rounded-md border border-indigo-300 bg-white px-4 py-2.5 font-medium text-indigo-700 transition hover:bg-indigo-50 disabled:cursor-not-allowed disabled:opacity-50"
+                                        type="submit"
+                                        value="SAVE"
+                                        disabled={editorActionMutation.isPending}
+                                    >
+                                        {editorActionMutation.isPending ? "กำลังบันทึก..." : "บันทึก"}
+                                    </button>
+                                    <button
+                                        className="rounded-md bg-slate-800 px-4 py-2.5 font-medium text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
+                                        type="submit"
+                                        value="REJECT"
+                                        disabled={editorActionMutation.isPending}
+                                    >
+                                        ส่งกลับเพื่อแก้ไข
+                                    </button>
+                                    <button
+                                        className="rounded-md border border-slate-300 bg-white px-4 py-2.5 font-medium text-slate-700 transition hover:bg-slate-100"
+                                        type="button"
+                                        onClick={() => changePage("/dashboard")}
+                                    >
+                                        ยกเลิก
+                                    </button>
+                                    <button
+                                        className="rounded-md bg-indigo-600 px-4 py-2.5 font-medium text-white transition hover:bg-indigo-800 disabled:cursor-not-allowed disabled:opacity-50"
+                                        type="submit"
+                                        value="SUBMIT"
+                                        disabled={editorActionMutation.isPending}
+                                    >
+                                        {editorActionMutation.isPending ? "กำลังบันทึก..." : "บันทึกและส่งต่อ"}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    ) : (
+                        <p className="mt-6 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+                            คุณไม่มีสิทธิ์แก้ไขข้อมูลในส่วนผู้ดำเนินการของเอกสารนี้
+                        </p>
+                    )
                 ) : doc_mode == "approve" ?
                     (<div className="z-10 mt-6 rounded-xl border border-slate-200 bg-white/95 p-4 shadow-lg backdrop-blur">
                         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">

@@ -9,10 +9,16 @@ export function useFinishMutation(
     return useMutation({
         mutationFn: (data: string) => completeDocument(data),
 
-        onSuccess: () => {
-            queryClient.invalidateQueries({
-                queryKey: ["document"],
-            });
+        onSuccess: async (_result, documentCode) => {
+            await Promise.all([
+                queryClient.invalidateQueries({
+                    queryKey: ["document"],
+                }),
+                queryClient.invalidateQueries({
+                    queryKey: ["document-detail", documentCode],
+                    refetchType: "all",
+                }),
+            ]);
             toast.success("เอกสารสิ้นสุด");
             setDetail({open: false, document_id: ""})
         },

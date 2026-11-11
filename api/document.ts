@@ -11,6 +11,14 @@ export interface ApproveDocumentPayload {
     comment: string;
 }
 
+export interface EditorDocumentActionPayload {
+    document_code: string;
+    action: "SAVE" | "SUBMIT" | "REJECT";
+    snapshot?: string;
+    answers?: string;
+    comment?: string;
+}
+
 export interface CreateDocumentPayload {
     schema_id: string;
     snapshot: string;
@@ -49,6 +57,11 @@ export async function approveDocument(data: ApproveDocumentPayload) {
     return response;
 }
 
+export async function editorDocumentAction(data: EditorDocumentActionPayload | FormData) {
+    const response = await api.patch('/document/editor', data);
+    return response.data;
+}
+
 export async function addProcessDocument(data: AddProcessPayload) {
     const response = await api.post('/document/addprocess', data);
     return response.data
@@ -76,5 +89,10 @@ export async function getTrackingDocument(document_code: string) {
 
 export async function getCount() {
     const response = await api.get('/document/count');
+    return response.data
+}
+
+export async function cancelByRequester(code: string) {
+    const response = await api.patch(`/document/cancel/${code}`)
     return response.data
 }

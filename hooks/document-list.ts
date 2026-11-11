@@ -39,6 +39,7 @@ export function useDocumentDetail(document_code: string) {
             return res;
         },
         enabled: !!document_code,
+        refetchOnMount: "always",
         staleTime: 30 * 60000, // 30 minutes
     })
 }
