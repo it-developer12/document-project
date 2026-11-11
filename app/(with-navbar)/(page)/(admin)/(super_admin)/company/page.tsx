@@ -1,166 +1,239 @@
 "use client";
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { ImagePlus, X } from "lucide-react";
+import { Pencil, Plus, X } from "lucide-react";
 import Image from "next/image";
 import { toast } from "react-toastify";
+import type { CompanyRecord } from "@/api/utils";
 import { useCompanyList } from "@/hooks/create-form";
+import { useCreateCompany } from "@/hooks/create-utils";
 import { useUpdateCompany } from "@/hooks/update-utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 export default function Page() {
   const { data: companies, isPending, isError, refetch } = useCompanyList();
+  const createCompanyMutation = useCreateCompany();
   const updateCompanyMutation = useUpdateCompany();
-  const [editedNames, setEditedNames] = useState<Record<string, string>>({});
-  const [logoFiles, setLogoFiles] = useState<Record<string, File>>({});
-  const [logoPreviewUrls, setLogoPreviewUrls] = useState<Record<string, string>>(
-    {},
-  );
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const logoInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
-  const logoPreviewUrlsRef = useRef<Record<string, string>>({});
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [companyToEdit, setCompanyToEdit] = useState<CompanyRecord | null>(null);
+  const [editedCompanyName, setEditedCompanyName] = useState("");
+  const [editedCompanyNameEn, setEditedCompanyNameEn] = useState("");
+  const [editedCompanyLogo, setEditedCompanyLogo] = useState<File | null>(null);
+  const [editedCompanyLogoPreview, setEditedCompanyLogoPreview] = useState<
+    string | null
+  >(null);
+  const [newCompanyLogoPreview, setNewCompanyLogoPreview] = useState<
+    string | null
+  >(null);
+  const editedCompanyLogoPreviewRef = useRef<string | null>(null);
+  const editedCompanyLogoInputRef = useRef<HTMLInputElement | null>(null);
+  const newCompanyLogoPreviewRef = useRef<string | null>(null);
+  const newCompanyLogoInputRef = useRef<HTMLInputElement | null>(null);
+  const createCompanyFormRef = useRef<HTMLFormElement | null>(null);
   const companyList = companies ?? [];
 
   useEffect(
     () => () => {
-      Object.values(logoPreviewUrlsRef.current).forEach((url) =>
-        URL.revokeObjectURL(url),
-      );
+      if (editedCompanyLogoPreviewRef.current) {
+        URL.revokeObjectURL(editedCompanyLogoPreviewRef.current);
+      }
+      if (newCompanyLogoPreviewRef.current) {
+        URL.revokeObjectURL(newCompanyLogoPreviewRef.current);
+      }
     },
     [],
   );
 
-  function updateCompanyName(code: string, name: string) {
-    setEditedNames((current) => ({ ...current, [code]: name }));
+  function clearEditedCompanyLogo() {
+    if (editedCompanyLogoPreviewRef.current) {
+      URL.revokeObjectURL(editedCompanyLogoPreviewRef.current);
+      editedCompanyLogoPreviewRef.current = null;
+    }
+    setEditedCompanyLogo(null);
+    setEditedCompanyLogoPreview(null);
+    if (editedCompanyLogoInputRef.current) {
+      editedCompanyLogoInputRef.current.value = "";
+    }
   }
 
-  function updateCompanyLogo(code: string, file: File | null) {
-    const previousPreview = logoPreviewUrlsRef.current[code];
-    if (previousPreview) URL.revokeObjectURL(previousPreview);
+  function resetCompanyEdit() {
+    clearEditedCompanyLogo();
+    setCompanyToEdit(null);
+    setEditedCompanyName("");
+  }
 
-    let nextPreview: string | null = null;
-    if (file) {
-      nextPreview = URL.createObjectURL(file);
-      logoPreviewUrlsRef.current[code] = nextPreview;
-    } else {
-      delete logoPreviewUrlsRef.current[code];
+  function openCompanyEdit(company: CompanyRecord) {
+    setCompanyToEdit(company);
+    setEditedCompanyName(company.name);
+    setEditedCompanyNameEn(company.name_en)
+    clearEditedCompanyLogo();
+  }
+
+  function updateEditedCompanyLogo(file: File | undefined) {
+    if (!file) return;
+
+    const isSupportedImage =
+      ["image/png", "image/jpeg"].includes(file.type) ||
+      /\.(png|jpe?g)$/i.test(file.name);
+    if (!isSupportedImage) {
+      if (editedCompanyLogoInputRef.current) {
+        editedCompanyLogoInputRef.current.value = "";
+      }
+      toast.error("Choose a PNG or JPEG logo.");
+      return;
     }
 
-    setLogoPreviewUrls((current) => {
-      const next = { ...current };
-      if (nextPreview) {
-        next[code] = nextPreview;
-      } else {
-        delete next[code];
-      }
-      return next;
-    });
-
-    setLogoFiles((current) => {
-      const next = { ...current };
-      if (file) {
-        next[code] = file;
-      } else {
-        delete next[code];
-      }
-      return next;
-    });
+    if (editedCompanyLogoPreviewRef.current) {
+      URL.revokeObjectURL(editedCompanyLogoPreviewRef.current);
+    }
+    const previewUrl = URL.createObjectURL(file);
+    editedCompanyLogoPreviewRef.current = previewUrl;
+    setEditedCompanyLogo(file);
+    setEditedCompanyLogoPreview(previewUrl);
   }
 
-  async function submitChanges(event: FormEvent<HTMLFormElement>) {
+  function clearNewCompanyLogo() {
+    if (newCompanyLogoPreviewRef.current) {
+      URL.revokeObjectURL(newCompanyLogoPreviewRef.current);
+      newCompanyLogoPreviewRef.current = null;
+    }
+    setNewCompanyLogoPreview(null);
+    if (newCompanyLogoInputRef.current) {
+      newCompanyLogoInputRef.current.value = "";
+    }
+  }
+
+  function updateNewCompanyLogo(file: File | undefined) {
+    if (!file) return;
+
+    const isSupportedImage =
+      ["image/png", "image/jpeg"].includes(file.type) ||
+      /\.(png|jpe?g)$/i.test(file.name);
+    if (!isSupportedImage) {
+      clearNewCompanyLogo();
+      toast.error("Choose a PNG or JPEG logo.");
+      return;
+    }
+
+    if (newCompanyLogoPreviewRef.current) {
+      URL.revokeObjectURL(newCompanyLogoPreviewRef.current);
+    }
+    const previewUrl = URL.createObjectURL(file);
+    newCompanyLogoPreviewRef.current = previewUrl;
+    setNewCompanyLogoPreview(previewUrl);
+  }
+
+  function resetNewCompanyForm() {
+    createCompanyFormRef.current?.reset();
+    clearNewCompanyLogo();
+  }
+
+  function submitNewCompany(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (isSubmitting) return;
+    const companyData = new FormData(event.currentTarget);
+    const code = String(companyData.get("code") ?? "").trim();
+    const name = String(companyData.get("name") ?? "").trim();
+    const nameEn = String(companyData.get("name_en") ?? "").trim();
+    const logo = companyData.get("logo");
 
-    const changedCompanies = companyList.filter((company) => {
-      const name = (editedNames[company.code] ?? company.name).trim();
-      return name !== company.name || Boolean(logoFiles[company.code]);
+    if (!code || !name) {
+      toast.error("Company code and name are required.");
+      return;
+    }
+
+    companyData.set("code", code);
+    companyData.set("name", name);
+    if (nameEn) {
+      companyData.set("name_en", nameEn);
+    } else {
+      companyData.delete("name_en");
+    }
+
+    if (logo instanceof File && logo.size > 0) {
+      const isSupportedImage =
+        ["image/png", "image/jpeg"].includes(logo.type) ||
+        /\.(png|jpe?g)$/i.test(logo.name);
+      if (!isSupportedImage) {
+        toast.error("Choose a PNG or JPEG logo.");
+        return;
+      }
+    } else {
+      companyData.delete("logo");
+    }
+
+    createCompanyMutation.mutate(companyData, {
+      onSuccess: () => {
+        setIsAddDialogOpen(false);
+        resetNewCompanyForm();
+      },
     });
+  }
 
-    if (changedCompanies.length === 0) {
-      toast.info("There are no company changes to save.");
+  function submitCompanyEdit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!companyToEdit) return;
+
+    const name = editedCompanyName.trim();
+    const nameEn = editedCompanyNameEn.trim();
+    if (!name) {
+      toast.error("ชื่อบริษัทไม่สามารถว่างได้");
+      return;
+    }
+    if (name === companyToEdit.name && !editedCompanyLogo && nameEn === companyToEdit.name_en) {
+      toast.info("ไม่มีการเปลี่ยนแปลงข้อมูล");
       return;
     }
 
-    const invalidCompany = changedCompanies.find(
-      (company) => !(editedNames[company.code] ?? company.name).trim(),
+    const companyData = new FormData();
+    companyData.append("name", name);
+    companyData.append("nameEn", nameEn)
+    if (editedCompanyLogo) companyData.append("logo", editedCompanyLogo);
+
+    updateCompanyMutation.mutate(
+      { companyId: companyToEdit.code, companyData },
+      { onSuccess: resetCompanyEdit },
     );
-    if (invalidCompany) {
-      toast.error("Company name is required.");
-      return;
-    }
-
-    setIsSubmitting(true);
-    const results = await Promise.allSettled(
-      changedCompanies.map((company) => {
-        const companyData = new FormData();
-        companyData.append(
-          "name",
-          (editedNames[company.code] ?? company.name).trim(),
-        );
-        const logo = logoFiles[company.code];
-        if (logo) companyData.append("logo", logo);
-
-        return updateCompanyMutation.mutateAsync({
-          companyId: company.code,
-          companyData,
-        });
-      }),
-    );
-
-    const succeededCodes = changedCompanies
-      .filter((_company, index) => results[index].status === "fulfilled")
-      .map((company) => company.code);
-
-    if (succeededCodes.length > 0) {
-      setEditedNames((current) => {
-        const next = { ...current };
-        succeededCodes.forEach((code) => delete next[code]);
-        return next;
-      });
-      setLogoFiles((current) => {
-        const next = { ...current };
-        succeededCodes.forEach((code) => delete next[code]);
-        return next;
-      });
-      setLogoPreviewUrls((current) => {
-        const next = { ...current };
-        succeededCodes.forEach((code) => delete next[code]);
-        return next;
-      });
-      succeededCodes.forEach((code) => {
-        const previewUrl = logoPreviewUrlsRef.current[code];
-        if (previewUrl) URL.revokeObjectURL(previewUrl);
-        delete logoPreviewUrlsRef.current[code];
-        const input = logoInputRefs.current[code];
-        if (input) input.value = "";
-      });
-    }
-
-    setIsSubmitting(false);
   }
 
   return (
     <section className="min-h-screen w-full bg-slate-50 p-6 sm:p-8">
       <div className="mx-auto max-w-6xl">
-        <header className="mb-6">
-          <p className="text-sm font-semibold text-indigo-600">Administration</p>
-          <h1 className="mt-1 text-2xl font-bold tracking-tight text-slate-900">
-            {"บริษัททั้งหมด"}
-          </h1>
-          <p className="mt-2 text-sm text-slate-500">
-            {"แก้ไขชื่อและโลโก้ของบริษัทในระบบ"}
-          </p>
+        <header className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <p className="text-sm font-semibold text-indigo-600">Administration</p>
+            <h1 className="mt-1 text-2xl font-bold tracking-tight text-slate-900">
+              {"บริษัททั้งหมด"}
+            </h1>
+            <p className="mt-2 text-sm text-slate-500">
+              {"แก้ไขชื่อและโลโก้ของบริษัทในระบบ"}
+            </p>
+          </div>
+          <Button
+            type="button"
+            onClick={() => setIsAddDialogOpen(true)}
+            disabled={createCompanyMutation.isPending}
+            className="h-10 rounded-lg bg-indigo-600 px-4 text-white hover:bg-indigo-700"
+          >
+            <Plus aria-hidden="true" />
+            {"เพิ่มบริษัท"}
+          </Button>
         </header>
 
-        <form
-          onSubmit={submitChanges}
-          className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"
-        >
-          <div className="hidden grid-cols-[minmax(8rem,0.45fr)_minmax(0,1fr)_minmax(10rem,0.8fr)] gap-4 border-b border-slate-200 bg-slate-50 px-5 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500 sm:grid sm:px-6">
+        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+          <div className="hidden grid-cols-[minmax(8rem,0.45fr)_minmax(0,1fr)_minmax(10rem,0.8fr)_auto] gap-4 border-b border-slate-200 bg-slate-50 px-5 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500 sm:grid sm:px-6">
             <span>Company code</span>
             <span>Company name</span>
             <span>Company logo</span>
+            <span className="sr-only">Actions</span>
           </div>
 
           {isPending ? (
@@ -190,7 +263,7 @@ export default function Page() {
               {companyList.map((company) => (
                 <li
                   key={company.code}
-                  className="grid grid-cols-1 items-center gap-4 px-5 py-4 sm:grid-cols-[minmax(8rem,0.45fr)_minmax(0,1fr)_minmax(10rem,0.8fr)] sm:px-6"
+                  className="grid grid-cols-1 items-center gap-4 px-5 py-4 sm:grid-cols-[minmax(8rem,0.45fr)_minmax(0,1fr)_minmax(10rem,0.8fr)_auto] sm:px-6"
                 >
                   <div className="min-w-0">
                     <span className="mb-1 block text-xs font-medium text-slate-500 sm:hidden">
@@ -201,135 +274,314 @@ export default function Page() {
                     </p>
                   </div>
                   <div className="min-w-0">
-                    <label
-                      className="mb-1 block text-xs font-medium text-slate-500 sm:sr-only"
-                      htmlFor={`company-${company.code}`}
-                    >
+                    <span className="mb-1 block text-xs font-medium text-slate-500 sm:hidden">
                       Company name
-                    </label>
-                    <Input
-                      id={`company-${company.code}`}
-                      name={`company-${company.code}`}
-                      value={editedNames[company.code] ?? company.name}
-                      onChange={(event) =>
-                        updateCompanyName(company.code, event.target.value)
-                      }
-                      disabled={isSubmitting}
-                      className="h-10 rounded-lg border-slate-200 bg-white px-3 text-sm shadow-none focus-visible:border-indigo-400 focus-visible:ring-indigo-400/20"
-                    />
+                    </span>
+                    <p className="truncate text-sm font-medium text-slate-800">
+                      {company.name}
+                    </p>
                   </div>
-                  <div className="flex min-w-0 items-center gap-2">
-                    <div className="flex min-w-0 items-center gap-2">
-                      {company.logo && (
-                        <div className="grid justify-items-center gap-1">
-                          <Image
-                            src={`${process.env.NEXT_PUBLIC_API_URL?.replace(/\/+$/, "")}/${company.logo.replace(/^\/+/, "")}`}
-                            alt={`${company.name} current logo`}
-                            width={64}
-                            height={64}
-                            unoptimized
-                            className="size-12 shrink-0 rounded-md border border-slate-200 bg-white object-contain p-1"
-                          />
-                          <span className="text-[10px] text-slate-500">
-                            Current
-                          </span>
-                        </div>
-                      )}
-                      {logoFiles[company.code] &&
-                        logoPreviewUrls[company.code] && (
-                          <div className="grid justify-items-center gap-1">
-                            <Image
-                              src={logoPreviewUrls[company.code]}
-                              alt={`${company.name} new logo preview`}
-                              width={64}
-                              height={64}
-                              unoptimized
-                              className="size-12 shrink-0 rounded-md border border-indigo-200 bg-white object-contain p-1"
-                            />
-                            <span className="text-[10px] font-medium text-indigo-700">
-                              New
-                            </span>
-                          </div>
-                        )}
-                    </div>
-                    <label
-                      htmlFor={`company-logo-${company.code}`}
-                      className={`inline-flex h-9 shrink-0 items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 transition ${isSubmitting ? "pointer-events-none opacity-50" : "cursor-pointer hover:bg-slate-100"}`}
-                    >
-                      <ImagePlus aria-hidden="true" className="size-4" />
-                      <span>{logoFiles[company.code] ? "Change" : "Choose"}</span>
-                    </label>
-                    {logoFiles[company.code] ? (
-                      <>
-                        <span className="min-w-0 truncate text-xs text-slate-500">
-                          {logoFiles[company.code].name}
-                        </span>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          aria-label={`Remove logo for ${company.name}`}
-                          disabled={isSubmitting}
-                          onClick={() => {
-                            updateCompanyLogo(company.code, null);
-                            const input = logoInputRefs.current[company.code];
-                            if (input) input.value = "";
-                          }}
-                          className="size-8 shrink-0 rounded-lg border-slate-200 bg-white p-0"
-                        >
-                          <X aria-hidden="true" className="size-4" />
-                        </Button>
-                      </>
+                  <div className="flex min-w-0 items-center">
+                    {company.logo ? (
+                      <Image
+                        src={`${process.env.NEXT_PUBLIC_API_URL?.replace(/\/+$/, "")}/${company.logo.replace(/^\/+/, "")}`}
+                        alt={`${company.name} logo`}
+                        width={64}
+                        height={64}
+                        unoptimized
+                        className="size-12 shrink-0 rounded-md border border-slate-200 bg-white object-contain p-1"
+                      />
                     ) : (
-                      <span className="truncate text-xs text-slate-400">
-                        No logo selected
-                      </span>
+                      <span className="text-xs text-slate-400">No logo</span>
                     )}
-                    <Input
-                      ref={(input) => {
-                        logoInputRefs.current[company.code] = input;
-                      }}
-                      id={`company-logo-${company.code}`}
-                      name={`company-logo-${company.code}`}
-                      type="file"
-                      accept="image/png,image/jpeg"
-                      disabled={isSubmitting}
-                      className="sr-only"
-                      onChange={(event) => {
-                        const file = event.target.files?.[0];
-                        if (!file) return;
-                        const isSupportedImage =
-                          ["image/png", "image/jpeg"].includes(file.type) ||
-                          /\.(png|jpe?g)$/i.test(file.name);
-                        if (!isSupportedImage) {
-                          event.target.value = "";
-                          toast.error("Choose a PNG or JPEG logo.");
-                          return;
-                        }
-                        updateCompanyLogo(company.code, file);
-                      }}
-                    />
                   </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    aria-label={`Edit ${company.name}`}
+                    title="Edit company"
+                    disabled={updateCompanyMutation.isPending}
+                    onClick={() => openCompanyEdit(company)}
+                    className="size-9 shrink-0 rounded-lg border-slate-200 bg-white p-0"
+                  >
+                    <Pencil aria-hidden="true" className="size-4" />
+                  </Button>
                 </li>
               ))}
             </ul>
           )}
+        </div>
 
-          {!isPending && !isError && companyList.length > 0 && (
-            <footer className="flex flex-col gap-3 border-t border-slate-200 bg-slate-50/70 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
-              <p className="text-xs text-slate-500">
-                {""}
-              </p>
-              <Button
-                type="submit"
-                disabled={isSubmitting}
-                className="h-10 rounded-lg bg-indigo-600 px-4 text-white hover:bg-indigo-700"
-              >
-                {isSubmitting ? "Saving..." : "บันทึก"}
-              </Button>
-            </footer>
-          )}
-        </form>
+        <Dialog
+          open={companyToEdit !== null}
+          onOpenChange={(open) => {
+            if (!open && !updateCompanyMutation.isPending) {
+              resetCompanyEdit();
+            }
+          }}
+        >
+          <DialogContent>
+            <form onSubmit={submitCompanyEdit} className="grid gap-6">
+              <DialogHeader>
+                <DialogTitle>{"แก้ไขข้อมูลบริษัท"}</DialogTitle>
+                <DialogDescription>
+                  {companyToEdit
+                    ? `แก้ไขข้อมูลของ ${companyToEdit.name} (${companyToEdit.code})`
+                    : ""}
+                </DialogDescription>
+              </DialogHeader>
+              <div className="grid gap-4">
+                <div className="grid gap-2">
+                  <label
+                    htmlFor="edit-company-name"
+                    className="text-sm font-medium text-slate-700"
+                  >
+                    {"ชื่อบริษัท"}
+                  </label>
+                  <Input
+                    id="edit-company-name"
+                    name="name"
+                    required
+                    autoFocus
+                    value={editedCompanyName}
+                    onChange={(event) =>
+                      setEditedCompanyName(event.target.value)
+                    }
+                    disabled={updateCompanyMutation.isPending}
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <label
+                    htmlFor="edit-company-name"
+                    className="text-sm font-medium text-slate-700"
+                  >
+                    {"ชื่อบริษัท (EN)"}
+                  </label>
+                  <Input
+                    id="edit-company-name-en"
+                    name="name"
+                    required
+                    value={editedCompanyNameEn}
+                    onChange={(event) =>
+                      setEditedCompanyNameEn(event.target.value)
+                    }
+                    disabled={updateCompanyMutation.isPending}
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <label
+                    htmlFor="edit-company-logo"
+                    className="text-sm font-medium text-slate-700"
+                  >
+                    {"โลโก้บริษัท"}
+                  </label>
+                  {editedCompanyLogoPreview ? (
+                    <div className="flex items-center gap-3">
+                      <Image
+                        src={editedCompanyLogoPreview}
+                        alt="New company logo preview"
+                        width={64}
+                        height={64}
+                        unoptimized
+                        className="size-16 rounded-md border border-indigo-200 bg-white object-contain p-1"
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        aria-label="Remove selected company logo"
+                        disabled={updateCompanyMutation.isPending}
+                        onClick={clearEditedCompanyLogo}
+                        className="size-9 rounded-lg border-slate-200 bg-white p-0"
+                      >
+                        <X aria-hidden="true" className="size-4" />
+                      </Button>
+                    </div>
+                  ) : companyToEdit?.logo ? (
+                    <Image
+                      src={`${process.env.NEXT_PUBLIC_API_URL?.replace(/\/+$/, "")}/${companyToEdit.logo.replace(/^\/+/, "")}`}
+                      alt={`${companyToEdit.name} current logo`}
+                      width={64}
+                      height={64}
+                      unoptimized
+                      className="size-16 rounded-md border border-slate-200 bg-white object-contain p-1"
+                    />
+                  ) : (
+                    <p className="text-sm text-slate-400">No logo uploaded.</p>
+                  )}
+                  <Input
+                    ref={editedCompanyLogoInputRef}
+                    id="edit-company-logo"
+                    name="logo"
+                    type="file"
+                    accept="image/png,image/jpeg"
+                    disabled={updateCompanyMutation.isPending}
+                    onChange={(event) =>
+                      updateEditedCompanyLogo(event.target.files?.[0])
+                    }
+                    className="cursor-pointer"
+                  />
+                  <p className="text-xs text-slate-500">
+                    {"รองรับไฟล์ PNG และ JPEG"}
+                  </p>
+                </div>
+              </div>
+              <DialogFooter>
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={updateCompanyMutation.isPending}
+                  onClick={resetCompanyEdit}
+                >
+                  {"ยกเลิก"}
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={updateCompanyMutation.isPending}
+                  className="bg-indigo-600 text-white hover:bg-indigo-700"
+                >
+                  {updateCompanyMutation.isPending ? "Saving..." : "บันทึก"}
+                </Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
 
+        <Dialog
+          open={isAddDialogOpen}
+          onOpenChange={(open) => {
+            if (!open && !createCompanyMutation.isPending) {
+              setIsAddDialogOpen(false);
+              resetNewCompanyForm();
+            }
+          }}
+        >
+          <DialogContent>
+            <form
+              ref={createCompanyFormRef}
+              onSubmit={submitNewCompany}
+              className="grid gap-6"
+            >
+              <DialogHeader>
+                <DialogTitle>{"เพิ่มบริษัทใหม่"}</DialogTitle>
+                <DialogDescription>
+                  {"กรอกรายละเอียดบริษัทที่ต้องการเพิ่มเข้าสู่ระบบ"}
+                </DialogDescription>
+              </DialogHeader>
+              <div className="grid gap-4">
+                <div className="grid gap-2">
+                  <label
+                    htmlFor="new-company-code"
+                    className="text-sm font-medium text-slate-700"
+                  >
+                    {"รหัสบริษัท"}
+                  </label>
+                  <Input
+                    id="new-company-code"
+                    name="code"
+                    required
+                    disabled={createCompanyMutation.isPending}
+                    placeholder="เช่น COMPANY01"
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <label
+                    htmlFor="new-company-name"
+                    className="text-sm font-medium text-slate-700"
+                  >
+                    {"ชื่อบริษัท"}
+                  </label>
+                  <Input
+                    id="new-company-name"
+                    name="name"
+                    required
+                    disabled={createCompanyMutation.isPending}
+                    placeholder="ชื่อบริษัท"
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <label
+                    htmlFor="new-company-name-en"
+                    className="text-sm font-medium text-slate-700"
+                  >
+                    {"ชื่อบริษัทภาษาอังกฤษ (ถ้ามี)"}
+                  </label>
+                  <Input
+                    id="new-company-name-en"
+                    name="name_en"
+                    disabled={createCompanyMutation.isPending}
+                    placeholder="Company name"
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <label
+                    htmlFor="new-company-logo"
+                    className="text-sm font-medium text-slate-700"
+                  >
+                    {"โลโก้บริษัท (ถ้ามี)"}
+                  </label>
+                  <Input
+                    ref={newCompanyLogoInputRef}
+                    id="new-company-logo"
+                    name="logo"
+                    type="file"
+                    accept="image/png,image/jpeg"
+                    disabled={createCompanyMutation.isPending}
+                    className="cursor-pointer"
+                    onChange={(event) =>
+                      updateNewCompanyLogo(event.target.files?.[0])
+                    }
+                  />
+                  {newCompanyLogoPreview && (
+                    <div className="flex items-center gap-3">
+                      <Image
+                        src={newCompanyLogoPreview}
+                        alt="New company logo preview"
+                        width={64}
+                        height={64}
+                        unoptimized
+                        className="size-16 rounded-md border border-slate-200 bg-white object-contain p-1"
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        aria-label="Remove selected company logo"
+                        title="Remove selected logo"
+                        disabled={createCompanyMutation.isPending}
+                        onClick={clearNewCompanyLogo}
+                        className="size-9 rounded-lg border-slate-200 bg-white p-0"
+                      >
+                        <X aria-hidden="true" className="size-4" />
+                      </Button>
+                    </div>
+                  )}
+                  <p className="text-xs text-slate-500">
+                    {"รองรับไฟล์ PNG และ JPEG"}
+                  </p>
+                </div>
+              </div>
+              <DialogFooter>
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={createCompanyMutation.isPending}
+                  onClick={() => {
+                    setIsAddDialogOpen(false);
+                    resetNewCompanyForm();
+                  }}
+                >
+                  {"ยกเลิก"}
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={createCompanyMutation.isPending}
+                  className="bg-indigo-600 text-white hover:bg-indigo-700"
+                >
+                  {createCompanyMutation.isPending ? "Adding..." : "เพิ่ม"}
+                </Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
       </div>
     </section>
   );

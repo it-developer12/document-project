@@ -7,6 +7,7 @@ import {
     useSensor,
     useSensors,
     closestCenter,
+    useDroppable,
     type DragStartEvent,
     type DragEndEvent,
     type DragOverEvent,
@@ -64,7 +65,7 @@ const PALETTE_PREFIX = "palette::";
 let idCounter = 100;
 const uid = (type: FieldType) => `${type}-field-${++idCounter}`;
 
-function makeField(type: FieldType): FormField {
+function makeField(type: FieldType, zone: FormFieldZone = "requester_field"): FormField {
     const defaults: Partial<Record<FieldType, Partial<FormField>>> = {
         select: { options: ["Option 1", "Option 2", "Option 3"] },
         radio: { options: ["Option A", "Option B", "Option C"] },
@@ -93,8 +94,20 @@ function makeField(type: FieldType): FormField {
         required: false,
         helpText: "",
         width: "full",
+        zone,
         ...(defaults[type] ?? {}),
     };
+}
+
+function getFieldZone(field: FormField): FormFieldZone {
+    return field.zone === "editor_field" ? "editor_field" : "requester_field";
+}
+
+function orderFieldsByZone(fields: FormField[]): FormField[] {
+    return [
+        ...fields.filter((field) => getFieldZone(field) === "requester_field"),
+        ...fields.filter((field) => getFieldZone(field) === "editor_field"),
+    ];
 }
 
 
@@ -291,9 +304,64 @@ function CanvasDropHint({ isOver }: { isOver: boolean }) {
                 <Plus size={18} color="var(--muted-foreground)" />
             </div>
             <p style={{ fontSize: "0.875rem", color: "var(--muted-foreground)" }}>
-                {"Drag fields here to build your form"}
+                {"Drag fields here to build this section"}
             </p>
         </div>
+    );
+}
+
+function CanvasAppendDropZone({ zone }: { zone: FormFieldZone }) {
+    const { setNodeRef, isOver } = useDroppable({ id: `${zone}::append` });
+
+    return (
+        <div
+            ref={setNodeRef}
+            className="flex items-center justify-center rounded-xl border-2 border-dashed py-4 transition-all duration-150"
+            style={{
+                borderColor: isOver ? "var(--primary)" : "var(--border)",
+                background: isOver ? "var(--accent)" : "transparent",
+            }}
+        >
+            <p style={{ fontSize: "0.78rem", color: "var(--muted-foreground)" }}>
+                Drag a field here to append it
+            </p>
+        </div>
+    );
+}
+
+function CanvasZone({
+    zone,
+    title,
+    description,
+    isOver,
+    children,
+}: {
+    zone: FormFieldZone;
+    title: string;
+    description: string;
+    isOver: boolean;
+    children: React.ReactNode;
+}) {
+    const { setNodeRef, isOver: isDropping } = useDroppable({ id: zone });
+
+    return (
+        <section
+            ref={setNodeRef}
+            className="flex flex-col gap-3 rounded-xl border p-4 md:p-5"
+            style={{
+                borderColor: isOver || isDropping ? "var(--primary)" : "var(--border)",
+                background: "var(--card)",
+                transition: "border-color 150ms, background-color 150ms",
+            }}
+        >
+            <div className="flex flex-col gap-1">
+                <h2 style={{ fontSize: "0.95rem", fontWeight: 600, color: "var(--foreground)" }}>{title}</h2>
+                <p style={{ fontSize: "0.75rem", color: "var(--muted-foreground)" }}>{description}</p>
+            </div>
+            <div className="flex flex-col gap-3">
+                {children}
+            </div>
+        </section>
     );
 }
 
@@ -745,24 +813,36 @@ function PreviewModal({ fields, onClose }: { fields: FormField[]; onClose: () =>
                             {"ยังไม่ได้เลือก field"}
                         </p>
                     )}
-                    <div className="grid grid-cols-2 gap-4">
-                        {fields.map((f) => (
-                            <div
-                                key={f.id}
-                                className="flex flex-col gap-1.5"
-                                style={{ gridColumn: f.width === "full" ? "1 / -1" : undefined }}
-                            >
-                                <label style={{ fontSize: "0.8rem", fontWeight: 500, color: "var(--foreground)" }}>
-                                    {f.label}
-                                    {f.required && <span style={{ color: "var(--destructive)", marginLeft: "0.25rem" }}>*</span>}
-                                </label>
-                                <FieldPreview field={f} />
-                                {f.helpText && (
-                                    <p style={{ fontSize: "0.72rem", color: "var(--muted-foreground)" }}>{f.helpText}</p>
-                                )}
-                            </div>
-                        ))}
-                    </div>
+                    {(["requester_field", "editor_field"] as const).map((zone) => {
+                        const zoneFields = fields.filter((field) => getFieldZone(field) === zone);
+                        if (zoneFields.length === 0) return null;
+
+                        return (
+                            <section key={zone} className="flex flex-col gap-3">
+                                <h3 className="border-b pb-2 text-sm font-semibold" style={{ borderColor: "var(--border)", color: "var(--foreground)" }}>
+                                    {zone === "requester_field" ? "Requester" : "After requester"}
+                                </h3>
+                                <div className="grid grid-cols-2 gap-4">
+                                    {zoneFields.map((f) => (
+                                        <div
+                                            key={f.id}
+                                            className="flex flex-col gap-1.5"
+                                            style={{ gridColumn: f.width === "full" ? "1 / -1" : undefined }}
+                                        >
+                                            <label style={{ fontSize: "0.8rem", fontWeight: 500, color: "var(--foreground)" }}>
+                                                {f.label}
+                                                {f.required && <span style={{ color: "var(--destructive)", marginLeft: "0.25rem" }}>*</span>}
+                                            </label>
+                                            <FieldPreview field={f} />
+                                            {f.helpText && (
+                                                <p style={{ fontSize: "0.72rem", color: "var(--muted-foreground)" }}>{f.helpText}</p>
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                            </section>
+                        );
+                    })}
                     {fields.length > 0 && (
                         <div className="flex justify-end pt-2">
                             <button
@@ -827,7 +907,8 @@ export default function Page() {
     const [modalStatus, setModalStatus] = useState({
         approve: false,
         process: false,
-        finish: false
+        finish: false,
+        editor: false,
     });
     const [approver, setApprover] = useState<ApproverListType[]>([
         { level: 1, employee_code: "", name: "" }
@@ -839,6 +920,9 @@ export default function Page() {
         employee_code: "",
         name: ""
     })
+    const [editors, setEditors] = useState<EmployeeList[]>([
+        { employee_code: "", name: "" }
+    ]);
 
     const employeeListOptions: Options[] = employeeList?.map((e: any) => ({ label: e.fullName, value: e.employee_code })) ?? [];
 
@@ -862,7 +946,8 @@ export default function Page() {
         iso_no: "",
         have_approver: false,
         approve_strategy: "STEP1",
-        processor_type: "SPECIFIC_PROCESSOR"
+        processor_type: "SPECIFIC_PROCESSOR",
+        editor_type: "SPECIFIC_PROCESSOR",
     })
 
     const [fields, setFields] = useState<FormField[]>([
@@ -872,7 +957,8 @@ export default function Page() {
             "label": "ข้อมูลพนักงาน",
             "required": true,
             "helpText": "",
-            "width": "full"
+            "width": "full",
+            "zone": "requester_field"
         }
     ]);
 
@@ -882,7 +968,7 @@ export default function Page() {
     // Track what's being dragged: a palette type or a field id
     const [activeId, setActiveId] = useState<string | null>(null);
     // Whether the active drag is hovering over the canvas
-    const [isOverCanvas, setIsOverCanvas] = useState(false);
+    const [hoveredZone, setHoveredZone] = useState<FormFieldZone | null>(null);
 
 
     const sensors = useSensors(
@@ -891,25 +977,28 @@ export default function Page() {
 
     const selectedField = fields.find((f) => f.id === selectedId) ?? null;
 
-    const addField = useCallback((type: FieldType, atIndex?: number) => {
-        const f = makeField(type);
+    const addField = useCallback((type: FieldType, zone: FormFieldZone, atIndex?: number) => {
+        const f = makeField(type, zone);
         setFields((prev) => {
-            const next = [...prev];
+            const next = prev.filter((field) => getFieldZone(field) === zone);
             if (atIndex !== undefined) {
                 next.splice(atIndex, 0, f);
             } else {
                 next.push(f);
             }
-            return next;
+            return orderFieldsByZone([
+                ...prev.filter((field) => getFieldZone(field) !== zone),
+                ...next,
+            ]);
         });
         setSelectedId(f.id);
         return f.id;
-    }, []);
+    }, [setSelectedId]);
 
     const deleteField = useCallback((id: string) => {
         setFields((prev) => prev.filter((f) => f.id !== id));
         setSelectedId((sel) => (sel === id ? null : sel));
-    }, []);
+    }, [setSelectedId]);
 
     const updateField = useCallback((id: string, updates: Partial<FormField>) => {
         setFields((prev) => prev.map((f) => (f.id === id ? { ...f, ...updates } : f)));
@@ -923,17 +1012,25 @@ export default function Page() {
 
     const handleDragOver = (event: DragOverEvent) => {
         const overId = event.over?.id ? String(event.over.id) : null;
-        // "canvas-drop-zone" is the droppable id of the empty canvas
-        const overCanvas =
-            overId === "canvas-drop-zone" ||
-            fields.some((f) => f.id === overId);
-        setIsOverCanvas(overCanvas);
+        const overField = fields.find((field) => field.id === overId);
+        const appendZone = overId?.endsWith("::append")
+            ? overId.replace("::append", "")
+            : null;
+        setHoveredZone(
+            overField
+                ? getFieldZone(overField)
+                : appendZone === "requester_field" || appendZone === "editor_field"
+                    ? appendZone
+                    : overId === "requester_field" || overId === "editor_field"
+                        ? overId
+                        : null,
+        );
     };
 
     const handleDragEnd = (event: DragEndEvent) => {
         const { active, over } = event;
         setActiveId(null);
-        setIsOverCanvas(false);
+        setHoveredZone(null);
 
         if (!over) return;
 
@@ -941,20 +1038,57 @@ export default function Page() {
         const overIdStr = String(over.id);
 
         const isPaletteDrag = activeIdStr.startsWith(PALETTE_PREFIX);
+        const overField = fields.find((field) => field.id === overIdStr);
+        const appendZone = overIdStr.endsWith("::append")
+            ? overIdStr.replace("::append", "")
+            : null;
+        const targetZone = overField
+            ? getFieldZone(overField)
+            : appendZone === "requester_field" || appendZone === "editor_field"
+                ? appendZone
+                : overIdStr === "requester_field" || overIdStr === "editor_field"
+                    ? overIdStr
+                    : null;
+
+        if (!targetZone) return;
 
         if (isPaletteDrag) {
-            // Palette → canvas: insert field
             const paletteType = activeIdStr.replace(PALETTE_PREFIX, "") as FieldType;
-            const overFieldIndex = fields.findIndex((f) => f.id === overIdStr);
-            addField(paletteType, overFieldIndex >= 0 ? overFieldIndex + 1 : undefined);
-        } else {
-            // Field reorder within canvas
-            const oldIndex = fields.findIndex((f) => f.id === activeIdStr);
-            const newIndex = fields.findIndex((f) => f.id === overIdStr);
-            if (oldIndex !== -1 && newIndex !== -1 && oldIndex !== newIndex) {
-                setFields((prev) => arrayMove(prev, oldIndex, newIndex));
-            }
+            const zoneFields = fields.filter((field) => getFieldZone(field) === targetZone);
+            const overFieldIndex = zoneFields.findIndex((field) => field.id === overIdStr);
+            addField(paletteType, targetZone, overFieldIndex >= 0 ? overFieldIndex + 1 : undefined);
+            return;
         }
+
+        const activeField = fields.find((field) => field.id === activeIdStr);
+        if (!activeField) return;
+
+        const sourceZone = getFieldZone(activeField);
+        const sourceFields = fields.filter((field) => getFieldZone(field) === sourceZone);
+        const oldIndex = sourceFields.findIndex((field) => field.id === activeIdStr);
+        const targetFields = fields.filter((field) => getFieldZone(field) === targetZone);
+        const overFieldIndex = targetFields.findIndex((field) => field.id === overIdStr);
+
+        if (sourceZone === targetZone) {
+            const newIndex = overFieldIndex >= 0 ? overFieldIndex : targetFields.length - 1;
+            if (oldIndex !== newIndex) {
+                setFields((prev) => orderFieldsByZone([
+                    ...prev.filter((field) => getFieldZone(field) !== sourceZone),
+                    ...arrayMove(sourceFields, oldIndex, newIndex),
+                ]));
+            }
+            return;
+        }
+
+        const movedField = { ...activeField, zone: targetZone };
+        const nextSource = sourceFields.filter((field) => field.id !== activeIdStr);
+        const nextTarget = [...targetFields];
+        nextTarget.splice(overFieldIndex >= 0 ? overFieldIndex + 1 : nextTarget.length, 0, movedField);
+        setFields(orderFieldsByZone([
+            ...fields.filter((field) => getFieldZone(field) !== sourceZone && getFieldZone(field) !== targetZone),
+            ...nextSource,
+            ...nextTarget,
+        ]));
     };
     // Overlay content shown while dragging
     const activePaletteItem = activeId?.startsWith(PALETTE_PREFIX)
@@ -1020,6 +1154,17 @@ export default function Page() {
                 name: "",
                 department: ""
             },
+        ]);
+    };
+
+    const handleRemoveEditor = (index: number) => {
+        setEditors((prev) => prev.filter((_, i) => i !== index));
+    };
+
+    const handleAddEditor = () => {
+        setEditors((prev) => [
+            ...prev,
+            { employee_code: "", name: "" },
         ]);
     };
 
@@ -1093,6 +1238,83 @@ export default function Page() {
                                         }}
                                         className="w-full text-sm"
                                     />
+                                </div>
+                            )}
+                            {type === "ผู้กรอกข้อมูลภายหลัง" && (
+                                <div className="space-y-4">
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-medium text-slate-700">
+                                            ประเภทผู้กรอกข้อมูล
+                                        </label>
+                                        <Select<ProcessorTypeOption>
+                                            options={[
+                                                {
+                                                    label: "1: ทุกคนในแผนก",
+                                                    value: "ALL_IN_DIVISION",
+                                                    isDisabled: formDetail.department === "bln",
+                                                },
+                                                { label: "2: ระบุผู้กรอกข้อมูล", value: "SPECIFIC_PROCESSOR" },
+                                            ]}
+                                            value={{
+                                                label: formDetail.editor_type === "ALL_IN_DIVISION"
+                                                    ? "1: ทุกคนในแผนก"
+                                                    : "2: ระบุผู้กรอกข้อมูล",
+                                                value: formDetail.editor_type,
+                                            }}
+                                            onChange={(selected) => {
+                                                if (!selected) return;
+                                                if (selected.value === "ALL_IN_DIVISION" && formDetail.department === "bln") {
+                                                    return;
+                                                }
+                                                setFormDetail((prev) => ({ ...prev, editor_type: selected.value }));
+                                                if (selected.value === "ALL_IN_DIVISION") {
+                                                    setEditors([]);
+                                                } else {
+                                                    setEditors((prev) => prev.length > 0
+                                                        ? prev
+                                                        : [{ employee_code: "", name: "" }]);
+                                                }
+                                            }}
+                                            className="w-full text-sm"
+                                        />
+                                    </div>
+                                    {formDetail.editor_type === "SPECIFIC_PROCESSOR" && (
+                                        <div className="space-y-3">
+                                            {List.map((editor: EmployeeList, index: number) => (
+                                                <div key={index} className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                                                    <label htmlFor={`editor-employee-${index}`} className="w-full text-sm font-medium text-slate-700 sm:max-w-36">
+                                                        ผู้กรอกข้อมูลคนที่ {index + 1}
+                                                    </label>
+                                                    <Select
+                                                        inputId={`editor-employee-${index}`}
+                                                        placeholder="เลือกผู้รับผิดชอบ"
+                                                        options={getAvailableOptions(index, editors, ProcessorList, "process")}
+                                                        value={ProcessorList.find((option) => option.value === editors[index]?.employee_code) ?? null}
+                                                        onChange={(selected) => {
+                                                            setEditors((prev) => prev.map((item, i) =>
+                                                                i === index
+                                                                    ? { employee_code: selected?.value ?? "", name: selected?.label ?? "" }
+                                                                    : item,
+                                                            ));
+                                                        }}
+                                                        className="min-w-0 flex-1 text-sm"
+                                                    />
+                                                    {index === List.length - 1 && (
+                                                        <div className="flex gap-2">
+                                                            <button type="button" onClick={handleAddEditor} className="rounded-md bg-green-400 px-2 py-0.5 text-white">
+                                                                เพิ่ม
+                                                            </button>
+                                                            {List.length > 1 && (
+                                                                <button type="button" onClick={() => handleRemoveEditor(index)} className="rounded-md bg-red-400 px-2 py-0.5 text-white">
+                                                                    ลบ
+                                                                </button>
+                                                            )}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
                                 </div>
                             )}
                             <div className={`space-y-2 ${type === "ผู้อนุมัติ" ? '' : 'hidden'}`}>
@@ -1268,7 +1490,7 @@ export default function Page() {
         placeholder?: string;
         required: boolean;
         helpText: string;
-        width: string;
+        width: "full" | "half";
         option?: string;
     }
 
@@ -1288,19 +1510,21 @@ export default function Page() {
         placeholder?: string;
         required: boolean;
         helpText: string;
-        width: string;
+        width: "full" | "half";
         option?: string | undefined;
     }
 
     function normalizeField(field: Record<string, any>): BaseField {
+        const fieldToNormalize = { ...field };
+
         const main: Record<string, any> = {};
         const extra: Record<string, any> = {};
 
-        for (const key of Object.keys(field)) {
+        for (const key of Object.keys(fieldToNormalize)) {
             if (MAIN_KEYS.includes(key as any)) {
-                main[key] = field[key];
+                main[key] = fieldToNormalize[key];
             } else {
-                extra[key] = field[key];
+                extra[key] = fieldToNormalize[key];
             }
         }
 
@@ -1334,8 +1558,22 @@ export default function Page() {
             status.division = { status: true, msg: "ยังไม่ได้เลือกแผนก" };
         }
 
-        if (data.form.fields.length === 0) {
+        if (data.form.requester_field.length + data.form.editor_field.length === 0) {
             status.fields = { status: true, msg: "เพิ่มฟิลด์อย่างน้อย 1 ฟิลด์" };
+        }
+
+        if (data.form.editor_field.length > 0 &&
+            formDetail.editor_type === "SPECIFIC_PROCESSOR" &&
+            !editors.some((editor) => editor.employee_code)) {
+            status.fields = { status: true, msg: "ยังไม่ได้เลือกผู้กรอกข้อมูลหลังส่งคำร้อง" };
+        }
+
+        if (editors.some((editor) => editor.employee_code) && data.form.editor_field.length < 1) {
+            status.fields = { status: true, msg: "เมื่อเลือกผู้กรอกข้อมูลภายหลัง ต้องเลือกฟิลด์สำหรับผู้กรอกข้อมูลอย่างน้อย 1 ฟิลด์" }
+        }
+
+        if (data.form.requester_field.length === 0) {
+            status.fields = { status: true, msg: "ต้องเลือกฟิลด์ของผู้ร้องขออย่างน้อย 1 ฟิลด์" }
         }
 
         if (!data.workflow.processor.some((item: any) => item.employee_code)) {
@@ -1356,22 +1594,39 @@ export default function Page() {
     function checkProcessor(processor: EmployeeList[]) {
         const isEveryone = processor.find((pro) => pro.employee_code === "default")
 
-        if(isEveryone) {
-            return [{employee_code: "default", name: "ทุกคนในแผนก"}]
+        if (isEveryone) {
+            return [{ employee_code: "default", name: "ทุกคนในแผนก" }]
         }
 
         return processor
     }
 
-    async function saveForm() {
-        const newFields = normalizeFields(fields);
+    function getEditorAssignment() {
+        if (formDetail.editor_type === "ALL_IN_DIVISION") {
+            return [];
+        }
 
+        return editors
+            .filter((editor) => editor.employee_code)
+            .map((editor) => {
+                const selectedEditor = employeeList?.find(
+                    (employee: any) => employee.employee_code === editor.employee_code,
+                );
+                return {
+                    employee_code: editor.employee_code,
+                    name: selectedEditor?.fullName ?? editor.name,
+                };
+            });
+    }
+
+    async function saveForm() {
         const data = {
             form: {
                 name: formDetail.name.trim(),
                 division_code: formDetail.department,
                 iso_no: formDetail.iso_no,
-                fields: newFields,
+                requester_field: normalizeFields(fields.filter((field) => getFieldZone(field) === "requester_field")),
+                editor_field: normalizeFields(fields.filter((field) => getFieldZone(field) === "editor_field")),
             },
             workflow: {
                 name: formDetail.name.trim(),
@@ -1382,6 +1637,8 @@ export default function Page() {
                     : undefined,
                 processor_type: formDetail.processor_type,
                 processor: checkProcessor(processor),
+                editor_type: formDetail.editor_type,
+                editor: getEditorAssignment(),
                 finisher: finisher
             }
         }
@@ -1390,21 +1647,25 @@ export default function Page() {
     }
 
     async function saveDraft() {
-        const newFields = normalizeFields(fields);
-
         const data = {
             form: {
                 name: formDetail.name.trim(),
-                divisionId: formDetail.department,
+                division_code: formDetail.department,
                 iso_no: formDetail.iso_no,
-                fields: newFields,
+                requester_field: normalizeFields(fields.filter((field) => getFieldZone(field) === "requester_field")),
+                editor_field: normalizeFields(fields.filter((field) => getFieldZone(field) === "editor_field")),
             },
             workflow: {
                 name: formDetail.name.trim(),
+                division_code: formDetail.department,
+                approve_format: formDetail.approve_strategy,
                 approver: formDetail.have_approver
                     ? normalizeApproverLevels(approver.filter((item) => item.employee_code))
                     : undefined,
+                processor_type: formDetail.processor_type,
                 processor: checkProcessor(processor),
+                editor_type: formDetail.editor_type,
+                editor: getEditorAssignment(),
                 finisher: finisher
             }
         }
@@ -1474,14 +1735,15 @@ export default function Page() {
                                         value={DEPARTMENT_OPTIONS.find(option => option.value === formDetail.department) ?? null}
                                         placeholder="เลือกแผนก"
                                         onChange={(selected) => {
-                                            if (!selected) return;
-                                            if (selected.value === "bln" && formDetail.processor_type === "1") {
-                                                setProcessor([{ employee_code: "", name: "" }]);
-                                            }
+                                            if (!selected || selected.value === formDetail.department) return;
+                                            setProcessor([{ employee_code: "", name: "" }]);
+                                            setEditors([{ employee_code: "", name: "" }]);
+                                            setFinisher({ employee_code: "", name: "" });
                                             setFormDetail(prev => ({
                                                 ...prev,
                                                 department: selected.value,
-                                                processor_type: selected.value === "bln" ? "2" : prev.processor_type,
+                                                processor_type: "SPECIFIC_PROCESSOR",
+                                                editor_type: "SPECIFIC_PROCESSOR",
                                             }));
                                         }}
                                         className="w-full text-sm"
@@ -1510,7 +1772,7 @@ export default function Page() {
                                 <h2 className="text-sm font-semibold text-slate-900">กำหนดผู้รับผิดชอบ</h2>
                                 <p className="mt-1 text-xs text-slate-500">เลือกบุคลากรในแต่ละขั้นตอนของการดำเนินเอกสาร</p>
                             </div>
-                            <div className="grid gap-3 xl:grid-cols-3">
+                            <div className="grid gap-3 md:grid-cols-2">
                                 <div className="flex min-w-0 flex-col rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
                                     <div className="flex items-start gap-3">
                                         <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-violet-50 text-sm font-bold text-violet-700">1</span>
@@ -1626,6 +1888,41 @@ export default function Page() {
                                         />
                                     </div>
                                 </div>
+
+                                <div className="flex min-w-0 flex-col rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                                    <div className="flex items-start gap-3">
+                                        <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-amber-50 text-sm font-bold text-amber-700">4</span>
+                                        <div className="min-w-0 flex-1">
+                                            <h3 className="text-sm font-semibold text-slate-900">ผู้กรอกข้อมูลภายหลัง</h3>
+                                            <p className="mt-0.5 text-xs text-slate-500">รับผิดชอบฟิลด์ในส่วนหลังผู้ร้องขอ</p>
+                                        </div>
+                                        <button
+                                            type="button"
+                                            className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg border border-indigo-200 bg-indigo-50 px-3 text-xs font-semibold text-indigo-700 transition hover:bg-indigo-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+                                            onClick={() => setModalStatus((prev) => ({ ...prev, editor: true }))}
+                                        >
+                                            <Plus size={14} aria-hidden="true" />
+                                            แก้ไข
+                                        </button>
+                                    </div>
+                                    <div className="mt-4 min-h-12 rounded-xl bg-slate-50 p-3">
+                                        {formDetail.editor_type === "ALL_IN_DIVISION" ? (
+                                            <span className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700">
+                                                ทุกคนในแผนก
+                                            </span>
+                                        ) : editors.some((editor) => editor.employee_code) ? (
+                                            <div className="flex flex-wrap gap-2">
+                                                {editors.filter((editor) => editor.employee_code).map((editor) => (
+                                                    <span key={editor.employee_code} className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700">
+                                                        {employeeListOptions.find((option) => option.value === editor.employee_code)?.label ?? editor.name}
+                                                    </span>
+                                                ))}
+                                            </div>
+                                        ) : (
+                                            <p className="flex min-h-6 items-center text-xs text-slate-500">ยังไม่ได้เลือกผู้กรอกข้อมูล</p>
+                                        )}
+                                    </div>
+                                </div>
                             </div>
                         </section>
 
@@ -1695,38 +1992,46 @@ export default function Page() {
                         style={{ scrollbarWidth: "none" }}
                     >
                         <div className="max-w-3xl mx-auto flex flex-col gap-3">
-                            {fields.length === 0 ? (
-                                <CanvasDropHint isOver={isOverCanvas} />
-                            ) : (
-                                <SortableContext
-                                    items={fields.map((f) => f.id)}
-                                    strategy={verticalListSortingStrategy}
-                                >
-                                    {fields.map((field) => (
-                                        <SortableFieldRow
-                                            key={field.id}
-                                            field={field}
-                                            isSelected={selectedId === field.id}
-                                            onSelect={() => setSelectedId(field.id === selectedId ? null : field.id)}
-                                            onDelete={() => deleteField(field.id)}
-                                        />
-                                    ))}
-                                </SortableContext>
-                            )}
+                            {(["requester_field", "editor_field"] as const).map((zone) => {
+                                const zoneFields = fields.filter((field) => getFieldZone(field) === zone);
+                                const title = zone === "requester_field"
+                                    ? "ฟิลด์สำหรับผู้ร้องขอ"
+                                    : "ฟิลด์สำหรับผู้กรอกข้อมูลหลังผู้ร้องขอ";
 
-                            {fields.length > 0 && (
-                                <div
-                                    className="flex items-center justify-center py-4 rounded-xl border-2 border-dashed transition-all duration-150"
-                                    style={{
-                                        borderColor: isOverCanvas ? "var(--primary)" : "var(--border)",
-                                        background: isOverCanvas ? "var(--accent)" : "transparent",
-                                    }}
-                                >
-                                    <p style={{ fontSize: "0.78rem", color: "var(--muted-foreground)" }}>
-                                        Drag a field here to append it
-                                    </p>
-                                </div>
-                            )}
+                                return (
+                                    <CanvasZone
+                                        key={zone}
+                                        zone={zone}
+                                        title={title}
+                                        description={zone === "requester_field"
+                                            ? "ข้อมูลสำหรับผู้ร้องขอ"
+                                            : "ข้อมูลสำหรับผู้กรอกข้อมูลหลังจากผู้ร้องขอส่งคำร้องขอ"}
+                                        isOver={hoveredZone === zone}
+                                    >
+                                        {zoneFields.length === 0 ? (
+                                            <CanvasDropHint isOver={hoveredZone === zone} />
+                                        ) : (
+                                            <SortableContext
+                                                items={zoneFields.map((field) => field.id)}
+                                                strategy={verticalListSortingStrategy}
+                                            >
+                                                {zoneFields.map((field) => (
+                                                    <SortableFieldRow
+                                                        key={field.id}
+                                                        field={field}
+                                                        isSelected={selectedId === field.id}
+                                                        onSelect={() => setSelectedId(field.id === selectedId ? null : field.id)}
+                                                        onDelete={() => deleteField(field.id)}
+                                                    />
+                                                ))}
+                                            </SortableContext>
+                                        )}
+                                        {fields.length > 0 && (
+                                            <CanvasAppendDropZone zone={zone} />
+                                        )}
+                                    </CanvasZone>
+                                );
+                            })}
                         </div>
                     </div>
 
@@ -1799,6 +2104,23 @@ export default function Page() {
                     }}
                     type="ผู้ดำเนินการ"
                     List={processor}
+                />
+            )}
+            {modalStatus.editor && (
+                <EmployeeModal
+                    onClose={() => {
+                        if (formDetail.editor_type === "SPECIFIC_PROCESSOR") {
+                            setEditors((prev) => {
+                                const selectedEditors = prev.filter((item) => item.employee_code);
+                                return selectedEditors.length > 0
+                                    ? selectedEditors
+                                    : [{ employee_code: "", name: "" }];
+                            });
+                        }
+                        setModalStatus((prev) => ({ ...prev, editor: false }));
+                    }}
+                    type="ผู้กรอกข้อมูลภายหลัง"
+                    List={editors}
                 />
             )}
         </DndContext>

@@ -21,13 +21,14 @@ export type DocumentColumn = {
   company: string
   owner: string
   department: string
-  status: "WAITING_APPROVAL" | "PROCESSING" | "REJECTED" | "CANCELLED" | "COMPLETED" | "DRAFT"
+  status: "WAITING_APPROVAL" | "WAITING_EDITOR" | "PROCESSING" | "REJECTED" | "CANCELLED" | "COMPLETED" | "DRAFT" | "EDITOR_REJECTED"
   created: string
   updated: string
   end_date: string
   type: any[];
   schema_id: string;
   can_edit: boolean;
+  is_editor: boolean;
 }
 type Priority = "low" | "medium" | "high"
 type Status = "WAITING_APPROVAL" | "PROCESSING" | "REJECTED" | "CANCELLED" | "COMPLETED";
@@ -82,10 +83,11 @@ export const columns: ColumnDef<DocumentColumn>[] = [
     accessorKey: "created",
     header: "วันที่สร้างเอกสาร",
     cell: ({ row }) => {
-      const stringDate = dayjs.utc(row.original.created).tz("Asia/Bangkok").format("DD-MM-YYYY") 
-    return (
+      const stringDate = dayjs.utc(row.original.created).tz("Asia/Bangkok").format("DD-MM-YYYY")
+      return (
         <span>{stringDate}</span>
-    )}
+      )
+    }
   },
   // {
   //   accessorKey: "updated",
@@ -113,11 +115,18 @@ export const columns: ColumnDef<DocumentColumn>[] = [
     enableSorting: false,
     cell: ({ row }) => {
       return (
-        <div className="flex gap-2 items-center">
-          {/* <Link href={`/document_list/it/form?schema_id=${schema_id}&doc_id=${row.original.id}&mode=view`}>
-            <Eye />
-          </Link> */}
-          {row.original.can_edit && (row.original.status === "REJECTED" || row.original.status === "DRAFT") && (
+        <div className="flex items-center gap-2">
+          {row.original.is_editor && row.original.status === "WAITING_EDITOR" && (
+            <Link
+              href={`/document_list/it/form?schema_id=${row.original.schema_id}&doc_id=${row.original.id}&mode=editor`}
+              aria-label={`แก้ไขเอกสาร ${row.original.id}`}
+              title="กรอกข้อมูลในส่วนผู้ดำเนินการ"
+              className="flex items-center justify-center rounded-md text-slate-600 transition hover:bg-indigo-50 hover:text-indigo-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+            >
+              <SquarePen size={18} aria-hidden="true" />
+            </Link>
+          )}
+          {row.original.can_edit && (row.original.status === "REJECTED" || row.original.status === "DRAFT" || row.original.status === "EDITOR_REJECTED") && (
             <Link
               href={`/document_list/it/form?schema_id=${row.original.schema_id}&doc_id=${row.original.id}&mode=edit`}
               aria-label={`แก้ไขเอกสาร ${row.original.id}`}

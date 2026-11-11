@@ -1,13 +1,16 @@
-type Status = "WAITING_APPROVAL" | "PROCESSING" | "REJECTED" | "CANCELLED" | "COMPLETED" | "DRAFT";
+type Status = "WAITING_EDITOR" | "WAITING_APPROVAL" | "PROCESSING" | "REJECTED" | "CANCELLED" | "COMPLETED" | "DRAFT" | "EDITOR_REJECTED" | "USER_CANCELLED";
 
 const config: Record<Status, { bg: string; color: string; dot: string, text: string }> = {
 
+  WAITING_EDITOR: { bg: "#fef3c7", color: "#92400e", dot: "#f59e0b", text: "รอผู้ดำเนินการ" },
   WAITING_APPROVAL: { bg: "#fef3c7", color: "#92400e", dot: "#f59e0b", text: "รออนุมัติ" },
   PROCESSING: { bg: "#dbeafe", color: "#1e40af", dot: "#3d52d5", text: "กำลังดำเนินการ" },
   COMPLETED: { bg: "#d1fae5", color: "#065f46", dot: "#059669", text: "สำเร็จ" },
   CANCELLED: { bg: "#fee2e2", color: "#991b1b", dot: "#ef4444", text: "ยกเลิกเอกสาร" },
   REJECTED: { bg: "#d6d6d6", color: "#000000", dot: "#000000", text: "ตีกลับเอกสาร" },
-  DRAFT: { bg: "#d6d6d6", color: "#000000", dot: "#000000", text: "ร่างเอกสาร" }
+  EDITOR_REJECTED: { bg: "#d6d6d6", color: "#000000", dot: "#000000", text: "ตีกลับเอกสาร" },
+  DRAFT: { bg: "#d6d6d6", color: "#000000", dot: "#000000", text: "ร่างเอกสาร" },
+  USER_CANCELLED: { bg: "#fee2e2", color: "#991b1b", dot: "#ef4444", text: "ยกเลิกเอกสารโดยผู้ขอ" }
 };
 
 export function StatusBadge({ status }: { status: Status }) {

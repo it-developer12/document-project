@@ -11,13 +11,6 @@ type FormFieldCreate = {
     option?: string
 }
 
-interface Form {
-    name: string
-    companyId: string
-    divisionId: string
-    fields: FormFieldCreate[]
-}
-
 type Approver = {
     employee_code: string 
     name: string
@@ -35,11 +28,35 @@ type Finisher = {
     name: string
 }
 
-export interface CreateTemplatePayload {
+type Editor = {
+    employee_code: string
     name: string
-    approver: Approver[]
-    processor: Processor[]
-    finisher: Finisher
+    department?: string
+}
+
+export interface CreateTemplatePayload {
+    form: {
+        name?: string
+        code?: string
+        division_code?: string
+        divisionId?: string
+        iso_no?: string
+        fields?: FormFieldCreate[]
+        requester_field: FormFieldCreate[]
+        editor_field: FormFieldCreate[]
+    }
+    workflow: {
+        name?: string
+        code?: string
+        division_code?: string
+        approve_format?: string
+        approver?: Approver[]
+        processor_type: string
+        editor_type: string
+        processor: Processor[]
+        editor: Editor[]
+        finisher: Finisher
+    }
 }
 
 export async function createTemplate(data: CreateTemplatePayload) {
@@ -59,5 +76,10 @@ export async function createDraftTemplate(data: CreateTemplatePayload) {
 
 export async function updateDraftTemplate(data: CreateTemplatePayload) {
     const response = await api.patch(`/template/draft/`, data);
+    return response.data
+}
+
+export async function deactivateTemplate(code: string) {
+    const response = await api.delete(`/template/deactive/${code}`)
     return response.data
 }
