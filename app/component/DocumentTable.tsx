@@ -1,5 +1,6 @@
 "use client"
 import { memo } from "react"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import {
     ColumnDef,
@@ -10,6 +11,9 @@ import {
     SortingState,
     useReactTable,
 } from "@tanstack/react-table"
+import dayjs from "dayjs"
+import utc from "dayjs/plugin/utc"
+import timezone from "dayjs/plugin/timezone"
 import {
     Table,
     TableBody,
@@ -20,6 +24,30 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table"
+
+dayjs.extend(utc)
+dayjs.extend(timezone)
+
+function isPastEndDate(value: unknown) {
+    if (!value || typeof value !== "object" || !("end_date" in value)) {
+        return false
+    }
+
+    const endDate = value.end_date
+    if (typeof endDate !== "string" || !endDate) {
+        return false
+    }
+
+    const parsedEndDate = dayjs.utc(endDate).tz("Asia/Bangkok")
+    if (!parsedEndDate.isValid()) {
+        return false
+    }
+
+    return dayjs().tz("Asia/Bangkok").startOf("day").isAfter(
+        parsedEndDate.startOf("day"),
+    )
+}
+
 interface DataTableProps<TData, TValue> {
     columns: ColumnDef<TData, TValue>[]
     data: TData[]
@@ -37,6 +65,7 @@ function DataTableComponent<TData, TValue>({
     nextPageLabel = "Next",
     pageSize = 10,
 }: DataTableProps<TData, TValue>) {
+    const router = useRouter()
 
     const table = useReactTable({
         data,
@@ -94,6 +123,15 @@ function DataTableComponent<TData, TValue>({
                                     {row.getVisibleCells().map((cell) => (
                                         <TableCell key={cell.id} className={``}>
                                             {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                                            {cell.column.id === "end_date" &&
+                                                isPastEndDate(row.original) && (
+                                                    <span
+                                                        className="ml-2 inline-flex items-center rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-800"
+                                                        title="เอกสารเกินกำหนด"
+                                                    >
+                                                        เกินกำหนด
+                                                    </span>
+                                                )}
                                         </TableCell>
                                     ))}
                                 </TableRow>

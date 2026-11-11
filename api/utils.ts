@@ -3,6 +3,7 @@ import { api } from "@/lib/axios";
 export type CompanyRecord = {
     code: string;
     name: string;
+    name_en: string;
     logo: string | null;
 };
 

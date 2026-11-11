@@ -13,7 +13,7 @@ export function useCreateTemplate() {
     const queryClient = useQueryClient();
     const router = useRouter();
     return useMutation({
-        mutationFn: (data: any) => createTemplate(data),
+        mutationFn: (data: CreateTemplatePayload) => createTemplate(data),
         onSuccess: () => {
             toast.success('สร้างแบบฟอร์มเอกสารสำเร็จ')
             router.push('/dashboard')
@@ -29,7 +29,7 @@ export function useCreateDrafTemplate() {
     const queryClient = useQueryClient();
     const router = useRouter();
     return useMutation({
-        mutationFn: (data: any) => createDraftTemplate(data),
+        mutationFn: (data: CreateTemplatePayload) => createDraftTemplate(data),
         onSuccess: () => {
             toast.success('สร้างฉบับร่างแบบฟอร์มเอกสารสำเร็จ')
             router.push('/dashboard')

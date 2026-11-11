@@ -26,7 +26,7 @@ import { useDocumentCount } from '@/hooks/document-list';
 import { useCompanyList, useDivisionList } from '@/hooks/create-form';
 import { useCurrentUser } from '@/hooks/use-current-user';
 
-type DocStatus = "WAITING_APPROVAL" | "PROCESSING" | "REJECTED" | "CANCELLED" | "COMPLETED" | "DRAFT";
+type DocStatus = "WAITING_APPROVAL" | "WAITING_EDITOR" | "PROCESSING" | "REJECTED" | "CANCELLED" | "COMPLETED" | "DRAFT" | "EDITOR_REJECTED";
 type Status = "low" | "medium" | "high";
 type TableDoc = {
     id: string;
@@ -43,6 +43,7 @@ type TableDoc = {
     schema_id: string;
     created_by: string;
     can_edit: boolean;
+    is_editor: boolean;
 }
 
 interface TableState {
@@ -124,6 +125,7 @@ export default function Home() {
             ? (doc.createdById ?? doc.createdBy.id) === currentUser?.user_info.id
             : currentUserFullName !== "" &&
             doc.createdBy.firstName + " " + doc.createdBy.lastName === currentUserFullName,
+        is_editor: doc.workflowInstance?.workflowDefinitionVersion?.workflowStep.some((step: any) => step.type === "EDITOR")
     }))
 
     const CREATETABLE: TableDoc[] = DOCUMENT.filter(

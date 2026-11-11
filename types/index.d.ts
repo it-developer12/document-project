@@ -2,6 +2,8 @@ type FieldType =
     | "text" | "textarea" | "select" | "checkbox" | "radio"
     | "date" | "number" | "email" | "phone" | "url" | "toggle" | "file" | "table" |"employee_detail";
 
+type FormFieldZone = "requester_field" | "editor_field";
+
 type ColumnType = "text" | "number" | "date" | "select";
 
 interface TableColumn {
@@ -19,6 +21,7 @@ interface FormField {
     placeholder?: string;
     required: boolean;
     helpText?: string;
+    zone?: FormFieldZone;
     options?: string[];
     width: "full" | "half";
     acceptedTypes?: string[];
