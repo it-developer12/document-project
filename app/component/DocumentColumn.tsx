@@ -21,7 +21,7 @@ export type DocumentColumn = {
   company: string
   owner: string
   department: string
-  status: "WAITING_APPROVAL" | "WAITING_EDITOR" | "PROCESSING" | "REJECTED" | "CANCELLED" | "COMPLETED" | "DRAFT" | "EDITOR_REJECTED"
+  status: "WAITING_APPROVAL" | "WAITING_EDITOR" | "PROCESSING" | "REJECTED" | "CANCELLED" | "COMPLETED" | "DRAFT" | "EDITOR_REJECTED" | "USER_CANCELLED"
   created: string
   updated: string
   end_date: string
@@ -126,7 +126,7 @@ export const columns: ColumnDef<DocumentColumn>[] = [
               <SquarePen size={18} aria-hidden="true" />
             </Link>
           )}
-          {row.original.can_edit && (row.original.status === "REJECTED" || row.original.status === "DRAFT" || row.original.status === "EDITOR_REJECTED") && (
+          {row.original.can_edit && (row.original.status === "REJECTED" || row.original.status === "DRAFT" || row.original.status === "EDITOR_REJECTED" || row.original.status === "USER_CANCELLED") && (
             <Link
               href={`/document_list/it/form?schema_id=${row.original.schema_id}&doc_id=${row.original.id}&mode=edit`}
               aria-label={`แก้ไขเอกสาร ${row.original.id}`}

@@ -52,7 +52,7 @@ export default function Page() {
     const { isLoading, isError, refetch } = useGetDocuments();
     const allDocuments = useDocumentStore((state) => state.documents);
     const activities = useDocumentStore((state) => state.activitiyDocuments);
-    const docs = allDocuments.filter((doc) => doc.workflowInstance.workflowDefinitionVersion.workflowStep.find((step) => step.type === "FINISHER") && doc.status === "PROCESSING");
+    const docs = allDocuments.filter((doc) => doc.workflowInstance?.workflowDefinitionVersion?.workflowStep.find((step) => step.type === "FINISHER") && doc.status === "PROCESSING");
     const [detail, setDetail] = useState({ open: false, document_id: "" });
     const [message, setMessage] = useState("");
     const processMutate = useProcessMutation(setDetail);
