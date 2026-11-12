@@ -1154,7 +1154,7 @@ function FormPageContent() {
                                                 setValue={setValue}
                                                 getValues={getValues}
                                                 mode={f.zone === "editor_field"
-                                                    ? canEditEditorFields ? "edit" : "view"
+                                                    ? canEditEditorFields ? "editor" : "view"
                                                     : doc_mode === "editor"
                                                         ? "view"
                                                         : doc_mode === "approve" || doc_mode === "view"
