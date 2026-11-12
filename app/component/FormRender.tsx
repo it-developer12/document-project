@@ -16,6 +16,8 @@ export function FieldPreview({ field, control, setValue, getValues, mode }: {
         borderRadius: "0.375rem",
         padding: "0.375rem 0.625rem",
         width: "100%",
+        minWidth: 0,
+        boxSizing: "border-box",
     };
 
     if (field.type === "textarea") {
@@ -75,14 +77,15 @@ export function FieldPreview({ field, control, setValue, getValues, mode }: {
                 control={control}
                 defaultValue=""
                 render={({ field: controllerField }) => (
-                    <div className="flex flex-wrap">
+                    <div
+                        className="grid min-w-0 gap-x-4 gap-y-2"
+                        style={{ gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 12rem), 1fr))" }}
+                    >
                         {field.options?.map((o) => (
-                            <label
-                                key={o}
-                                className="flex gap-2 w-1/5"
-                            >
+                            <label key={o} className="grid min-w-0 grid-cols-[1rem_minmax(0,1fr)] items-start gap-2">
                                 <input
                                     type="radio"
+                                    className="m-0 mt-1 size-4 shrink-0"
                                     disabled={mode === "view"}
                                     value={o}
                                     checked={
@@ -92,7 +95,7 @@ export function FieldPreview({ field, control, setValue, getValues, mode }: {
                                         controllerField.onChange(o)
                                     }
                                 />
-                                {o}
+                                <span className="min-w-0 leading-6 [overflow-wrap:anywhere]">{o}</span>
                             </label>
                         ))}
                     </div>
@@ -107,11 +110,15 @@ export function FieldPreview({ field, control, setValue, getValues, mode }: {
                 control={control}
                 defaultValue={[]}
                 render={({ field: controllerField }) => (
-                    <div className="flex flex-wrap">
+                    <div
+                        className="grid min-w-0 gap-x-4 gap-y-2"
+                        style={{ gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 12rem), 1fr))" }}
+                    >
                         {field.options?.map((o) => (
-                            <label key={o} className="flex items-center gap-2 w-1/4">
+                            <label key={o} className="grid min-w-0 grid-cols-[1rem_minmax(0,1fr)] items-start gap-2">
                                 <input
                                     type="checkbox"
+                                    className="m-0 mt-1 size-4 shrink-0"
                                     disabled={mode === "view"}
                                     style={{ accentColor: "var(--primary)" }}
                                     checked={
@@ -130,7 +137,7 @@ export function FieldPreview({ field, control, setValue, getValues, mode }: {
                                         controllerField.onChange(nextValue);
                                     }}
                                 />
-                                {o}
+                                <span className="min-w-0 leading-6 [overflow-wrap:anywhere]">{o}</span>
                             </label>
                         ))}
                     </div>

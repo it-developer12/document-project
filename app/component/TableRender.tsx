@@ -6,6 +6,8 @@ type RowData = Record<string, string>;
 
 const colInputStyle: React.CSSProperties = {
     width: "100%",
+    minWidth: 0,
+    boxSizing: "border-box",
     fontSize: "0.78rem",
     color: "var(--foreground)",
     background: "transparent",
@@ -70,6 +72,9 @@ function TableCellInput({ col, value, onChange, mode }: {
 
 export function TableFieldPreview({ field, control, mode }: { field: FormField, control: Control<any>, mode: string }) {
     const cols = field.columns ?? [];
+    const canManageRows = field.zone === "editor_field"
+        ? mode === "editor"
+        : mode === "edit";
     const makeRow = (): RowData =>
         Object.fromEntries(cols.map((c) => [c.id, ""]));
 
@@ -164,14 +169,14 @@ export function TableFieldPreview({ field, control, mode }: { field: FormField, 
                 return (
                     <div className="flex flex-col gap-2">
                         <div
-                            className="rounded-lg border overflow-hidden"
+                            className="w-full min-w-0 overflow-x-auto rounded-lg border"
                             style={{ borderColor: "var(--border)" }}
                         >
                             {/* Header */}
                             <div
                                 className="grid"
                                 style={{
-                                    gridTemplateColumns: `${cols.map((c) => `${c.width ?? 1}fr`).join(" ")} 52px`,
+                                    gridTemplateColumns: `${cols.map((c) => `minmax(0, ${c.width ?? 1}fr)`).join(" ")} 52px`,
                                     background: "var(--secondary)",
                                     borderBottom: "1px solid var(--border)",
                                 }}
@@ -179,16 +184,17 @@ export function TableFieldPreview({ field, control, mode }: { field: FormField, 
                                 {cols.map((col) => (
                                     <div
                                         key={col.id}
-                                        className="px-3 py-2 flex items-center gap-1.5"
+                                        className="flex min-w-0 flex-wrap items-center gap-1.5 px-3 py-2"
                                         style={{ borderRight: "1px solid var(--border)" }}
                                     >
                                         <span
+                                            className="min-w-0 break-words"
                                             style={{ fontSize: "0.68rem", fontWeight: 600, color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: "0.06em" }}
                                         >
                                             {col.label}
                                         </span>
                                         <span
-                                            className="px-1 py-0.5 rounded"
+                                            className="max-w-full break-words rounded px-1 py-0.5"
                                             style={{ fontSize: "0.58rem", background: "var(--accent)", color: "var(--primary)", fontWeight: 600 }}
                                         >
                                             {col.type}
@@ -205,7 +211,7 @@ export function TableFieldPreview({ field, control, mode }: { field: FormField, 
                                     key={rowIdx}
                                     className="grid group"
                                     style={{
-                                        gridTemplateColumns: `${cols.map((c) => `${c.width ?? 1}fr`).join(" ")} 52px`,
+                                        gridTemplateColumns: `${cols.map((c) => `minmax(0, ${c.width ?? 1}fr)`).join(" ")} 52px`,
                                         borderBottom: rowIdx < rows.length - 1 ? "1px solid var(--border)" : undefined,
                                         background: rowIdx % 2 === 0 ? "var(--card)" : "var(--secondary)",
                                     }}
@@ -213,7 +219,7 @@ export function TableFieldPreview({ field, control, mode }: { field: FormField, 
                                     {cols.map((col) => (
                                         <div
                                             key={col.id}
-                                            className="px-3 py-2"
+                                            className="min-w-0 px-3 py-2"
                                             style={{ borderRight: "1px solid var(--border)" }}
                                         >
                                             <TableCellInput
@@ -228,7 +234,7 @@ export function TableFieldPreview({ field, control, mode }: { field: FormField, 
                                     <div className="flex items-center justify-center gap-0.5 px-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                         <button
                                             onClick={() => moveRow(rowIdx, -1)}
-                                            disabled={rowIdx === 0}
+                                            disabled={!canManageRows || rowIdx === 0}
                                             className="p-1 rounded transition-colors hover:bg-secondary disabled:opacity-20"
                                             style={{ color: "var(--muted-foreground)" }}
                                             title="Move up"
@@ -237,7 +243,7 @@ export function TableFieldPreview({ field, control, mode }: { field: FormField, 
                                         </button>
                                         <button
                                             onClick={() => removeRow(rowIdx)}
-                                            disabled={rows.length <= (field.minRows ?? 1)}
+                                            disabled={!canManageRows || rows.length <= (field.minRows ?? 1)}
                                             className="p-1 rounded transition-colors hover:bg-destructive/10 disabled:opacity-20"
                                             style={{ color: "var(--muted-foreground)" }}
                                             title="Remove row"
