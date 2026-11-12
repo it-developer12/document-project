@@ -31,6 +31,8 @@ export function EmployeeDetailPreview({ field, control, setValue, getValues, mod
         color: "var(--foreground)",
         fontSize: "0.8rem",
         outline: "none",
+        minWidth: 0,
+        boxSizing: "border-box",
     };
 
     const labelCls: React.CSSProperties = {
@@ -39,6 +41,7 @@ export function EmployeeDetailPreview({ field, control, setValue, getValues, mod
         color: "var(--foreground)",
         marginBottom: "0.375rem",
         display: "block",
+        overflowWrap: "anywhere",
     };
 
     const required = (
@@ -97,13 +100,13 @@ export function EmployeeDetailPreview({ field, control, setValue, getValues, mod
     return (
 
         <div
-            className="flex flex-col gap-4 p-4 rounded-lg border"
+            className="flex min-w-0 flex-col gap-4 rounded-lg border p-4 @container/employee-detail"
             style={{ borderColor: "var(--border)", background: "white" }}
         >
             {/* Row 1: Employee Code | Position | Division | Department */}
-            <div className="grid gap-4" style={{ gridTemplateColumns: "1fr 1fr 1fr 1fr" }}>
+            <div className="grid min-w-0 grid-cols-1 gap-4 @md/employee-detail:grid-cols-2 @5xl/employee-detail:grid-cols-4">
                 {/* รหัสพนักงาน — Employee Code with search button */}
-                <div>
+                <div className="min-w-0">
                     <label style={labelCls}>รหัสพนักงาน (Employee Code){required}</label>
                     <div className="flex gap-1.5">
                         <Controller
@@ -133,7 +136,7 @@ export function EmployeeDetailPreview({ field, control, setValue, getValues, mod
                 </div>
 
                 {/* ตำแหน่ง — Position */}
-                <div>
+                <div className="min-w-0">
                     <label style={labelCls}>ตำแหน่ง (Position){required}</label>
                     <Controller
                         name="employee_field.position"
@@ -152,7 +155,7 @@ export function EmployeeDetailPreview({ field, control, setValue, getValues, mod
                 </div>
 
                 {/* ฝ่าย — Division */}
-                <div>
+                <div className="min-w-0">
                     <label style={labelCls}>ฝ่าย (Division){required}</label>
                     <Controller
                         name="employee_field.division"
@@ -171,7 +174,7 @@ export function EmployeeDetailPreview({ field, control, setValue, getValues, mod
                 </div>
 
                 {/* แผนก — Department */}
-                <div>
+                <div className="min-w-0">
                     <label style={labelCls}>แผนก (Department){required}</label>
                     <Controller
                         name="employee_field.department"
@@ -194,9 +197,9 @@ export function EmployeeDetailPreview({ field, control, setValue, getValues, mod
             <div style={{ height: "1px", background: "var(--border)" }} />
 
             {/* Row 2: First Name | Last Name | Company */}
-            <div className="grid gap-4" style={{ gridTemplateColumns: "1fr 1fr 1fr" }}>
+            <div className="grid min-w-0 grid-cols-1 gap-4 @md/employee-detail:grid-cols-2 @4xl/employee-detail:grid-cols-3">
                 {/* ชื่อ — First Name */}
-                <div>
+                <div className="min-w-0">
                     <label style={labelCls}>ชื่อ (First Name){required}</label>
                     <Controller
                         name="employee_field.first_name"
@@ -215,7 +218,7 @@ export function EmployeeDetailPreview({ field, control, setValue, getValues, mod
                 </div>
 
                 {/* นามสกุล — Last Name */}
-                <div>
+                <div className="min-w-0">
                     <label style={labelCls}>นามสกุล (Last Name){required}</label>
                     <Controller
                         name="employee_field.last_name"
@@ -234,7 +237,7 @@ export function EmployeeDetailPreview({ field, control, setValue, getValues, mod
                 </div>
 
                 {/* บริษัท — Company (select) */}
-                <div>
+                <div className="min-w-0">
                     <div className="font-semibold">
                         <span>{"บริษัท "}</span>
                         <span className="text-red-400">{"*"}</span>
