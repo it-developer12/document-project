@@ -12,6 +12,7 @@ import { useGetDocuments } from "@/hooks/set-document";
 import { useProcessMutation } from "@/hooks/add-process-document";
 import { useFinishMutation } from "@/hooks/finish-document";
 import { useCompanyList, useDivisionList } from "@/hooks/create-form";
+import { useCurrentUser } from "@/hooks/use-current-user";
 
 export default function Page() {
     const { data: divisionList } = useDivisionList();
@@ -48,7 +49,27 @@ export default function Page() {
     const { isLoading, isError, refetch } = useGetDocuments();
     const processMutate = useProcessMutation(setDetail);
     const finishMutate = useFinishMutation(setDetail);
-    const docs = useDocumentStore((state) => state.processDocuments);
+    const processDocuments = useDocumentStore((state) => state.processDocuments);
+    const { data: currentUser } = useCurrentUser();
+    const currentEmployeeCode = currentUser?.user_info?.employee_code;
+    const docs = processDocuments.filter((doc) => {
+        if (doc.status !== "PROCESSING") return false;
+
+        const workflow = doc.workflowInstance?.workflowDefinitionVersion;
+        const processorSteps = workflow?.workflowStep?.filter(
+            (step) => step.type === "PROCESSOR",
+        ) ?? [];
+        if (processorSteps.length === 0) return false;
+        if (workflow?.processorType === "ALL_IN_DIVISION") return true;
+        if (!currentEmployeeCode) return false;
+
+        return processorSteps.some((step) =>
+            step.processor?.some((assignment) =>
+                assignment.employee?.employee_code === currentEmployeeCode ||
+                assignment.employee_code === currentEmployeeCode,
+            ),
+        ) ?? false;
+    });
     const activities = useDocumentStore((state) => state.activitiyDocuments)
     
     const DOCUMENT: TableDoc[] = docs.map((doc) => ({

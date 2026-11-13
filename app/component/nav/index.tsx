@@ -86,13 +86,29 @@ export default function Nav() {
     expandedNavigation.pathname === pathname ? expandedNavigation.hrefs : [];
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const approve = useDocumentStore((state) => state.approveDocuments)
-  const process = useDocumentStore((state) => state.processDocuments)
+  const processDocuments = useDocumentStore((state) => state.processDocuments)
   const allDocuments = useDocumentStore((state) => state.documents);
   const finish = allDocuments.filter((doc) => doc.workflowInstance?.workflowDefinitionVersion?.workflowStep?.some((step) => step.type === "FINISHER") && doc.status === "PROCESSING");
-  const actionDocumentCount = new Set([
-    ...approve.map((doc) => doc.documentNo),
-    ...process.map((doc) => doc.documentNo),
-  ]).size;
+  const currentEmployeeCode = useAuthStore((state) => state.user?.user_info.employee_code);
+  const process = processDocuments.filter((doc) => {
+    if (doc.status !== "PROCESSING") return false;
+
+    const workflow = doc.workflowInstance?.workflowDefinitionVersion;
+    const processorSteps = workflow?.workflowStep?.filter(
+      (step) => step.type === "PROCESSOR",
+    ) ?? [];
+    if (processorSteps.length === 0) return false;
+    if (workflow?.processorType === "ALL_IN_DIVISION") return true;
+    if (!currentEmployeeCode) return false;
+
+    return processorSteps.some((step) =>
+      step.processor?.some((assignment) =>
+        assignment.employee?.employee_code === currentEmployeeCode ||
+        assignment.employee_code === currentEmployeeCode,
+      ),
+    );
+  });
+  const actionDocumentCount = approve.length + process.length + finish.length;
   const userRole = useAuthStore((state) => state.user?.user_info.role);
   function toggleItem(href: string) {
     setExpandedNavigation((current) => {

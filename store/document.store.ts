@@ -37,8 +37,15 @@ export interface DocumentItem {
     };
     workflowInstance: {
         workflowDefinitionVersion: {
+            processorType?: string;
             workflowStep: {
                 type: string;
+                processor?: {
+                    employee_code?: string;
+                    employee?: {
+                        employee_code?: string;
+                    };
+                }[];
             }[];
         };
         executions: {

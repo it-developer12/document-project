@@ -695,7 +695,7 @@ function FormPageContent() {
                 toast.error("ไม่พบเวอร์ชันล่าสุดของแบบฟอร์ม");
                 return;
             }
-            if (!validateData(formdata)) return;
+            if (decision !== "draft" && !validateData(formdata)) return;
 
             const employeeField = fields.find(
                 (field: any) =>
