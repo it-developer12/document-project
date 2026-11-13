@@ -74,7 +74,7 @@ export function TableFieldPreview({ field, control, mode }: { field: FormField, 
     const cols = field.columns ?? [];
     const canManageRows = field.zone === "editor_field"
         ? mode === "editor"
-        : mode === "edit";
+        : mode === "edit" || mode === "create";
     const makeRow = (): RowData =>
         Object.fromEntries(cols.map((c) => [c.id, ""]));
 
