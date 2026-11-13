@@ -1342,12 +1342,16 @@ export default function Page() {
                                             value: formDetail.processor_type,
                                         }}
                                         onChange={(selected) => {
-                                            if (selected?.value === "1" && formDetail.department !== "bln") {
-                                                setFormDetail((prev) => ({ ...prev, processor_type: "ALL_IN_DIVISION" }));
+                                            if (!selected) return;
+
+                                            if (selected.value === "ALL_IN_DIVISION" && formDetail.department !== "bln") {
+                                                setFormDetail((prev) => ({ ...prev, processor_type: selected.value }));
                                                 setProcessor([{ employee_code: "default", name: "ทุกคนในแผนก" }]);
-                                            } else if (selected?.value === "2") {
-                                                setFormDetail((prev) => ({ ...prev, processor_type: "SPECIFIC_PROCESSOR" }));
-                                                setProcessor([{ employee_code: "", name: "" }]);
+                                            } else if (selected.value === "SPECIFIC_PROCESSOR") {
+                                                setFormDetail((prev) => ({ ...prev, processor_type: selected.value }));
+                                                setProcessor((prev) => prev.some((item) => item.employee_code && item.employee_code !== "default")
+                                                    ? prev.filter((item) => item.employee_code !== "default")
+                                                    : [{ employee_code: "", name: "" }]);
                                             }
                                         }}
                                         className="w-full text-sm"
@@ -1534,7 +1538,7 @@ export default function Page() {
                                 )}
                             </div>
                         </div>
-                        {type == "ผู้ดำเนินการ" && formDetail.processor_type === "2" && List.map((app: any, index: number) => (
+                        {type === "ผู้ดำเนินการ" && formDetail.processor_type === "SPECIFIC_PROCESSOR" && List.map((app: any, index: number) => (
                             <div
                                 key={index}
                                 className={`flex flex-col gap-2 min-w-0 md:flex-row md:items-center md:gap-2 w-full`}
